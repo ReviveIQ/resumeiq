@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
+import JSZip from "jszip";
 import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken, upgradeToStarter, incrementResumeCount } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
@@ -183,10 +184,7 @@ Return ONLY the JSON object. Start with { and end with }.\`;
 }
 
 async function generateDocx(parsedData: any): Promise<Buffer> {
-  const {
-    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-    AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType
-  } = require("docx");
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType } = await import("docx");
 
   const BLUE = "1F4E79", LIGHT_BLUE = "2E75B6", DARK = "1A1A1A", GRAY = "595959";
   const W = 9360;

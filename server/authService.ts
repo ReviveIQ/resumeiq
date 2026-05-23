@@ -1,3 +1,4 @@
+import mysql2 from "mysql2/promise";
 /**
  * ResumeIQ Auth Service
  * Simple email + password authentication with JWT
@@ -33,7 +34,6 @@ export function verifyToken(token: string): { userId: number; email: string } | 
 export async function getDb() {
   const dbUrl = process.env.RESUMEIQ_DATABASE_URL || process.env.DATABASE_URL;
   if (!dbUrl) return null;
-  const mysql2 = require("mysql2/promise");
   return mysql2.createConnection(dbUrl);
 }
 
