@@ -12,6 +12,8 @@ export default function ResumeIQ() {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailCaptured, setEmailCaptured] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle return from Stripe
@@ -300,9 +302,37 @@ export default function ResumeIQ() {
                   </div>
                 )}
 
-                {isFree && (
+                {isFree && !emailCaptured && (
+                  <div style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:"12px",padding:"20px",marginBottom:"16px"}}>
+                    <p style={{color:"#4ade80",fontSize:"14px",fontWeight:"600",marginBottom:"12px"}}>🎉 Your first resume is free! Enter your email to download.</p>
+                    <div style={{display:"flex",gap:"8px"}}>
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e: any) => setEmail(e.target.value)}
+                        style={{flex:1,padding:"10px 14px",borderRadius:"8px",border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.1)",color:"white",fontSize:"14px",outline:"none"}}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!email) return;
+                          await fetch("/api/resumeiq/capture-email", {
+                            method:"POST", headers:{"Content-Type":"application/json"},
+                            body: JSON.stringify({ email, name: parsedData?.name })
+                          });
+                          setEmailCaptured(true);
+                        }}
+                        style={{background:"#4ade80",color:"#0f172a",border:"none",borderRadius:"8px",padding:"10px 20px",fontWeight:"700",cursor:"pointer",fontSize:"14px"}}
+                      >
+                        Get My Resume
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isFree && emailCaptured && (
                   <div style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:"12px",padding:"16px",marginBottom:"16px",textAlign:"center"}}>
-                    <p style={{color:"#4ade80",fontSize:"14px",fontWeight:"600"}}>🎉 This is your free resume transformation! Download it now.</p>
+                    <p style={{color:"#4ade80",fontSize:"14px",fontWeight:"600"}}>🎉 Your free resume is ready to download!</p>
                   </div>
                 )}
 
@@ -311,8 +341,8 @@ export default function ResumeIQ() {
                     Upload Different Resume
                   </button>
                   <button
-                    onClick={isFree ? handleDownload : handlePayAndDownload}
-                    disabled={downloading}
+                    onClick={isFree ? (emailCaptured ? handleDownload : undefined) : handlePayAndDownload}
+                    disabled={downloading || (isFree && !emailCaptured)}
                     style={{flex:2,background: isFree ? "#16a34a" : "#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}
                   >
                     {downloading ? (

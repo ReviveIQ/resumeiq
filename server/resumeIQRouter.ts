@@ -227,6 +227,40 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
   return await Packer.toBuffer(doc);
 }
 
+// Email capture service
+async function captureEmail(email: string, name: string): Promise<void> {
+  const dbUrl = process.env.RESUMEIQ_DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return;
+
+  try {
+    const mysql2 = require("mysql2/promise");
+    const conn = await mysql2.createConnection(dbUrl);
+    
+    // Create table if not exists
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS email_captures (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(320) NOT NULL,
+        name VARCHAR(255),
+        source VARCHAR(100) DEFAULT 'resumeiq',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_email (email)
+      )
+    `);
+    
+    // Insert email (ignore duplicates)
+    await conn.execute(
+      `INSERT IGNORE INTO email_captures (email, name, source) VALUES (?, ?, 'resumeiq')`,
+      [email, name]
+    );
+    
+    await conn.end();
+    console.log(`[ResumeIQ] Email captured: ${email}`);
+  } catch (err) {
+    console.warn("[ResumeIQ] Email capture failed:", err);
+  }
+}
+
 export function registerResumeIQRoutes(app: Express) {
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
@@ -242,6 +276,18 @@ export function registerResumeIQRoutes(app: Express) {
     } catch (error: any) {
       console.error("[ResumeIQ] Transform error:", error);
       res.status(500).json({ error: error.message || "Failed to transform resume" });
+    }
+  });
+
+  // Email capture endpoint
+  app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
+    try {
+      const { email, name } = req.body;
+      if (!email) { res.status(400).json({ error: "Email required" }); return; }
+      await captureEmail(email, name || "");
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
