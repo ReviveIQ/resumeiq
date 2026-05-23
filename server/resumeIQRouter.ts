@@ -343,6 +343,14 @@ export function registerResumeIQRoutes(app: Express) {
       }
       if (!data) { res.status(400).json({ error: "No resume data" }); return; }
 
+      // Ensure minimum data exists to avoid DOCX generation crash
+      if (!data.name || data.name === "Full Name or Unknown") {
+        data.name = "Resume";
+      }
+      if (!data.experience) data.experience = [];
+      if (!data.skills) data.skills = { categories: [] };
+      if (!data.education) data.education = [];
+
       const buffer = await generateDocx(data);
       const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
