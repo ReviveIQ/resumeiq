@@ -63,7 +63,7 @@ CRITICAL RULES:
 - If you cannot read a field clearly, use an empty string — do not guess
 - Rewrite bullets to be stronger but keep the same factual content`;
 
-  const jsonSchema = \`{
+  const jsonSchema = `{
   "name": "Extract the actual person's full name from the resume",
   "email": "actual email address from resume",
   "phone": "actual phone number from resume",
@@ -104,7 +104,7 @@ CRITICAL RULES:
     "third best achievement"
   ]
 }
-Return ONLY the JSON object. Start with { and end with }.\`;
+Return ONLY the JSON object. Start with { and end with }.`;
 
   console.log(`[ResumeIQ] Extracted ${textContent.length} chars. First 200: ${textContent.slice(0, 200)}`);
 
