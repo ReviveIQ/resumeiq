@@ -27,7 +27,7 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
   const isDocx = lower.endsWith(".docx") || lower.endsWith(".doc");
   const isPdf = lower.endsWith(".pdf");
 
-  console.log(`[ResumeIQ] Parsing ${fileName}`);
+  console.log(`[ResumeIQ] Parsing ${fileName} (size: ${Buffer.from(fileBase64, "base64").length} bytes)`);
 
   // For DOCX: extract text using JSZip
   let textContent = "";
@@ -42,7 +42,7 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
           .replace(/<\/w:p>/g, " ")
           .replace(/<[^>]+>/g, " ")
           .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
-          .replace(/\s+/g, " ").trim().slice(0, 12000);
+          .replace(/\s+/g, " ").trim().slice(0, 15000);
         console.log(`[ResumeIQ] DOCX extracted ${textContent.length} chars`);
       }
     } catch (e) {
@@ -50,24 +50,62 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
     }
   }
 
-  const systemPrompt = "You are an expert resume parser. Extract ALL content and return structured JSON only. NEVER apologize — always return JSON.";
-  const jsonSchema = `{
-  "name": "Full Name",
-  "email": "email",
-  "phone": "phone",
-  "location": "City, State",
-  "linkedin": "linkedin URL or empty",
-  "title": "Most recent job title",
-  "summary": "2-3 sentence professional summary written by you",
-  "experience": [{"title":"","company":"","location":"","startDate":"MM/YYYY","endDate":"MM/YYYY or Present","description":"One sentence context","bullets":["action verb bullet with metric"],"achievements":["award if any"]}],
-  "skills": {"categories": [{"name":"Category","skills":["skill1","skill2"]}]},
-  "education": [{"degree":"","school":"","location":"","year":""}],
-  "certifications": [],
-  "seniorityLevel": "entry|mid|senior|executive",
-  "yearsOfExperience": 10,
-  "topMetrics": ["$X in revenue","Top X% performer","X% growth"]
+  const systemPrompt = `You are an expert resume writer and parser. Your job is to:
+1. Extract EVERY piece of information from the resume text provided
+2. Rewrite each bullet point to be more impactful with strong action verbs and quantified metrics
+3. Write a compelling 2-3 sentence professional summary based on their actual experience
+4. Return ONLY valid JSON — never apologize, never explain, never refuse
+
+CRITICAL RULES:
+- Use the ACTUAL person's name, companies, dates, and roles from the text
+- Do NOT invent fake names like "John Doe" or fake companies like "Tech Solutions Inc"
+- If you cannot read a field clearly, use an empty string — do not guess
+- Rewrite bullets to be stronger but keep the same factual content`;
+
+  const jsonSchema = \`{
+  "name": "Extract the actual person's full name from the resume",
+  "email": "actual email address from resume",
+  "phone": "actual phone number from resume",
+  "location": "actual city and state from resume",
+  "linkedin": "actual linkedin URL if present, else empty string",
+  "title": "their most recent actual job title",
+  "summary": "Write a compelling 2-3 sentence professional summary using their REAL experience, achievements, and career trajectory",
+  "experience": [
+    {
+      "title": "their actual job title",
+      "company": "the actual company name",
+      "location": "actual city, state",
+      "startDate": "MM/YYYY from resume",
+      "endDate": "MM/YYYY or Present",
+      "description": "one sentence describing what this company actually does",
+      "bullets": [
+        "Rewrite their actual bullet into a stronger version starting with an action verb and including metrics where available",
+        "Keep the same facts but make the language more impactful",
+        "Include dollar amounts, percentages, team sizes, and timeframes from the original"
+      ],
+      "achievements": ["any awards, recognitions, or clubs mentioned"]
+    }
+  ],
+  "skills": {
+    "categories": [
+      { "name": "actual skill category name", "skills": ["skill1", "skill2", "skill3"] }
+    ]
+  },
+  "education": [
+    { "degree": "actual degree name", "school": "actual school name", "location": "city, state", "year": "graduation year" }
+  ],
+  "certifications": ["any certifications mentioned"],
+  "seniorityLevel": "entry or mid or senior or executive based on their experience",
+  "yearsOfExperience": 0,
+  "topMetrics": [
+    "their single best quantified achievement with dollar amount or percentage",
+    "second best achievement",
+    "third best achievement"
+  ]
 }
-Return ONLY valid JSON starting with {`;
+Return ONLY the JSON object. Start with { and end with }.\`;
+
+  console.log(`[ResumeIQ] Extracted ${textContent.length} chars. First 200: ${textContent.slice(0, 200)}`);
 
   // If we have DOCX text, use it
   if (textContent && textContent.length > 200) {
@@ -427,10 +465,31 @@ export function registerResumeIQRoutes(app: Express) {
         data = session.parsedData;
       }
       if (!data) { res.status(400).json({ error: "No resume data" }); return; }
-      if (!data.name || data.name === "Full Name or Unknown") data.name = "Resume";
-      if (!data.experience) data.experience = [];
-      if (!data.skills) data.skills = { categories: [] };
-      if (!data.education) data.education = [];
+      
+      // Ensure all required fields exist to prevent DOCX generation crash
+      if (!data.name || data.name === "Full Name or Unknown" || data.name === "John Doe") data.name = "Resume";
+      if (!data.title) data.title = "";
+      if (!data.summary) data.summary = "";
+      if (!data.location) data.location = "";
+      if (!data.email) data.email = "";
+      if (!data.phone) data.phone = "";
+      if (!data.experience || !Array.isArray(data.experience)) data.experience = [];
+      if (!data.skills || !data.skills.categories) data.skills = { categories: [] };
+      if (!data.education || !Array.isArray(data.education)) data.education = [];
+      if (!data.topMetrics || !Array.isArray(data.topMetrics)) data.topMetrics = [];
+      if (!data.certifications) data.certifications = [];
+      
+      // Fix each experience entry
+      data.experience = data.experience.map((exp: any) => ({
+        title: exp.title || "",
+        company: exp.company || "",
+        location: exp.location || "",
+        startDate: exp.startDate || "",
+        endDate: exp.endDate || "Present",
+        description: exp.description || "",
+        bullets: Array.isArray(exp.bullets) ? exp.bullets.filter(Boolean) : [],
+        achievements: Array.isArray(exp.achievements) ? exp.achievements.filter(Boolean) : [],
+      }));
       const buffer = await generateDocx(data);
       const fileName = `${(data.name||"Resume").replace(/\s+/g,"_")}_ResumeIQ.docx`;
       res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.wordprocessingml.document");
