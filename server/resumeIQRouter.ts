@@ -74,7 +74,7 @@ Return ONLY valid JSON starting with {`;
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Parse this resume:\n\n${textContent}\n\nReturn JSON:\n${jsonSchema}` }
@@ -127,7 +127,7 @@ Return ONLY valid JSON starting with {`;
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `This is raw text extracted from a resume PDF. Some characters may be garbled but extract what you can:\n\n${ascii}\n\nReturn JSON:\n${jsonSchema}` }
