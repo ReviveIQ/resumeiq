@@ -268,8 +268,11 @@ export function registerResumeIQRoutes(app: Express) {
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
       const sessionId = crypto.randomBytes(16).toString("hex");
+      // Check cookie for free usage tracking
+      const cookies = req.headers.cookie || "";
+      const hasCookie = cookies.includes("resumeiq_free_used=1");
       const ip = getClientIp(req);
-      const isFree = (freeUsedByIp.get(ip) || 0) === 0;
+      const isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
       sessionStore.set(sessionId, { parsedData: parsed, paid: isFree, createdAt: Date.now(), freeUsed: isFree });
       console.log(`[ResumeIQ] Session created for ${parsed.name} (free: ${isFree})`);
       res.json({ ...parsed, sessionId, isFree });

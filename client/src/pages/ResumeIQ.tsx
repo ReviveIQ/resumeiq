@@ -12,6 +12,8 @@ export default function ResumeIQ() {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  // Check if user has already used their free resume via cookie
+  const hasUsedFree = document.cookie.includes("resumeiq_free_used=1");
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -316,15 +318,20 @@ export default function ResumeIQ() {
                       <button
                         onClick={async () => {
                           if (!email) return;
+                          // Capture email
                           await fetch("/api/resumeiq/capture-email", {
                             method:"POST", headers:{"Content-Type":"application/json"},
                             body: JSON.stringify({ email, name: parsedData?.name })
                           });
+                          // Set cookie so we remember this user
+                          document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
                           setEmailCaptured(true);
+                          // Download immediately
+                          handleDownload();
                         }}
-                        style={{background:"#4ade80",color:"#0f172a",border:"none",borderRadius:"8px",padding:"10px 20px",fontWeight:"700",cursor:"pointer",fontSize:"14px"}}
+                        style={{background:"#4ade80",color:"#0f172a",border:"none",borderRadius:"8px",padding:"10px 20px",fontWeight:"700",cursor:"pointer",fontSize:"14px",whiteSpace:"nowrap"}}
                       >
-                        Get My Resume
+                        Get My Resume →
                       </button>
                     </div>
                   </div>
@@ -340,10 +347,11 @@ export default function ResumeIQ() {
                   <button onClick={reset} style={{flex:1,background:"rgba(255,255,255,0.1)",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"15px",fontWeight:"600",cursor:"pointer"}}>
                     Upload Different Resume
                   </button>
+                  {(!isFree || emailCaptured) && (
                   <button
-                    onClick={isFree ? (emailCaptured ? handleDownload : undefined) : handlePayAndDownload}
-                    disabled={downloading || (isFree && !emailCaptured)}
-                    style={{flex:2,background: isFree ? "#16a34a" : "#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}
+                    onClick={isFree ? handleDownload : handlePayAndDownload}
+                    disabled={downloading}
+                    style={{flex:2,background: isFree ? "#16a34a" : "#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:downloading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}
                   >
                     {downloading ? (
                       <><Loader2 size={20} style={{animation:"spin 1s linear infinite"}}/>Generating...</>
@@ -353,6 +361,7 @@ export default function ResumeIQ() {
                       <><CreditCard size={20}/>Pay $9.99 & Download</>
                     )}
                   </button>
+                )}
                 </div>
               </>
             )}
