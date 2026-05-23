@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeIQ — Transform Any Resume in Seconds</title>
+  <meta name="description" content="Upload any resume. Get a polished, ATS-optimized document back in seconds. Powered by AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #0a0f1e;
+      --navy-2: #0d1629;
+      --blue: #1a56db;
+      --blue-bright: #3b82f6;
+      --blue-glow: #60a5fa;
+      --gold: #f59e0b;
+      --white: #f8fafc;
+      --muted: #94a3b8;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+    }
+
+    .bg-glow {
+      position: fixed; z-index: 0; pointer-events: none;
+      border-radius: 50%; filter: blur(120px); opacity: 0.15;
+    }
+    .bg-glow-1 { width: 600px; height: 600px; background: #1a56db; top: -200px; left: -200px; }
+    .bg-glow-2 { width: 500px; height: 500px; background: #7c3aed; bottom: 0; right: -200px; }
+    .bg-glow-3 { width: 300px; height: 300px; background: #f59e0b; top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: 0.06; }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      background: rgba(10,15,30,0.8);
+      padding: 16px 0;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--blue), var(--blue-glow));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--white); }
+    .logo-by { font-size: 12px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+
+    .nav-cta {
+      background: var(--blue);
+      color: white; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.2s, transform 0.1s;
+      font-family: 'Inter', sans-serif;
+    }
+    .nav-cta:hover { background: var(--blue-bright); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 999px;
+      padding: 6px 16px; font-size: 13px;
+      color: var(--blue-glow); margin-bottom: 32px;
+      animation: fadeUp 0.6s ease both;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-glow); animation: pulse 2s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(42px, 7vw, 80px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--blue-bright), var(--blue-glow), #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      font-weight: 300;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: white; border: none; border-radius: 12px;
+      padding: 16px 32px; font-size: 16px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 0 40px rgba(26,86,219,0.3);
+    }
+    .btn-primary:hover { background: var(--blue-bright); transform: translateY(-2px); box-shadow: 0 0 60px rgba(59,130,246,0.4); }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--white); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 32px; font-size: 16px; font-weight: 500;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── DEMO WINDOW ── */
+    .demo-wrapper {
+      margin: 80px auto 0;
+      max-width: 780px;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+
+    .demo-window {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--navy-2);
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    .demo-topbar {
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .demo-url { font-size: 12px; color: var(--muted); margin-left: 8px; }
+
+    .demo-body { padding: 32px; }
+    .demo-upload {
+      border: 2px dashed rgba(59,130,246,0.3);
+      border-radius: 12px; padding: 32px;
+      text-align: center;
+      background: rgba(59,130,246,0.05);
+    }
+    .demo-upload-icon { font-size: 36px; margin-bottom: 12px; }
+    .demo-upload-text { color: var(--white); font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .demo-upload-sub { color: var(--muted); font-size: 13px; }
+
+    .demo-progress {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 20px; justify-content: center;
+    }
+    .demo-step {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .demo-step.done { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .demo-step.active { background: rgba(59,130,246,0.2); color: var(--blue-glow); }
+    .demo-step.pending { background: rgba(255,255,255,0.05); color: var(--muted); }
+    .demo-arrow { color: var(--muted); font-size: 12px; }
+
+    /* ── STATS ── */
+    .stats {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    }
+    .stat {
+      padding: 32px; text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-number {
+      font-family: 'Syne', sans-serif;
+      font-size: 48px; font-weight: 800;
+      background: linear-gradient(135deg, var(--white), var(--blue-glow));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-label { color: var(--muted); font-size: 14px; }
+
+    /* ── HOW IT WORKS ── */
+    .section { padding: 100px 0; }
+    .section-tag {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--blue-glow);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-sub { color: var(--muted); font-size: 17px; max-width: 480px; line-height: 1.7; font-weight: 300; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 60px; }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 36px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .step:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-4px); }
+    .step::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at top left, rgba(59,130,246,0.06), transparent 60%);
+    }
+    .step-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 64px; font-weight: 800;
+      color: rgba(59,130,246,0.15);
+      line-height: 1; margin-bottom: 20px;
+    }
+    .step-icon { font-size: 32px; margin-bottom: 16px; }
+    .step h3 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+    .step p { color: var(--muted); font-size: 14px; line-height: 1.7; font-weight: 300; }
+
+    /* ── FEATURES ── */
+    .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 60px; }
+    .feature {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      display: flex; gap: 20px; align-items: flex-start;
+      transition: border-color 0.2s;
+    }
+    .feature:hover { border-color: rgba(59,130,246,0.25); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: rgba(59,130,246,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .feature h4 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .feature p { color: var(--muted); font-size: 14px; line-height: 1.6; font-weight: 300; }
+
+    /* ── BEFORE/AFTER ── */
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 60px; }
+    .comp-card {
+      border-radius: 16px; padding: 32px;
+      border: 1px solid var(--border);
+    }
+    .comp-card.before { background: rgba(239,68,68,0.05); border-color: rgba(239,68,68,0.15); }
+    .comp-card.after { background: rgba(74,222,128,0.05); border-color: rgba(74,222,128,0.15); }
+    .comp-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; margin-bottom: 20px;
+    }
+    .comp-card.before .comp-label { color: #f87171; }
+    .comp-card.after .comp-label { color: #4ade80; }
+    .comp-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-bottom: 14px; font-size: 14px; color: var(--muted); font-weight: 300;
+    }
+    .comp-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
+    /* ── PRICING ── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 60px; }
+    .pricing-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px;
+      position: relative; transition: transform 0.2s;
+    }
+    .pricing-card:hover { transform: translateY(-4px); }
+    .pricing-card.featured {
+      border-color: var(--blue);
+      background: rgba(26,86,219,0.08);
+      box-shadow: 0 0 60px rgba(26,86,219,0.15);
+    }
+    .pricing-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: white;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 4px 14px; border-radius: 999px;
+    }
+    .pricing-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .pricing-price {
+      font-family: 'Syne', sans-serif;
+      font-size: 48px; font-weight: 800;
+      line-height: 1; margin-bottom: 4px;
+    }
+    .pricing-per { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .pricing-features { list-style: none; margin-bottom: 28px; }
+    .pricing-features li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--muted); margin-bottom: 10px; font-weight: 300;
+    }
+    .pricing-features li::before { content: "✓"; color: #4ade80; font-weight: 700; flex-shrink: 0; }
+    .pricing-btn {
+      width: 100%; padding: 14px; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      border: none; font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+    .pricing-btn.primary { background: var(--blue); color: white; }
+    .pricing-btn.primary:hover { background: var(--blue-bright); }
+    .pricing-btn.outline { background: transparent; color: var(--white); border: 1px solid var(--border); }
+    .pricing-btn.outline:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 100px 0;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .cta-glow {
+      display: inline-block;
+      background: radial-gradient(ellipse at center, rgba(59,130,246,0.15), transparent 70%);
+      padding: 60px; border-radius: 32px;
+      border: 1px solid rgba(59,130,246,0.15);
+    }
+    .cta-section h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 800; letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .cta-section p { color: var(--muted); font-size: 18px; margin-bottom: 36px; font-weight: 300; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+    }
+    footer p { color: var(--muted); font-size: 13px; }
+    footer a { color: var(--blue-glow); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat { border-right: none; border-bottom: 1px solid var(--border); }
+      .steps { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .comparison { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .demo-progress { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<div class="bg-glow bg-glow-3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="container nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-icon">✦</div>
+      <span class="logo-text">ResumeIQ</span>
+      <span class="logo-by">by ReviveIQ</span>
+    </a>
+    <a href="#" class="nav-cta">Transform My Resume →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      AI-Powered Resume Transformation
+    </div>
+    <h1>Your resume,<br /><em>completely transformed</em></h1>
+    <p>Upload any resume — formatted well or poorly. Get back a polished, ATS-optimized Word document in seconds. No templates. No subscriptions. Just results.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn-primary">✦ Transform My Resume Free</a>
+      <a href="#how" class="btn-secondary">See how it works →</a>
+    </div>
+
+    <!-- DEMO WINDOW -->
+    <div class="demo-wrapper">
+      <div class="demo-window">
+        <div class="demo-topbar">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+          <span class="demo-url">resumeiq.reviveiq.com</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-upload">
+            <div class="demo-upload-icon">📄</div>
+            <div class="demo-upload-text">Old_Resume_v3_FINAL_2.pdf</div>
+            <div class="demo-upload-sub">49 KB — Ready to transform</div>
+          </div>
+          <div class="demo-progress">
+            <span class="demo-step done">✓ Upload</span>
+            <span class="demo-arrow">→</span>
+            <span class="demo-step done">✓ Analyzing</span>
+            <span class="demo-arrow">→</span>
+            <span class="demo-step done">✓ Preview</span>
+            <span class="demo-arrow">→</span>
+            <span class="demo-step active">⬇ Downloading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-number">60s</div>
+        <div class="stat-label">Average transformation time</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">ATS compatibility score</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">GPT-4o</div>
+        <div class="stat-label">Powered by the best AI</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">$0</div>
+        <div class="stat-label">To try your first resume</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-tag">How It Works</div>
+    <h2 class="section-title">Three steps.<br/>One great resume.</h2>
+    <p class="section-sub">No forms to fill. No templates to choose. Just upload and download.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">📤</div>
+        <h3>Upload Anything</h3>
+        <p>Drop in your current resume — no matter how outdated, inconsistently formatted, or plain it looks. PDF or Word, we handle both.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon">🧠</div>
+        <h3>AI Analyzes & Rewrites</h3>
+        <p>GPT-4o extracts every job, bullet, skill, and achievement. It rewrites each bullet to start with a strong action verb and adds metrics where implied.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon">⬇</div>
+        <h3>Download & Apply</h3>
+        <p>Get a polished Word document with professional formatting, clear sections, and visual impact. Open it in Word or Google Docs and you're ready to send.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="section-tag">What You Get</div>
+    <h2 class="section-title">Every resume detail,<br/>handled by AI.</h2>
+
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">✦</div>
+        <div>
+          <h4>ATS-Optimized Structure</h4>
+          <p>Clean heading hierarchy and keyword-rich content that passes applicant tracking systems at Fortune 500 companies.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div>
+          <h4>Metrics & Impact Statements</h4>
+          <p>AI identifies implied achievements and adds quantified impact — turning "managed team" into "Led 8-person team that exceeded quota by 23%."</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎨</div>
+        <div>
+          <h4>Professional Visual Design</h4>
+          <p>A clean, modern branded template with color-coded sections, career highlights table, and award callouts that stands out in a pile.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div>
+          <h4>Stronger Action Verbs</h4>
+          <p>Every bullet is rewritten to open with a powerful verb — Delivered, Architected, Accelerated — instead of passive language.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📝</div>
+        <div>
+          <h4>Polished Summary</h4>
+          <p>A 2-3 sentence executive summary written from scratch, positioning you at the right seniority level for your target roles.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📥</div>
+        <div>
+          <h4>Editable Word Document</h4>
+          <p>You own the output. Download a fully editable .docx — make any final tweaks in Word or Google Docs before sending.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEFORE / AFTER -->
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="section-tag">Before & After</div>
+    <h2 class="section-title">The difference is immediate.</h2>
+
+    <div class="comparison">
+      <div class="comp-card before">
+        <div class="comp-label">❌ Before ResumeIQ</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Inconsistent formatting and fonts</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Weak bullet points starting with "Responsible for"</div>
+        <div class="comp-item"><span class="comp-icon">•</span>No quantified achievements or metrics</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Generic or missing professional summary</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Skills buried in a wall of text</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Fails ATS keyword scanning</div>
+        <div class="comp-item"><span class="comp-icon">•</span>Looks like every other resume</div>
+      </div>
+      <div class="comp-card after">
+        <div class="comp-label">✓ After ResumeIQ</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Clean, consistent professional layout</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Strong action verbs: Delivered, Architected, Grew</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Quantified metrics: $7M+, 20% growth, Top 0.3%</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Compelling 3-sentence executive summary</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Organized skills matrix by category</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>ATS-optimized keyword structure</div>
+        <div class="comp-item"><span class="comp-icon">✓</span>Visually memorable and employer-ready</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" style="padding-top:0" id="pricing">
+  <div class="container">
+    <div class="section-tag">Pricing</div>
+    <h2 class="section-title">Simple, honest pricing.</h2>
+    <p class="section-sub">No subscription required. Pay per resume or go unlimited.</p>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-name">Single</div>
+        <div class="pricing-price">$9<span style="font-size:24px">.99</span></div>
+        <div class="pricing-per">per resume</div>
+        <ul class="pricing-features">
+          <li>1 resume transformation</li>
+          <li>Full AI analysis & rewrite</li>
+          <li>Professional Word document</li>
+          <li>ATS optimization</li>
+          <li>Download immediately</li>
+        </ul>
+        <button class="pricing-btn outline">Get Started</button>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-badge">MOST POPULAR</div>
+        <div class="pricing-name">Unlimited</div>
+        <div class="pricing-price">$29<span style="font-size:20px">/mo</span></div>
+        <div class="pricing-per">billed monthly · cancel anytime</div>
+        <ul class="pricing-features">
+          <li>Unlimited resume transformations</li>
+          <li>Full AI analysis & rewrite</li>
+          <li>Professional Word document</li>
+          <li>ATS optimization</li>
+          <li>Priority processing</li>
+          <li>Multiple versions per resume</li>
+        </ul>
+        <button class="pricing-btn primary">Start Free Trial</button>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-name">Agency</div>
+        <div class="pricing-price">$199<span style="font-size:20px">/mo</span></div>
+        <div class="pricing-per">up to 50 seats</div>
+        <ul class="pricing-features">
+          <li>50 team member seats</li>
+          <li>Bulk resume processing</li>
+          <li>Custom branded template</li>
+          <li>API access</li>
+          <li>Dedicated support</li>
+          <li>Usage analytics dashboard</li>
+        </ul>
+        <button class="pricing-btn outline">Contact Sales</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-glow">
+      <h2>Ready to transform<br/>your resume?</h2>
+      <p>Join thousands of job seekers landing more interviews with ResumeIQ.</p>
+      <a href="#" class="btn-primary" style="font-size:18px; padding:18px 40px;">✦ Transform My Resume Free →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>
+      © 2026 <a href="#">ResumeIQ</a> · A <a href="#">ReviveIQ</a> product ·
+      <a href="#">Privacy</a> · <a href="#">Terms</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
