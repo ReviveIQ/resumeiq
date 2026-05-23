@@ -8,8 +8,6 @@ import crypto from "crypto";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
-// In-memory session store for parsed resume data
-// Key: sessionId, Value: { parsedData, paid, createdAt }
 const sessionStore = new Map<string, {
   parsedData: any;
   paid: boolean;
@@ -17,7 +15,6 @@ const sessionStore = new Map<string, {
   freeUsed: boolean;
 }>();
 
-// Clean up sessions older than 2 hours
 setInterval(() => {
   const now = Date.now();
   for (const [key, val] of sessionStore.entries()) {
@@ -25,27 +22,66 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000);
 
-// Track free resumes by IP (simple rate limiting)
 const freeUsedByIp = new Map<string, number>();
 
 function getClientIp(req: Request): string {
   return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
 }
 
-function stripJsonFences(raw: string): string {
+function stripJson(raw: string): string {
   let text = raw.trim();
   if (text.startsWith("```")) text = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  return text.trim();
+  const match = text.match(/\{[\s\S]*\}/);
+  return match ? match[0] : text;
 }
 
-async function parseResume(fileBase64: string): Promise<any> {
+async function extractText(fileBase64: string, fileName: string): Promise<string> {
+  const buffer = Buffer.from(fileBase64, "base64");
+  const lower = fileName.toLowerCase();
+
+  // DOCX: ZIP containing XML
+  if (lower.endsWith(".docx") || lower.endsWith(".doc")) {
+    try {
+      const JSZip = require("jszip");
+      const zip = await JSZip.loadAsync(buffer);
+      const docXml = await zip.file("word/document.xml")?.async("string");
+      if (docXml) {
+        return docXml
+          .replace(/<w:br[^>]*\/>/g, "\n")
+          .replace(/<w:p[ >][^>]*>/g, "\n")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+          .replace(/\s+/g, " ").trim().slice(0, 12000);
+      }
+    } catch (e) {
+      console.warn("[ResumeIQ] DOCX extraction failed:", e);
+    }
+  }
+
+  // PDF or fallback: extract printable ASCII
+  const text = buffer.toString("latin1")
+    .split("").map(c => {
+      const code = c.charCodeAt(0);
+      if (code === 10 || code === 13 || code === 9) return c;
+      if (code >= 32 && code <= 126) return c;
+      return " ";
+    }).join("")
+    .replace(/\s+/g, " ").trim().slice(0, 12000);
+
+  return text;
+}
+
+async function parseResume(fileBase64: string, fileName: string): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
-  const buffer = Buffer.from(fileBase64, "base64");
-  const textContent = buffer.toString("utf-8")
-    .replace(/[^\x20-\x7E\n\r\t]/g, " ")
-    .replace(/\s+/g, " ").trim().slice(0, 10000);
+  const textContent = await extractText(fileBase64, fileName);
+
+  if (textContent.length < 100) {
+    throw new Error("Could not extract text from this file. Please try saving as a .docx Word document and uploading again.");
+  }
+
+  console.log(`[ResumeIQ] Extracted ${textContent.length} chars from ${fileName}`);
 
   const res = await fetch(OPENAI_API, {
     method: "POST",
@@ -53,49 +89,62 @@ async function parseResume(fileBase64: string): Promise<any> {
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are an expert resume parser. Extract ALL content thoroughly. ALWAYS return valid JSON — never apologize, never explain." },
-        { role: "user", content: `Parse this resume and return JSON:
+        {
+          role: "system",
+          content: "You are an expert resume parser. Extract ALL content and return structured JSON. ALWAYS return valid JSON — never apologize, never explain."
+        },
+        {
+          role: "user",
+          content: `Parse this resume and return JSON with this exact structure:
 {
   "name": "Full Name",
-  "email": "email",
-  "phone": "phone",
+  "email": "email address",
+  "phone": "phone number",
   "location": "City, State",
-  "linkedin": "linkedin URL or empty",
-  "title": "Most recent/target job title",
+  "linkedin": "linkedin URL or empty string",
+  "title": "Most recent or target job title",
   "summary": "Write a polished 2-3 sentence professional summary",
   "experience": [
     {
       "title": "Job Title",
-      "company": "Company",
+      "company": "Company Name",
       "location": "City, State",
       "startDate": "MM/YYYY",
       "endDate": "MM/YYYY or Present",
       "description": "One sentence company context",
-      "bullets": ["Strong action-verb bullet with metrics", "bullet 2", "bullet 3", "bullet 4"],
+      "bullets": ["Strong action-verb bullet with metric", "bullet 2", "bullet 3"],
       "achievements": ["award if any"]
     }
   ],
   "skills": {
-    "categories": [{ "name": "Category", "skills": ["skill1", "skill2"] }]
+    "categories": [
+      { "name": "Category Name", "skills": ["skill1", "skill2"] }
+    ]
   },
-  "education": [{ "degree": "Degree", "school": "School", "location": "City, State", "year": "YYYY" }],
+  "education": [
+    { "degree": "Degree Name", "school": "School", "location": "City, State", "year": "YYYY" }
+  ],
   "certifications": [],
-  "seniorityLevel": "entry|mid|senior|executive",
-  "yearsOfExperience": 0,
-  "topMetrics": ["achievement 1", "achievement 2", "achievement 3"]
+  "seniorityLevel": "entry or mid or senior or executive",
+  "yearsOfExperience": 10,
+  "topMetrics": ["quantified achievement 1", "achievement 2", "achievement 3"]
 }
 
-CRITICAL: Return ONLY valid JSON. Start with { end with }. No markdown.
+CRITICAL: Return ONLY valid JSON. Start with { and end with }.
 
-Resume: ${textContent}` }
+Resume text:
+${textContent}`
+        }
       ],
-      max_tokens: 4000, temperature: 0.1,
+      max_tokens: 4000,
+      temperature: 0.1,
     }),
   });
 
   if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
   const data = await res.json() as any;
-  return JSON.parse(stripJsonFences(data.choices?.[0]?.message?.content || "{}"));
+  const raw = data.choices?.[0]?.message?.content || "{}";
+  return JSON.parse(stripJson(raw));
 }
 
 async function generateDocx(parsedData: any): Promise<Buffer> {
@@ -220,27 +269,18 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
 
 export function registerResumeIQRoutes(app: Express) {
 
-  // Step 1: Parse resume and create session
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
       const { fileBase64, fileName } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
 
-      const parsed = await parseResume(fileBase64);
-
-      // Create session
+      const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
       const sessionId = crypto.randomBytes(16).toString("hex");
       const ip = getClientIp(req);
       const freeCount = freeUsedByIp.get(ip) || 0;
       const isFree = freeCount === 0;
 
-      sessionStore.set(sessionId, {
-        parsedData: parsed,
-        paid: isFree, // First resume is free
-        createdAt: Date.now(),
-        freeUsed: isFree,
-      });
-
+      sessionStore.set(sessionId, { parsedData: parsed, paid: isFree, createdAt: Date.now(), freeUsed: isFree });
       console.log(`[ResumeIQ] Session ${sessionId} created for ${parsed.name} (free: ${isFree})`);
 
       res.json({ ...parsed, sessionId, isFree });
@@ -250,22 +290,21 @@ export function registerResumeIQRoutes(app: Express) {
     }
   });
 
-  // Step 2a: Create Stripe checkout session
+  app.get("/api/resumeiq/session/:sessionId", (req: Request, res: Response) => {
+    const session = sessionStore.get(req.params.sessionId);
+    if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+    res.json(session.parsedData);
+  });
+
   app.post("/api/resumeiq/checkout", async (req: Request, res: Response) => {
     try {
       const { sessionId } = req.body;
       const session = sessionStore.get(sessionId);
-
-      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+      if (!session) { res.status(404).json({ error: "Session not found" }); return; }
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
 
       const origin = req.headers.origin || `https://${req.headers.host}`;
-      const { url } = await createCheckoutSession(
-        `${origin}/?payment=success`,
-        `${origin}/?payment=cancelled`,
-        sessionId
-      );
-
+      const { url } = await createCheckoutSession(`${origin}/?payment=success`, `${origin}/?payment=cancelled`, sessionId);
       res.json({ url });
     } catch (error: any) {
       console.error("[ResumeIQ] Checkout error:", error);
@@ -273,43 +312,28 @@ export function registerResumeIQRoutes(app: Express) {
     }
   });
 
-  // Step 2b: Verify payment and mark session as paid
   app.post("/api/resumeiq/verify-payment", async (req: Request, res: Response) => {
     try {
       const { stripeSessionId, resumeiqSession } = req.body;
       const session = sessionStore.get(resumeiqSession);
-
       if (!session) { res.status(404).json({ error: "Session expired" }); return; }
-
       const paid = await verifyPayment(stripeSessionId);
       if (paid) {
         session.paid = true;
-        // Mark IP as having used free resume
         if (session.freeUsed) {
           const ip = getClientIp(req);
           freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
         }
       }
-
       res.json({ paid });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Get session data (for post-payment restore)
-  app.get("/api/resumeiq/session/:sessionId", (req: Request, res: Response) => {
-    const session = sessionStore.get(req.params.sessionId);
-    if (!session) { res.status(404).json({ error: "Session not found" }); return; }
-    res.json(session.parsedData);
-  });
-
-  // Step 3: Generate and download DOCX (requires paid session)
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
       const { sessionId, parsedData } = req.body;
-
-      // Check if session exists and is paid
       let data = parsedData;
       if (sessionId) {
         const session = sessionStore.get(sessionId);
@@ -317,12 +341,10 @@ export function registerResumeIQRoutes(app: Express) {
         if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
         data = session.parsedData;
       }
-
       if (!data) { res.status(400).json({ error: "No resume data" }); return; }
 
       const buffer = await generateDocx(data);
       const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
-
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.send(buffer);
