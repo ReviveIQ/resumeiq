@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
-import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken } from "./authService";
+import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken, upgradeToStarter, incrementResumeCount } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
@@ -346,11 +346,33 @@ export function registerResumeIQRoutes(app: Express) {
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
       const sessionId = crypto.randomBytes(16).toString("hex");
-      // Check cookie for free usage tracking
+      // Determine if this resume is free
+      const tokenUser = getTokenUser(req);
       const cookies = req.headers.cookie || "";
       const hasCookie = cookies.includes("resumeiq_free_used=1");
       const ip = getClientIp(req);
-      const isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
+
+      let isFree = false;
+      let resumeLimit = 1; // default free tier
+
+      if (tokenUser) {
+        // Logged in user - check their plan and resume count
+        const dbUser = await getUserById(tokenUser.userId);
+        const resumeCount = dbUser?.resumeCount || 0;
+        const plan = dbUser?.plan || "free";
+
+        if (plan === "monthly" || plan === "agency") {
+          isFree = true; // unlimited
+        } else if (plan === "starter") {
+          isFree = resumeCount < 3; // 3 resumes on starter
+        } else {
+          isFree = resumeCount < 1; // 1 free resume
+        }
+      } else {
+        // Guest user - check cookie and IP
+        isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
+      }
+
       sessionStore.set(sessionId, { parsedData: parsed, paid: isFree, createdAt: Date.now(), freeUsed: isFree });
       console.log(`[ResumeIQ] Session created for ${parsed.name} (free: ${isFree})`);
       res.json({ ...parsed, sessionId, isFree });

@@ -411,7 +411,7 @@ export default function ResumeIQ() {
             {/* Paid */}
             {!isFree && (
               <div style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:"12px",padding:"16px",marginBottom:"16px",textAlign:"center"}}>
-                <p style={{color:"#fbbf24",fontSize:"14px",fontWeight:"600"}}>Your free resume has been used. Download this one for <strong>$9.99</strong> — saved to your account forever.</p>
+                <p style={{color:"#fbbf24",fontSize:"14px",fontWeight:"600"}}>Your free resume has been used. For <strong>$9.99</strong> you get 3 total resumes saved forever — re-downloadable anytime.</p>
               </div>
             )}
 

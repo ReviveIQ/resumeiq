@@ -47,7 +47,8 @@ export async function initDb() {
         email VARCHAR(320) NOT NULL UNIQUE,
         passwordHash VARCHAR(255) NOT NULL,
         name VARCHAR(255),
-        plan ENUM('free','paid','monthly','agency') DEFAULT 'free',
+        plan ENUM('free','starter','monthly','agency') DEFAULT 'free',
+        resumeCount INT DEFAULT 0,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -173,6 +174,32 @@ export async function getResumeById(id: number, userId: number) {
       [id, userId]
     ) as any;
     return rows[0] || null;
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function upgradeToStarter(userId: number) {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute(
+      "UPDATE riq_users SET plan = 'starter' WHERE id = ? AND plan = 'free'",
+      [userId]
+    );
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function incrementResumeCount(userId: number) {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute(
+      "UPDATE riq_users SET resumeCount = resumeCount + 1 WHERE id = ?",
+      [userId]
+    );
   } finally {
     await conn.end();
   }
