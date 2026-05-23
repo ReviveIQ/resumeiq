@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, Download, Sparkles, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, FileText, Download, Sparkles, CheckCircle, ArrowRight, Loader2, CreditCard, Gift } from "lucide-react";
 
 const STEPS = ["Upload", "Analyzing", "Preview", "Download"];
 
@@ -7,9 +7,47 @@ export default function ResumeIQ() {
   const [step, setStep] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [isFree, setIsFree] = useState(false);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle return from Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const stripeSessionId = params.get("session_id");
+    const resumeiqSession = params.get("resumeiq_session");
+
+    if (payment === "success" && stripeSessionId && resumeiqSession) {
+      setCheckingPayment(true);
+      setStep(2);
+      // Verify payment
+      fetch("/api/resumeiq/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stripeSessionId, resumeiqSession }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.paid) {
+            setSessionId(resumeiqSession);
+            // Restore parsed data from session
+            fetch("/api/resumeiq/session/" + resumeiqSession)
+              .then(r => r.json())
+              .then(session => { setParsedData(session); setCheckingPayment(false); })
+              .catch(() => setCheckingPayment(false));
+          }
+        })
+        .catch(() => setCheckingPayment(false));
+      // Clean URL
+      window.history.replaceState({}, "", "/");
+    } else if (payment === "cancelled") {
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
 
   const handleFile = (f: File) => {
     if (!f.name.match(/\.(pdf|docx|doc)$/i)) {
@@ -40,12 +78,13 @@ export default function ResumeIQ() {
       const res = await fetch("/api/resumeiq/transform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ fileBase64: base64, fileName: file.name }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setParsedData(data);
+      setSessionId(data.sessionId);
+      setIsFree(data.isFree);
       setStep(2);
     } catch (err: any) {
       setError(err.message || "Failed to analyze resume");
@@ -53,22 +92,41 @@ export default function ResumeIQ() {
     }
   };
 
+  const handlePayAndDownload = async () => {
+    if (!sessionId) return;
+    try {
+      const res = await fetch("/api/resumeiq/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (!res.ok) throw new Error("Failed to create checkout");
+      const data = await res.json();
+      if (data.alreadyPaid) {
+        handleDownload();
+      } else if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to start checkout");
+    }
+  };
+
   const handleDownload = async () => {
-    if (!parsedData) return;
     setDownloading(true);
     try {
       const res = await fetch("/api/resumeiq/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ parsedData }),
+        body: JSON.stringify({ sessionId, parsedData }),
       });
+      if (res.status === 402) { setError("Payment required. Please complete checkout."); return; }
       if (!res.ok) throw new Error("Failed to generate resume");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${parsedData.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
+      a.download = `${parsedData?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
       a.click();
       URL.revokeObjectURL(url);
       setStep(3);
@@ -79,7 +137,7 @@ export default function ResumeIQ() {
     }
   };
 
-  const reset = () => { setStep(0); setFile(null); setParsedData(null); setError(""); };
+  const reset = () => { setStep(0); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); };
 
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a,#1e3a5f,#0f172a)",fontFamily:"Arial,sans-serif"}}>
@@ -93,7 +151,10 @@ export default function ResumeIQ() {
             <span style={{color:"white",fontWeight:"bold",fontSize:"22px"}}>ResumeIQ</span>
             <span style={{color:"#60a5fa",fontSize:"13px"}}>by ReviveIQ</span>
           </div>
-          <span style={{color:"#94a3b8",fontSize:"13px"}}>Transform any resume into a polished, ATS-ready document</span>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:"999px",padding:"6px 14px"}}>
+            <Gift size={14} color="#4ade80" />
+            <span style={{color:"#4ade80",fontSize:"13px",fontWeight:"600"}}>First resume FREE</span>
+          </div>
         </div>
       </div>
 
@@ -120,19 +181,14 @@ export default function ResumeIQ() {
         {step === 0 && (
           <div style={{maxWidth:"640px",margin:"0 auto"}}>
             <div style={{textAlign:"center",marginBottom:"32px"}}>
-              <h1 style={{color:"white",fontSize:"32px",fontWeight:"bold",marginBottom:"12px"}}>Upload Your Resume</h1>
-              <p style={{color:"#94a3b8",fontSize:"15px"}}>Upload any resume — formatted well or poorly. We'll transform it into a sharp, ATS-optimized document in seconds.</p>
+              <h1 style={{color:"white",fontSize:"32px",fontWeight:"bold",marginBottom:"12px"}}>Transform Your Resume</h1>
+              <p style={{color:"#94a3b8",fontSize:"15px"}}>Upload any resume and get back a polished, ATS-optimized Word document. <strong style={{color:"#4ade80"}}>Your first one is free.</strong></p>
             </div>
 
             <div
               onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              style={{
-                border:`2px dashed ${file ? "#3b82f6" : "rgba(255,255,255,0.2)"}`,
-                borderRadius:"16px", padding:"48px", textAlign:"center", cursor:"pointer",
-                background: file ? "rgba(59,130,246,0.1)" : "transparent",
-                transition:"all 0.2s",
-              }}
+              style={{border:`2px dashed ${file ? "#3b82f6" : "rgba(255,255,255,0.2)"}`,borderRadius:"16px",padding:"48px",textAlign:"center",cursor:"pointer",background:file?"rgba(59,130,246,0.1)":"transparent",transition:"all 0.2s"}}
             >
               <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc" style={{display:"none"}}
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
@@ -146,7 +202,7 @@ export default function ResumeIQ() {
                 <div>
                   <Upload size={48} color="#64748b" style={{margin:"0 auto 12px"}}/>
                   <p style={{color:"white",fontWeight:"600",fontSize:"16px",marginBottom:"4px"}}>Drop your resume here or click to browse</p>
-                  <p style={{color:"#64748b",fontSize:"13px"}}>Supports PDF, DOCX, and DOC</p>
+                  <p style={{color:"#64748b",fontSize:"13px"}}>PDF, DOCX, or DOC</p>
                 </div>
               )}
             </div>
@@ -154,21 +210,16 @@ export default function ResumeIQ() {
             {error && <p style={{color:"#f87171",textAlign:"center",marginTop:"12px",fontSize:"14px"}}>{error}</p>}
 
             {file && (
-              <button onClick={handleAnalyze} style={{
-                marginTop:"20px",width:"100%",background:"#2563eb",color:"white",
-                border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",
-                fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",
-                justifyContent:"center",gap:"8px",
-              }}>
-                <Sparkles size={20}/> Transform My Resume
+              <button onClick={handleAnalyze} style={{marginTop:"20px",width:"100%",background:"#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
+                <Sparkles size={20}/> Analyze My Resume
               </button>
             )}
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"16px",marginTop:"32px"}}>
               {[
-                {icon:"✦",title:"ATS Optimized",desc:"Structured for applicant tracking systems"},
-                {icon:"◈",title:"Bullet Enhancement",desc:"AI rewrites each bullet for maximum impact"},
-                {icon:"▣",title:"Visual Design",desc:"Professional branded template output"},
+                {icon:"✦",title:"ATS Optimized",desc:"Passes all tracking systems"},
+                {icon:"◈",title:"AI Enhanced",desc:"Stronger bullets & metrics"},
+                {icon:"▣",title:"Pro Design",desc:"Branded Word document"},
               ].map(item => (
                 <div key={item.title} style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"16px",textAlign:"center"}}>
                   <div style={{color:"#60a5fa",fontSize:"24px",marginBottom:"8px"}}>{item.icon}</div>
@@ -186,82 +237,95 @@ export default function ResumeIQ() {
             <Loader2 size={64} color="#60a5fa" style={{margin:"0 auto 24px",animation:"spin 1s linear infinite"}}/>
             <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
             <h2 style={{color:"white",fontSize:"26px",fontWeight:"bold",marginBottom:"12px"}}>Analyzing Your Resume</h2>
-            <p style={{color:"#94a3b8",marginBottom:"32px"}}>Our AI is extracting your experience, skills, and achievements...</p>
-            <div style={{textAlign:"left",maxWidth:"320px",margin:"0 auto",display:"flex",flexDirection:"column",gap:"12px"}}>
-              {["Parsing work history & dates","Identifying quantified achievements","Enhancing bullet points with AI","Optimizing structure for ATS"].map(item => (
-                <div key={item} style={{display:"flex",alignItems:"center",gap:"10px",color:"#94a3b8",fontSize:"14px"}}>
-                  <Loader2 size={14} color="#60a5fa" style={{animation:"spin 1s linear infinite",flexShrink:0}}/>{item}
-                </div>
-              ))}
-            </div>
+            <p style={{color:"#94a3b8"}}>AI is extracting your experience, skills, and achievements...</p>
           </div>
         )}
 
         {/* Step 2: Preview */}
         {step === 2 && parsedData && (
           <div style={{maxWidth:"720px",margin:"0 auto"}}>
-            <div style={{textAlign:"center",marginBottom:"32px"}}>
-              <CheckCircle size={48} color="#4ade80" style={{margin:"0 auto 12px"}}/>
-              <h2 style={{color:"white",fontSize:"26px",fontWeight:"bold",marginBottom:"8px"}}>Analysis Complete</h2>
-              <p style={{color:"#94a3b8"}}>Review the extracted data, then download your transformed resume</p>
-            </div>
-
-            <div style={{display:"grid",gap:"16px",marginBottom:"24px"}}>
-              {/* Identity */}
-              <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
-                <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Candidate Profile</h3>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",fontSize:"14px"}}>
-                  {[
-                    ["Name", parsedData.name],
-                    ["Title", parsedData.title],
-                    ["Location", parsedData.location],
-                    ["Experience", `${parsedData.yearsOfExperience} years · ${parsedData.seniorityLevel}`],
-                  ].map(([label, val]) => (
-                    <div key={label}><span style={{color:"#64748b"}}>{label}: </span><span style={{color:"white"}}>{val}</span></div>
-                  ))}
-                </div>
+            {checkingPayment ? (
+              <div style={{textAlign:"center",padding:"60px 0"}}>
+                <Loader2 size={48} color="#60a5fa" style={{margin:"0 auto 16px",animation:"spin 1s linear infinite"}}/>
+                <p style={{color:"white",fontSize:"18px"}}>Verifying payment...</p>
               </div>
-
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
-                {/* Metrics */}
-                <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
-                  <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Key Achievements</h3>
-                  <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:"8px"}}>
-                    {(parsedData.topMetrics || []).slice(0,4).map((m: string, i: number) => (
-                      <li key={i} style={{color:"#cbd5e1",fontSize:"13px",display:"flex",gap:"8px"}}>
-                        <span style={{color:"#3b82f6",flexShrink:0}}>▪</span>{m}
-                      </li>
-                    ))}
-                  </ul>
+            ) : (
+              <>
+                <div style={{textAlign:"center",marginBottom:"32px"}}>
+                  <CheckCircle size={48} color="#4ade80" style={{margin:"0 auto 12px"}}/>
+                  <h2 style={{color:"white",fontSize:"26px",fontWeight:"bold",marginBottom:"8px"}}>Analysis Complete</h2>
+                  <p style={{color:"#94a3b8"}}>Review the extracted data below</p>
                 </div>
 
-                {/* Experience */}
-                <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
-                  <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Work History</h3>
-                  <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-                    {(parsedData.experience || []).map((exp: any, i: number) => (
-                      <div key={i} style={{fontSize:"13px"}}>
-                        <span style={{color:"white",fontWeight:"600"}}>{exp.title}</span>
-                        <span style={{color:"#64748b"}}> · </span>
-                        <span style={{color:"#94a3b8"}}>{exp.company}</span>
-                        <div style={{color:"#475569",fontSize:"11px"}}>{exp.startDate}–{exp.endDate}</div>
+                <div style={{display:"grid",gap:"16px",marginBottom:"24px"}}>
+                  <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
+                    <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Candidate Profile</h3>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",fontSize:"14px"}}>
+                      {[["Name",parsedData.name],["Title",parsedData.title],["Location",parsedData.location],["Experience",`${parsedData.yearsOfExperience} years · ${parsedData.seniorityLevel}`]].map(([l,v]) => (
+                        <div key={l}><span style={{color:"#64748b"}}>{l}: </span><span style={{color:"white"}}>{v}</span></div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+                    <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
+                      <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Key Achievements</h3>
+                      <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:"8px"}}>
+                        {(parsedData.topMetrics||[]).slice(0,3).map((m:string,i:number) => (
+                          <li key={i} style={{color:"#cbd5e1",fontSize:"13px",display:"flex",gap:"8px"}}><span style={{color:"#3b82f6",flexShrink:0}}>▪</span>{m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"20px"}}>
+                      <h3 style={{color:"#60a5fa",fontWeight:"600",fontSize:"12px",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"12px"}}>Work History</h3>
+                      <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+                        {(parsedData.experience||[]).map((exp:any,i:number) => (
+                          <div key={i} style={{fontSize:"13px"}}>
+                            <span style={{color:"white",fontWeight:"600"}}>{exp.title}</span>
+                            <span style={{color:"#64748b"}}> · </span>
+                            <span style={{color:"#94a3b8"}}>{exp.company}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {error && <p style={{color:"#f87171",textAlign:"center",marginBottom:"12px",fontSize:"14px"}}>{error}</p>}
+                {error && <p style={{color:"#f87171",textAlign:"center",marginBottom:"12px",fontSize:"14px"}}>{error}</p>}
 
-            <div style={{display:"flex",gap:"12px"}}>
-              <button onClick={reset} style={{flex:1,background:"rgba(255,255,255,0.1)",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"15px",fontWeight:"600",cursor:"pointer"}}>
-                Upload Different Resume
-              </button>
-              <button onClick={handleDownload} disabled={downloading} style={{flex:2,background:"#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
-                {downloading ? <><Loader2 size={20} style={{animation:"spin 1s linear infinite"}}/>Generating...</> : <><Download size={20}/>Download Transformed Resume</>}
-              </button>
-            </div>
+                {/* Pricing banner for paid users */}
+                {!isFree && (
+                  <div style={{background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:"12px",padding:"16px",marginBottom:"16px",textAlign:"center"}}>
+                    <p style={{color:"#fbbf24",fontSize:"14px",fontWeight:"600"}}>Your first free resume has been used. Download this one for just <strong>$9.99</strong>.</p>
+                  </div>
+                )}
+
+                {isFree && (
+                  <div style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:"12px",padding:"16px",marginBottom:"16px",textAlign:"center"}}>
+                    <p style={{color:"#4ade80",fontSize:"14px",fontWeight:"600"}}>🎉 This is your free resume transformation! Download it now.</p>
+                  </div>
+                )}
+
+                <div style={{display:"flex",gap:"12px"}}>
+                  <button onClick={reset} style={{flex:1,background:"rgba(255,255,255,0.1)",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"15px",fontWeight:"600",cursor:"pointer"}}>
+                    Upload Different Resume
+                  </button>
+                  <button
+                    onClick={isFree ? handleDownload : handlePayAndDownload}
+                    disabled={downloading}
+                    style={{flex:2,background: isFree ? "#16a34a" : "#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"16px",fontSize:"17px",fontWeight:"600",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}
+                  >
+                    {downloading ? (
+                      <><Loader2 size={20} style={{animation:"spin 1s linear infinite"}}/>Generating...</>
+                    ) : isFree ? (
+                      <><Download size={20}/>Download Free Resume</>
+                    ) : (
+                      <><CreditCard size={20}/>Pay $9.99 & Download</>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -272,7 +336,7 @@ export default function ResumeIQ() {
               <CheckCircle size={40} color="#4ade80"/>
             </div>
             <h2 style={{color:"white",fontSize:"30px",fontWeight:"bold",marginBottom:"12px"}}>Your Resume is Ready!</h2>
-            <p style={{color:"#94a3b8",fontSize:"15px",marginBottom:"32px"}}>Your transformed, ATS-optimized resume has been downloaded. Open it in Microsoft Word or Google Docs to finalize.</p>
+            <p style={{color:"#94a3b8",fontSize:"15px",marginBottom:"32px"}}>Your transformed, ATS-optimized resume has been downloaded. Open it in Microsoft Word or Google Docs.</p>
             <button onClick={reset} style={{background:"#2563eb",color:"white",border:"none",borderRadius:"12px",padding:"14px 32px",fontSize:"16px",fontWeight:"600",cursor:"pointer"}}>
               Transform Another Resume
             </button>

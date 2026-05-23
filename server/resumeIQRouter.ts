@@ -1,10 +1,36 @@
 /**
  * ResumeIQ Backend Router
- * Handles resume parsing and DOCX generation
+ * Handles resume parsing, DOCX generation, and Stripe payments
  */
 import type { Express, Request, Response } from "express";
+import { createCheckoutSession, verifyPayment } from "./stripeService";
+import crypto from "crypto";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
+
+// In-memory session store for parsed resume data
+// Key: sessionId, Value: { parsedData, paid, createdAt }
+const sessionStore = new Map<string, {
+  parsedData: any;
+  paid: boolean;
+  createdAt: number;
+  freeUsed: boolean;
+}>();
+
+// Clean up sessions older than 2 hours
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of sessionStore.entries()) {
+    if (now - val.createdAt > 2 * 60 * 60 * 1000) sessionStore.delete(key);
+  }
+}, 30 * 60 * 1000);
+
+// Track free resumes by IP (simple rate limiting)
+const freeUsedByIp = new Map<string, number>();
+
+function getClientIp(req: Request): string {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+}
 
 function stripJsonFences(raw: string): string {
   let text = raw.trim();
@@ -12,7 +38,7 @@ function stripJsonFences(raw: string): string {
   return text.trim();
 }
 
-async function parseResume(fileBase64: string, fileName: string): Promise<any> {
+async function parseResume(fileBase64: string): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
@@ -27,49 +53,41 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are an expert resume parser. Extract ALL content thoroughly and return structured JSON only." },
-        { role: "user", content: `You are parsing a resume document. The text may be imperfectly extracted from a PDF — ignore any garbled characters and focus on the readable content.
-
-Extract everything you can find and return this exact JSON structure (use empty strings or arrays for anything you cannot find — NEVER apologize or explain, ALWAYS return JSON):
-
+        { role: "system", content: "You are an expert resume parser. Extract ALL content thoroughly. ALWAYS return valid JSON — never apologize, never explain." },
+        { role: "user", content: `Parse this resume and return JSON:
 {
-  "name": "Full Name or Unknown",
-  "email": "email or empty string",
-  "phone": "phone or empty string",
-  "location": "City, State or empty string",
-  "linkedin": "linkedin URL or empty string",
-  "title": "Most recent job title or inferred target title",
-  "summary": "Write a polished 2-3 sentence professional summary based on what you can read",
+  "name": "Full Name",
+  "email": "email",
+  "phone": "phone",
+  "location": "City, State",
+  "linkedin": "linkedin URL or empty",
+  "title": "Most recent/target job title",
+  "summary": "Write a polished 2-3 sentence professional summary",
   "experience": [
     {
       "title": "Job Title",
-      "company": "Company Name",
+      "company": "Company",
       "location": "City, State",
       "startDate": "MM/YYYY",
       "endDate": "MM/YYYY or Present",
       "description": "One sentence company context",
-      "bullets": ["Rewrite as strong action-verb bullet with metrics", "bullet 2", "bullet 3", "bullet 4"],
-      "achievements": ["award or recognition if any"]
+      "bullets": ["Strong action-verb bullet with metrics", "bullet 2", "bullet 3", "bullet 4"],
+      "achievements": ["award if any"]
     }
   ],
   "skills": {
-    "categories": [
-      { "name": "Category Name", "skills": ["skill1", "skill2", "skill3"] }
-    ]
+    "categories": [{ "name": "Category", "skills": ["skill1", "skill2"] }]
   },
-  "education": [
-    { "degree": "Degree Name", "school": "School Name", "location": "City, State", "year": "YYYY" }
-  ],
+  "education": [{ "degree": "Degree", "school": "School", "location": "City, State", "year": "YYYY" }],
   "certifications": [],
-  "seniorityLevel": "entry or mid or senior or executive",
-  "yearsOfExperience": 10,
-  "topMetrics": ["best quantified achievement", "second achievement", "third achievement"]
+  "seniorityLevel": "entry|mid|senior|executive",
+  "yearsOfExperience": 0,
+  "topMetrics": ["achievement 1", "achievement 2", "achievement 3"]
 }
 
-CRITICAL: Return ONLY the JSON object. No explanation, no apology, no markdown. Start with { and end with }.
+CRITICAL: Return ONLY valid JSON. Start with { end with }. No markdown.
 
-Resume text to parse:
-${textContent}` }
+Resume: ${textContent}` }
       ],
       max_tokens: 4000, temperature: 0.1,
     }),
@@ -121,38 +139,19 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
     children: [new TextRun({ text, size: 20, font: "Arial", color: DARK })]
   });
 
-  const skillRow = (cat: string, skills: string) => new TableRow({
-    children: [
-      new TableCell({
-        width: { size: 2500, type: WidthType.DXA },
-        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-        shading: { fill: "EBF3FB", type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: cat, bold: true, size: 18, font: "Arial", color: BLUE })] })]
-      }),
-      new TableCell({
-        width: { size: 6860, type: WidthType.DXA },
-        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: skills, size: 18, font: "Arial", color: DARK })] })]
-      }),
-    ]
-  });
-
   const experienceSection: any[] = [];
   for (const exp of (parsedData.experience || [])) {
-    experienceSection.push(
-      ...jobHdr(exp.title || "", exp.company || "", exp.location || "", `${exp.startDate || ""} – ${exp.endDate || "Present"}`),
-    );
+    experienceSection.push(...jobHdr(
+      exp.title || "", exp.company || "", exp.location || "",
+      `${exp.startDate || ""} – ${exp.endDate || "Present"}`
+    ));
     if (exp.description) {
       experienceSection.push(new Paragraph({
         spacing: { before: 40, after: 60 },
         children: [new TextRun({ text: exp.description, size: 19, font: "Arial", color: GRAY, italics: true })]
       }));
     }
-    for (const bullet of (exp.bullets || []).slice(0, 5)) {
-      experienceSection.push(bul(bullet));
-    }
+    for (const bullet of (exp.bullets || []).slice(0, 5)) experienceSection.push(bul(bullet));
     for (const ach of (exp.achievements || [])) {
       if (ach) experienceSection.push(new Paragraph({
         spacing: { before: 60, after: 60 },
@@ -162,7 +161,23 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
   }
 
   const skillsRows = (parsedData.skills?.categories || []).map((cat: any) =>
-    skillRow(cat.name, (cat.skills || []).join(" · "))
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 2500, type: WidthType.DXA },
+          borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+          shading: { fill: "EBF3FB", type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 120, right: 120 },
+          children: [new Paragraph({ children: [new TextRun({ text: cat.name, bold: true, size: 18, font: "Arial", color: BLUE })] })]
+        }),
+        new TableCell({
+          width: { size: 6860, type: WidthType.DXA },
+          borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+          margins: { top: 80, bottom: 80, left: 120, right: 120 },
+          children: [new Paragraph({ children: [new TextRun({ text: (cat.skills || []).join(" · "), size: 18, font: "Arial", color: DARK })] })]
+        }),
+      ]
+    })
   );
 
   const doc = new Document({
@@ -179,23 +194,12 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
           alignment: AlignmentType.CENTER, spacing: { before: 0, after: 200 },
           children: [new TextRun({ text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin].filter(Boolean).join("  |  "), size: 19, font: "Arial", color: GRAY })]
         }),
-
         sec("Professional Summary"),
         new Paragraph({ spacing: { before: 100, after: 80 }, children: [new TextRun({ text: parsedData.summary || "", size: 20, font: "Arial", color: DARK })] }),
-
-        ...(parsedData.topMetrics?.length ? [
-          sec("Career Highlights"),
-          ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m)),
-        ] : []),
-
+        ...(parsedData.topMetrics?.length ? [sec("Career Highlights"), ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m))] : []),
         sec("Professional Experience"),
         ...experienceSection,
-
-        ...(skillsRows.length ? [
-          sec("Core Competencies"),
-          new Table({ width: { size: W, type: WidthType.DXA }, columnWidths: [2500, 6860], rows: skillsRows })
-        ] : []),
-
+        ...(skillsRows.length ? [sec("Core Competencies"), new Table({ width: { size: W, type: WidthType.DXA }, columnWidths: [2500, 6860], rows: skillsRows })] : []),
         sec("Education"),
         ...(parsedData.education || []).map((edu: any) => new Paragraph({
           spacing: { before: 80, after: 40 },
@@ -206,11 +210,7 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
             ...(edu.year ? [new TextRun({ text: `  ${edu.year}`, size: 19, font: "Arial", color: GRAY, italics: true })] : []),
           ]
         })),
-
-        ...(parsedData.certifications?.length ? [
-          sec("Certifications"),
-          ...parsedData.certifications.map((c: string) => bul(c)),
-        ] : []),
+        ...(parsedData.certifications?.length ? [sec("Certifications"), ...parsedData.certifications.map((c: string) => bul(c))] : []),
       ]
     }]
   });
@@ -219,26 +219,110 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
 }
 
 export function registerResumeIQRoutes(app: Express) {
-  // Parse resume
+
+  // Step 1: Parse resume and create session
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
       const { fileBase64, fileName } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
-      const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
-      res.json(parsed);
+
+      const parsed = await parseResume(fileBase64);
+
+      // Create session
+      const sessionId = crypto.randomBytes(16).toString("hex");
+      const ip = getClientIp(req);
+      const freeCount = freeUsedByIp.get(ip) || 0;
+      const isFree = freeCount === 0;
+
+      sessionStore.set(sessionId, {
+        parsedData: parsed,
+        paid: isFree, // First resume is free
+        createdAt: Date.now(),
+        freeUsed: isFree,
+      });
+
+      console.log(`[ResumeIQ] Session ${sessionId} created for ${parsed.name} (free: ${isFree})`);
+
+      res.json({ ...parsed, sessionId, isFree });
     } catch (error: any) {
       console.error("[ResumeIQ] Transform error:", error);
       res.status(500).json({ error: error.message || "Failed to transform resume" });
     }
   });
 
-  // Generate DOCX
+  // Step 2a: Create Stripe checkout session
+  app.post("/api/resumeiq/checkout", async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.body;
+      const session = sessionStore.get(sessionId);
+
+      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+      if (session.paid) { res.json({ alreadyPaid: true }); return; }
+
+      const origin = req.headers.origin || `https://${req.headers.host}`;
+      const { url } = await createCheckoutSession(
+        `${origin}/?payment=success`,
+        `${origin}/?payment=cancelled`,
+        sessionId
+      );
+
+      res.json({ url });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Checkout error:", error);
+      res.status(500).json({ error: error.message || "Failed to create checkout" });
+    }
+  });
+
+  // Step 2b: Verify payment and mark session as paid
+  app.post("/api/resumeiq/verify-payment", async (req: Request, res: Response) => {
+    try {
+      const { stripeSessionId, resumeiqSession } = req.body;
+      const session = sessionStore.get(resumeiqSession);
+
+      if (!session) { res.status(404).json({ error: "Session expired" }); return; }
+
+      const paid = await verifyPayment(stripeSessionId);
+      if (paid) {
+        session.paid = true;
+        // Mark IP as having used free resume
+        if (session.freeUsed) {
+          const ip = getClientIp(req);
+          freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
+        }
+      }
+
+      res.json({ paid });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get session data (for post-payment restore)
+  app.get("/api/resumeiq/session/:sessionId", (req: Request, res: Response) => {
+    const session = sessionStore.get(req.params.sessionId);
+    if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+    res.json(session.parsedData);
+  });
+
+  // Step 3: Generate and download DOCX (requires paid session)
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
-      const { parsedData } = req.body;
-      if (!parsedData) { res.status(400).json({ error: "No parsed data provided" }); return; }
-      const buffer = await generateDocx(parsedData);
-      const fileName = `${(parsedData.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
+      const { sessionId, parsedData } = req.body;
+
+      // Check if session exists and is paid
+      let data = parsedData;
+      if (sessionId) {
+        const session = sessionStore.get(sessionId);
+        if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
+        if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
+        data = session.parsedData;
+      }
+
+      if (!data) { res.status(400).json({ error: "No resume data" }); return; }
+
+      const buffer = await generateDocx(data);
+      const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
+
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.send(buffer);
