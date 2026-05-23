@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
+import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
@@ -261,7 +262,84 @@ async function captureEmail(email: string, name: string): Promise<void> {
   }
 }
 
+function getTokenUser(req: Request): { userId: number; email: string } | null {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) return null;
+  return verifyToken(auth.slice(7));
+}
+
 export function registerResumeIQRoutes(app: Express) {
+  // Initialize database tables
+  initDb().catch(console.error);
+  // Auth routes
+  app.post("/api/resumeiq/auth/register", async (req: Request, res: Response) => {
+    try {
+      const { email, password, name } = req.body;
+      if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
+      const user = await createUser(email, password, name || "");
+      const token = generateToken(user.id, user.email);
+      res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    } catch (error: any) {
+      if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
+      else res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/resumeiq/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      const user = await loginUser(email, password);
+      if (!user) { res.status(401).json({ error: "Invalid email or password" }); return; }
+      const token = generateToken(user.id, user.email);
+      res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/resumeiq/auth/me", async (req: Request, res: Response) => {
+    const tokenUser = getTokenUser(req);
+    if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUserById(tokenUser.userId);
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    res.json(user);
+  });
+
+  // History routes
+  app.get("/api/resumeiq/history", async (req: Request, res: Response) => {
+    const tokenUser = getTokenUser(req);
+    if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const resumes = await getUserResumes(tokenUser.userId);
+    res.json(resumes);
+  });
+
+  app.get("/api/resumeiq/resume/:id/download", async (req: Request, res: Response) => {
+    try {
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const resume = await getResumeById(parseInt(req.params.id), tokenUser.userId);
+      if (!resume) { res.status(404).json({ error: "Resume not found" }); return; }
+      const buffer = Buffer.from(resume.docxBase64, "base64");
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${resume.candidateName?.replace(/\s+/g,"_") || "Resume"}_ResumeIQ.docx"`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Email capture
+  app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
+    try {
+      const { email, name } = req.body;
+      if (!email) { res.status(400).json({ error: "Email required" }); return; }
+      await dbCaptureEmail(email, name || "");
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
       const { fileBase64, fileName } = req.body;
@@ -279,18 +357,6 @@ export function registerResumeIQRoutes(app: Express) {
     } catch (error: any) {
       console.error("[ResumeIQ] Transform error:", error);
       res.status(500).json({ error: error.message || "Failed to transform resume" });
-    }
-  });
-
-  // Email capture endpoint
-  app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
-    try {
-      const { email, name } = req.body;
-      if (!email) { res.status(400).json({ error: "Email required" }); return; }
-      await captureEmail(email, name || "");
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
     }
   });
 
