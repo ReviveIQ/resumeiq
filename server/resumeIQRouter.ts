@@ -79,9 +79,9 @@ CRITICAL RULES:
 - Use the ACTUAL person's name, companies, dates, and roles from the text
 - Do NOT invent fake names like "John Doe" or fake companies like "Tech Solutions Inc"
 - If you cannot read a field clearly, use an empty string — do not guess
-- For partial dates with only a year (e.g. "2019"), return exactly "2019" — do NOT invent months or add "– Present"
+- For partial dates with only a year (e.g. "2019"), return EXACTLY "2019" for both startDate and endDate — do NOT add months, do NOT add "Present", do NOT add any range. Single year = single year only.
 - Preserve language fluency levels EXACTLY as written — do NOT upgrade "Conversational" to "Fluent"
-- Add a "languages" array: [{ "language": "Spanish", "level": "Conversational" }] if languages are mentioned
+- If ANY languages are mentioned, populate the "languages" array with each one. Example: [{ "language": "Spanish", "level": "Conversational" }, { "language": "Portuguese", "level": "Beginner — reading only" }]. If no languages mentioned, return empty array [].
 - Rewrite bullets to be stronger but keep the same factual content`;
 
   const jsonSchema = `{
@@ -114,7 +114,7 @@ CRITICAL RULES:
   "education": [
     { "degree": "actual degree name", "school": "actual school name", "location": "city, state", "year": "graduation year" }
   ],
-  "certifications": ["any certifications mentioned"],
+  "certifications": ["include full certification text exactly as written, including expiry dates e.g. 'AWS Solutions Architect – Associate | Expires 2026'"],
   "seniorityLevel": "entry or mid or senior or executive based on their experience",
   "yearsOfExperience": 0,
   "languages": [
