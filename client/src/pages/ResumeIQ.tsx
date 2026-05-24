@@ -199,15 +199,41 @@ export default function ResumeIQ() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const stripeSessionId = params.get("session_id");
-    const riqSession = params.get("resumeiq_session");
-    if (payment === "success" && stripeSessionId && riqSession) {
-      fetch("/api/resumeiq/verify-payment", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stripeSessionId, resumeiqSession: riqSession, token }),
-      }).then(r => r.json()).then(d => {
-        if (d.paid) { setSessionId(riqSession); setView("preview"); }
-      });
+
+    if (payment === "success" && stripeSessionId) {
+      // Restore session data saved before Stripe redirect
+      const savedSession = localStorage.getItem("riq_pending_session");
+      const savedData = localStorage.getItem("riq_pending_data");
+
+      if (savedSession && savedData) {
+        fetch("/api/resumeiq/verify-payment", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stripeSessionId, resumeiqSession: savedSession }),
+        }).then(r => r.json()).then(d => {
+          if (d.paid) {
+            const restored = JSON.parse(savedData);
+            setParsedData(restored);
+            setSessionId(savedSession);
+            setIsFree(true);
+            // Clear saved state
+            localStorage.removeItem("riq_pending_session");
+            localStorage.removeItem("riq_pending_data");
+            setView("preview");
+          }
+        });
+      }
       window.history.replaceState({}, "", "/");
+    }
+
+    // Also check for pending session on load (in case user refreshed after payment)
+    const pendingSession = localStorage.getItem("riq_pending_session");
+    const pendingData = localStorage.getItem("riq_pending_data");
+    if (pendingSession && pendingData && payment !== "success") {
+      const restored = JSON.parse(pendingData);
+      setParsedData(restored);
+      setSessionId(pendingSession);
+      setIsFree(true);
+      setView("preview");
     }
   }, []);
 
@@ -319,6 +345,7 @@ export default function ResumeIQ() {
       const a = document.createElement("a");
       a.href = url; a.download = `${parsedData?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
       a.click(); URL.revokeObjectURL(url);
+      // Only set cookie after confirmed successful download
       document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
       setView("done");
     } catch (err: any) { setError(err.message); }
@@ -332,7 +359,12 @@ export default function ResumeIQ() {
     });
     const data = await res.json();
     if (data.alreadyPaid) handleDownload();
-    else if (data.url) window.location.href = data.url;
+    else if (data.url) {
+      // Save session state before Stripe redirect so we can restore it on return
+      localStorage.setItem("riq_pending_session", sessionId);
+      localStorage.setItem("riq_pending_data", JSON.stringify(parsedData));
+      window.location.href = data.url;
+    }
   };
 
   const handleAuth = async (mode: "login" | "register") => {
@@ -548,6 +580,33 @@ export default function ResumeIQ() {
         {/* ── PREVIEW ── */}
         {view === "preview" && parsedData && (
           <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+            {/* Watermark overlay — branded but not obnoxious */}
+            {!isFree && (
+              <div style={{
+                position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+                pointerEvents: "none", zIndex: 10, overflow: "hidden",
+              }}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} style={{
+                    position: "absolute",
+                    top: `${10 + i * 18}%`,
+                    left: `${-10 + (i % 2) * 20}%`,
+                    transform: "rotate(-35deg)",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "rgba(96, 165, 250, 0.07)",
+                    whiteSpace: "nowrap",
+                    letterSpacing: "0.15em",
+                    userSelect: "none",
+                    fontFamily: "Arial, sans-serif",
+                    width: "140%",
+                    textAlign: "center",
+                  }}>
+                    REVIVEIQ · RESUMEIQ · REVIVEIQ · RESUMEIQ · REVIVEIQ · RESUMEIQ · REVIVEIQ
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ textAlign: "center", marginBottom: "24px" }}>
               <CheckCircle size={40} color="#4ade80" style={{ margin: "0 auto 10px" }} />
               <h2 style={{ color: "white", fontSize: "22px", fontWeight: "bold", marginBottom: "6px" }}>Analysis Complete</h2>
