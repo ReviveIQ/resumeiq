@@ -79,10 +79,12 @@ CRITICAL RULES:
 - Use the ACTUAL person's name, companies, dates, and roles from the text
 - Do NOT invent fake names like "John Doe" or fake companies like "Tech Solutions Inc"
 - If you cannot read a field clearly, use an empty string — do not guess
-- For partial dates with only a year (e.g. "2019"), return EXACTLY "2019" for both startDate and endDate — do NOT add months, do NOT add "Present", do NOT add any range. Single year = single year only.
+- For partial dates with only a year (e.g. "2019"), return "2019" for startDate and "" (empty string) for endDate — do NOT repeat the year, do NOT add months, do NOT add "Present"
 - Preserve language fluency levels EXACTLY as written — do NOT upgrade "Conversational" to "Fluent"
-- If ANY languages are mentioned, populate the "languages" array with each one. Example: [{ "language": "Spanish", "level": "Conversational" }, { "language": "Portuguese", "level": "Beginner — reading only" }]. If no languages mentioned, return empty array [].
-- Rewrite bullets to be stronger but keep the same factual content`;
+- CRITICAL: Search the ENTIRE document for a Languages section. If found, extract EVERY language listed with its exact fluency level into the languages array. Example output: [{"language":"English","level":"Native"},{"language":"Spanish","level":"Conversational"},{"language":"Portuguese","level":"Beginner — reading only"}]. Never leave this array empty if a Languages section exists in the document.
+- Rewrite bullets to be stronger but keep the same factual content
+- If a role has NO bullets in the original text, return an empty bullets array [] — do NOT invent responsibilities
+- If a role only has a description line but no bullet points, bullets must be []`;
 
   const jsonSchema = `{
   "name": "Extract the actual person's full name from the resume",
