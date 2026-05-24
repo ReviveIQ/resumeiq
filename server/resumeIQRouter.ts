@@ -2,17 +2,37 @@ import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
 import JSZip from "jszip";
-import mysql2Default from "mysql2/promise";
-import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken, upgradeToStarter, incrementResumeCount } from "./authService";
+import {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType
+} from "docx";
+import {
+  initDb, createUser, loginUser, getUserById, saveResume,
+  getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
+  generateToken, verifyToken, upgradeToStarter, incrementResumeCount
+} from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
-const sessionStore = new Map<string, { parsedData: any; paid: boolean; createdAt: number; freeUsed: boolean }>();
-setInterval(() => { const now = Date.now(); for (const [k, v] of sessionStore.entries()) { if (now - v.createdAt > 7200000) sessionStore.delete(k); } }, 1800000);
+const sessionStore = new Map<string, {
+  parsedData: any;
+  paid: boolean;
+  createdAt: number;
+  freeUsed: boolean;
+}>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of sessionStore.entries()) {
+    if (now - v.createdAt > 7200000) sessionStore.delete(k);
+  }
+}, 1800000);
 
 const freeUsedByIp = new Map<string, number>();
+
 function getClientIp(req: Request): string {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    || req.ip || "unknown";
 }
 
 function stripJson(raw: string): string {
@@ -31,7 +51,6 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
 
   console.log(`[ResumeIQ] Parsing ${fileName} (size: ${Buffer.from(fileBase64, "base64").length} bytes)`);
 
-  // For DOCX: extract text using JSZip
   let textContent = "";
   if (isDocx) {
     try {
@@ -42,7 +61,8 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
         textContent = docXml
           .replace(/<\/w:p>/g, " ")
           .replace(/<[^>]+>/g, " ")
-          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">").replace(/&quot;/g, '"')
           .replace(/\s+/g, " ").trim().slice(0, 15000);
         console.log(`[ResumeIQ] DOCX extracted ${textContent.length} chars`);
       }
@@ -70,7 +90,7 @@ CRITICAL RULES:
   "location": "actual city and state from resume",
   "linkedin": "actual linkedin URL if present, else empty string",
   "title": "their most recent actual job title",
-  "summary": "Write a compelling 2-3 sentence professional summary using their REAL experience, achievements, and career trajectory",
+  "summary": "Write a compelling 2-3 sentence professional summary using their REAL experience",
   "experience": [
     {
       "title": "their actual job title",
@@ -80,9 +100,7 @@ CRITICAL RULES:
       "endDate": "MM/YYYY or Present",
       "description": "one sentence describing what this company actually does",
       "bullets": [
-        "Rewrite their actual bullet into a stronger version starting with an action verb and including metrics where available",
-        "Keep the same facts but make the language more impactful",
-        "Include dollar amounts, percentages, team sizes, and timeframes from the original"
+        "Rewrite their actual bullet into a stronger version starting with an action verb and including metrics where available"
       ],
       "achievements": ["any awards, recognitions, or clubs mentioned"]
     }
@@ -106,9 +124,9 @@ CRITICAL RULES:
 }
 Return ONLY the JSON object. Start with { and end with }.`;
 
-  console.log(`[ResumeIQ] Extracted ${textContent.length} chars. First 200: ${textContent.slice(0, 200)}`);
+  console.log(`[ResumeIQ] Text length: ${textContent.length}. First 200: ${textContent.slice(0, 200)}`);
 
-  // If we have DOCX text, use it
+  // DOCX path: use extracted text
   if (textContent && textContent.length > 200) {
     const res = await fetch(OPENAI_API, {
       method: "POST",
@@ -119,7 +137,8 @@ Return ONLY the JSON object. Start with { and end with }.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: `Parse this resume:\n\n${textContent}\n\nReturn JSON:\n${jsonSchema}` }
         ],
-        max_tokens: 4000, temperature: 0.1,
+        max_tokens: 4000,
+        temperature: 0.1,
       }),
     });
     if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
@@ -127,65 +146,40 @@ Return ONLY the JSON object. Start with { and end with }.`;
     return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
   }
 
-  // For PDF or failed DOCX: use OpenAI with file content as text extraction fallback
-  // Since native file upload needs Files API, use vision with base64
-  const mimeType = isPdf ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  
-  // Try OpenAI with the file as a document
-  const res = await fetch(OPENAI_API, {
-    method: "POST", 
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: `Parse this resume file and return JSON:\n${jsonSchema}` },
-            { type: "text", text: `File content (base64 ${isPdf ? "PDF" : "DOCX"}): The file has been uploaded. Please extract all resume information and return the JSON structure above.` }
-          ]
-        }
-      ],
-      max_tokens: 4000, temperature: 0.1,
-    }),
-  });
+  // PDF path: extract raw text from buffer and send to GPT
+  const buffer = Buffer.from(fileBase64, "base64");
+  let extractedText = "";
 
-  if (!res.ok) throw new Error(`OpenAI error: ${res.status} ${await res.text()}`);
-  const data = await res.json() as any;
-  const raw = data.choices?.[0]?.message?.content || "{}";
-  
-  // If OpenAI says it can't read the file, extract what we can from raw buffer
-  if (raw.toLowerCase().includes("cannot") || raw.toLowerCase().includes("sorry") || raw.toLowerCase().includes("don't see")) {
-    // Last resort: extract ASCII text from buffer
-    const buffer = Buffer.from(fileBase64, "base64");
-    const ascii = buffer.toString("binary")
+  if (isPdf) {
+    // Extract readable ASCII from PDF binary
+    extractedText = buffer.toString("binary")
       .replace(/[^\x20-\x7E\n\r]/g, " ")
-      .replace(/\s+/g, " ").trim().slice(0, 8000);
-    
-    const fallbackRes = await fetch(OPENAI_API, {
+      .replace(/\s+/g, " ").trim().slice(0, 12000);
+  }
+
+  if (extractedText.length > 200) {
+    const res = await fetch(OPENAI_API, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `This is raw text extracted from a resume PDF. Some characters may be garbled but extract what you can:\n\n${ascii}\n\nReturn JSON:\n${jsonSchema}` }
+          { role: "user", content: `Parse this resume (extracted from PDF, some characters may be garbled):\n\n${extractedText}\n\nReturn JSON:\n${jsonSchema}` }
         ],
-        max_tokens: 4000, temperature: 0.3,
+        max_tokens: 4000,
+        temperature: 0.2,
       }),
     });
-    if (!fallbackRes.ok) throw new Error("Failed to parse resume");
-    const fallbackData = await fallbackRes.json() as any;
-    return JSON.parse(stripJson(fallbackData.choices?.[0]?.message?.content || "{}"));
+    if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+    const data = await res.json() as any;
+    return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
   }
 
-  return JSON.parse(stripJson(raw));
+  throw new Error("Could not extract text from this file. Please try a different format.");
 }
 
-async function generateDocx(parsedData: any): Promise<Buffer> {
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType } = await import("docx");
-
+function generateDocx(parsedData: any): Promise<Buffer> {
   const BLUE = "1F4E79", LIGHT_BLUE = "2E75B6", DARK = "1A1A1A", GRAY = "595959";
   const W = 9360;
 
@@ -201,7 +195,8 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
       tabStops: [{ type: TabStopType.RIGHT, position: W }],
       children: [
         new TextRun({ text: title, bold: true, size: 22, font: "Arial", color: DARK }),
-        new TextRun({ text: "\t" }), new TextRun({ text: dates, size: 20, font: "Arial", color: GRAY, italics: true }),
+        new TextRun({ text: "\t" }),
+        new TextRun({ text: dates, size: 20, font: "Arial", color: GRAY, italics: true }),
       ]
     }),
     new Paragraph({
@@ -222,79 +217,104 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
 
   const expSection: any[] = [];
   for (const exp of (parsedData.experience || [])) {
-    expSection.push(...jobHdr(exp.title||"", exp.company||"", exp.location||"", `${exp.startDate||""} – ${exp.endDate||"Present"}`));
-    if (exp.description) expSection.push(new Paragraph({ spacing:{before:40,after:60}, children:[new TextRun({text:exp.description,size:19,font:"Arial",color:GRAY,italics:true})] }));
-    for (const b of (exp.bullets||[]).slice(0,5)) expSection.push(bul(b));
-    for (const a of (exp.achievements||[])) { if (a) expSection.push(new Paragraph({ spacing:{before:60,after:60}, children:[new TextRun({text:`🏆 ${a}`,bold:true,size:19,font:"Arial",color:LIGHT_BLUE})] })); }
+    expSection.push(...jobHdr(
+      exp.title || "", exp.company || "", exp.location || "",
+      `${exp.startDate || ""} – ${exp.endDate || "Present"}`
+    ));
+    if (exp.description) {
+      expSection.push(new Paragraph({
+        spacing: { before: 40, after: 60 },
+        children: [new TextRun({ text: exp.description, size: 19, font: "Arial", color: GRAY, italics: true })]
+      }));
+    }
+    for (const b of (exp.bullets || []).slice(0, 5)) expSection.push(bul(b));
+    for (const a of (exp.achievements || [])) {
+      if (a) expSection.push(new Paragraph({
+        spacing: { before: 60, after: 60 },
+        children: [new TextRun({ text: `🏆 ${a}`, bold: true, size: 19, font: "Arial", color: LIGHT_BLUE })]
+      }));
+    }
   }
 
-  const skillRows = (parsedData.skills?.categories||[]).map((cat:any) => new TableRow({
+  const skillRows = (parsedData.skills?.categories || []).map((cat: any) => new TableRow({
     children: [
-      new TableCell({ width:{size:2500,type:WidthType.DXA}, borders:{top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.NONE},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE}}, shading:{fill:"EBF3FB",type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[new TextRun({text:cat.name,bold:true,size:18,font:"Arial",color:BLUE})]})] }),
-      new TableCell({ width:{size:6860,type:WidthType.DXA}, borders:{top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.NONE},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE}}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[new TextRun({text:(cat.skills||[]).join(" · "),size:18,font:"Arial",color:DARK})]})] }),
+      new TableCell({
+        width: { size: 2500, type: WidthType.DXA },
+        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+        shading: { fill: "EBF3FB", type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 120, right: 120 },
+        children: [new Paragraph({ children: [new TextRun({ text: cat.name, bold: true, size: 18, font: "Arial", color: BLUE })] })]
+      }),
+      new TableCell({
+        width: { size: 6860, type: WidthType.DXA },
+        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+        margins: { top: 80, bottom: 80, left: 120, right: 120 },
+        children: [new Paragraph({ children: [new TextRun({ text: (cat.skills || []).join(" · "), size: 18, font: "Arial", color: DARK })] })]
+      }),
     ]
   }));
 
   const doc = new Document({
-    numbering: { config:[{reference:"bullets",levels:[{level:0,format:LevelFormat.BULLET,text:"▪",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:260}}}}]}] },
-    styles: { default:{document:{run:{font:"Arial",size:20}}} },
+    numbering: {
+      config: [{
+        reference: "bullets",
+        levels: [{
+          level: 0, format: LevelFormat.BULLET, text: "▪",
+          alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 360, hanging: 260 } } }
+        }]
+      }]
+    },
+    styles: { default: { document: { run: { font: "Arial", size: 20 } } } },
     sections: [{
-      properties: { page:{size:{width:12240,height:15840},margin:{top:864,right:1080,bottom:864,left:1080}} },
+      properties: {
+        page: { size: { width: 12240, height: 15840 }, margin: { top: 864, right: 1080, bottom: 864, left: 1080 } }
+      },
       children: [
-        new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:60},children:[new TextRun({text:(parsedData.name||"").toUpperCase(),bold:true,size:52,font:"Arial",color:BLUE})]}),
-        new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:80},children:[new TextRun({text:parsedData.title||"",size:22,font:"Arial",color:GRAY,italics:true})]}),
-        new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:200},children:[new TextRun({text:[parsedData.location,parsedData.phone,parsedData.email,parsedData.linkedin].filter(Boolean).join("  |  "),size:19,font:"Arial",color:GRAY})]}),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 60 },
+          children: [new TextRun({ text: (parsedData.name || "").toUpperCase(), bold: true, size: 52, font: "Arial", color: BLUE })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 80 },
+          children: [new TextRun({ text: parsedData.title || "", size: 22, font: "Arial", color: GRAY, italics: true })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 200 },
+          children: [new TextRun({
+            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin]
+              .filter(Boolean).join("  |  "),
+            size: 19, font: "Arial", color: GRAY
+          })]
+        }),
         sec("Professional Summary"),
-        new Paragraph({spacing:{before:100,after:80},children:[new TextRun({text:parsedData.summary||"",size:20,font:"Arial",color:DARK})]}),
-        ...(parsedData.topMetrics?.length ? [sec("Career Highlights"),...parsedData.topMetrics.slice(0,3).map((m:string)=>bul(m))] : []),
+        new Paragraph({
+          spacing: { before: 100, after: 80 },
+          children: [new TextRun({ text: parsedData.summary || "", size: 20, font: "Arial", color: DARK })]
+        }),
+        ...(parsedData.topMetrics?.length ? [sec("Career Highlights"), ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m))] : []),
         sec("Professional Experience"),
         ...expSection,
-        ...(skillRows.length ? [sec("Core Competencies"),new Table({width:{size:W,type:WidthType.DXA},columnWidths:[2500,6860],rows:skillRows})] : []),
+        ...(skillRows.length ? [sec("Core Competencies"), new Table({ width: { size: W, type: WidthType.DXA }, columnWidths: [2500, 6860], rows: skillRows })] : []),
         sec("Education"),
-        ...(parsedData.education||[]).map((edu:any) => new Paragraph({spacing:{before:80,after:40},children:[
-          new TextRun({text:edu.degree||"",bold:true,size:20,font:"Arial",color:DARK}),
-          new TextRun({text:"  —  ",size:20,font:"Arial",color:GRAY}),
-          new TextRun({text:`${edu.school||""}, ${edu.location||""}`,size:20,font:"Arial",color:LIGHT_BLUE}),
-          ...(edu.year?[new TextRun({text:`  ${edu.year}`,size:19,font:"Arial",color:GRAY,italics:true})]:[]),
-        ]})),
-        ...(parsedData.certifications?.length ? [sec("Certifications"),...parsedData.certifications.map((c:string)=>bul(c))] : []),
+        ...(parsedData.education || []).map((edu: any) => new Paragraph({
+          spacing: { before: 80, after: 40 },
+          children: [
+            new TextRun({ text: edu.degree || "", bold: true, size: 20, font: "Arial", color: DARK }),
+            new TextRun({ text: "  —  ", size: 20, font: "Arial", color: GRAY }),
+            new TextRun({ text: `${edu.school || ""}, ${edu.location || ""}`, size: 20, font: "Arial", color: LIGHT_BLUE }),
+            ...(edu.year ? [new TextRun({ text: `  ${edu.year}`, size: 19, font: "Arial", color: GRAY, italics: true })] : []),
+          ]
+        })),
+        ...(parsedData.certifications?.length ? [sec("Certifications"), ...parsedData.certifications.map((c: string) => bul(c))] : []),
       ]
     }]
   });
-  return await Packer.toBuffer(doc);
-}
 
-// Email capture service
-async function captureEmail(email: string, name: string): Promise<void> {
-  const dbUrl = process.env.RESUMEIQ_DATABASE_URL || process.env.DATABASE_URL;
-  if (!dbUrl) return;
-
-  try {
-    const conn = await mysql2Default.createConnection(dbUrl);
-    
-    // Create table if not exists
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS email_captures (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(320) NOT NULL,
-        name VARCHAR(255),
-        source VARCHAR(100) DEFAULT 'resumeiq',
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_email (email)
-      )
-    `);
-    
-    // Insert email (ignore duplicates)
-    await conn.execute(
-      `INSERT IGNORE INTO email_captures (email, name, source) VALUES (?, ?, 'resumeiq')`,
-      [email, name]
-    );
-    
-    await conn.end();
-    console.log(`[ResumeIQ] Email captured: ${email}`);
-  } catch (err) {
-    console.warn("[ResumeIQ] Email capture failed:", err);
-  }
+  return Packer.toBuffer(doc);
 }
 
 function getTokenUser(req: Request): { userId: number; email: string } | null {
@@ -303,10 +323,36 @@ function getTokenUser(req: Request): { userId: number; email: string } | null {
   return verifyToken(auth.slice(7));
 }
 
+function sanitizeData(data: any): any {
+  if (!data.name || data.name === "Full Name or Unknown" || data.name === "John Doe") data.name = "Resume";
+  if (!data.title) data.title = "";
+  if (!data.summary) data.summary = "";
+  if (!data.location) data.location = "";
+  if (!data.email) data.email = "";
+  if (!data.phone) data.phone = "";
+  if (!data.experience || !Array.isArray(data.experience)) data.experience = [];
+  if (!data.skills || !data.skills.categories) data.skills = { categories: [] };
+  if (!data.education || !Array.isArray(data.education)) data.education = [];
+  if (!data.topMetrics || !Array.isArray(data.topMetrics)) data.topMetrics = [];
+  if (!data.certifications) data.certifications = [];
+  data.experience = data.experience.map((exp: any) => ({
+    title: exp.title || "",
+    company: exp.company || "",
+    location: exp.location || "",
+    startDate: exp.startDate || "",
+    endDate: exp.endDate || "Present",
+    description: exp.description || "",
+    bullets: Array.isArray(exp.bullets) ? exp.bullets.filter(Boolean) : [],
+    achievements: Array.isArray(exp.achievements) ? exp.achievements.filter(Boolean) : [],
+  }));
+  return data;
+}
+
 export function registerResumeIQRoutes(app: Express) {
-  // Initialize database tables
+  // Initialize DB tables on startup
   initDb().catch(console.error);
-  // Auth routes
+
+  // ── AUTH ──────────────────────────────────────────────────────────
   app.post("/api/resumeiq/auth/register", async (req: Request, res: Response) => {
     try {
       const { email, password, name } = req.body;
@@ -340,7 +386,7 @@ export function registerResumeIQRoutes(app: Express) {
     res.json(user);
   });
 
-  // History routes
+  // ── HISTORY ──────────────────────────────────────────────────────
   app.get("/api/resumeiq/history", async (req: Request, res: Response) => {
     const tokenUser = getTokenUser(req);
     if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -356,14 +402,14 @@ export function registerResumeIQRoutes(app: Express) {
       if (!resume) { res.status(404).json({ error: "Resume not found" }); return; }
       const buffer = Buffer.from(resume.docxBase64, "base64");
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-      res.setHeader("Content-Disposition", `attachment; filename="${resume.candidateName?.replace(/\s+/g,"_") || "Resume"}_ResumeIQ.docx"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${(resume.candidateName || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx"`);
       res.send(buffer);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Email capture
+  // ── EMAIL CAPTURE ────────────────────────────────────────────────
   app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
     try {
       const { email, name } = req.body;
@@ -375,36 +421,34 @@ export function registerResumeIQRoutes(app: Express) {
     }
   });
 
+  // ── TRANSFORM (parse + session) ──────────────────────────────────
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
       const { fileBase64, fileName } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
+
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
       const sessionId = crypto.randomBytes(16).toString("hex");
-      // Determine if this resume is free
+
       const tokenUser = getTokenUser(req);
       const cookies = req.headers.cookie || "";
       const hasCookie = cookies.includes("resumeiq_free_used=1");
       const ip = getClientIp(req);
 
       let isFree = false;
-      let resumeLimit = 1; // default free tier
 
       if (tokenUser) {
-        // Logged in user - check their plan and resume count
         const dbUser = await getUserById(tokenUser.userId);
         const resumeCount = dbUser?.resumeCount || 0;
         const plan = dbUser?.plan || "free";
-
         if (plan === "monthly" || plan === "agency") {
-          isFree = true; // unlimited
+          isFree = true;
         } else if (plan === "starter") {
-          isFree = resumeCount < 3; // 3 resumes on starter
+          isFree = resumeCount < 3;
         } else {
-          isFree = resumeCount < 1; // 1 free resume
+          isFree = resumeCount < 1;
         }
       } else {
-        // Guest user - check cookie and IP
         isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
       }
 
@@ -423,6 +467,7 @@ export function registerResumeIQRoutes(app: Express) {
     res.json(session.parsedData);
   });
 
+  // ── CHECKOUT ─────────────────────────────────────────────────────
   app.post("/api/resumeiq/checkout", async (req: Request, res: Response) => {
     try {
       const { sessionId } = req.body;
@@ -430,7 +475,11 @@ export function registerResumeIQRoutes(app: Express) {
       if (!session) { res.status(404).json({ error: "Session not found" }); return; }
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
       const origin = req.headers.origin || `https://${req.headers.host}`;
-      const { url } = await createCheckoutSession(`${origin}/?payment=success`, `${origin}/?payment=cancelled`, sessionId);
+      const { url } = await createCheckoutSession(
+        `${origin}/?payment=success`,
+        `${origin}/?payment=cancelled`,
+        sessionId
+      );
       res.json({ url });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -445,52 +494,61 @@ export function registerResumeIQRoutes(app: Express) {
       const paid = await verifyPayment(stripeSessionId);
       if (paid) {
         session.paid = true;
-        if (session.freeUsed) { const ip = getClientIp(req); freeUsedByIp.set(ip, (freeUsedByIp.get(ip)||0)+1); }
+        const ip = getClientIp(req);
+        freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
       res.json({ paid });
-    } catch (error: any) { res.status(500).json({ error: error.message }); }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
+  // ── GENERATE (DOCX) ──────────────────────────────────────────────
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
-      const { sessionId, parsedData } = req.body;
-      let data = parsedData;
-      if (sessionId) {
-        const session = sessionStore.get(sessionId);
-        if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
-        if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
-        data = session.parsedData;
+      const { sessionId } = req.body;
+
+      const session = sessionStore.get(sessionId);
+      if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
+      if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
+
+      const data = sanitizeData({ ...session.parsedData });
+
+      // Mark free IP usage now (at actual download time, not transform time)
+      if (session.freeUsed) {
+        const ip = getClientIp(req);
+        freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
-      if (!data) { res.status(400).json({ error: "No resume data" }); return; }
-      
-      // Ensure all required fields exist to prevent DOCX generation crash
-      if (!data.name || data.name === "Full Name or Unknown" || data.name === "John Doe") data.name = "Resume";
-      if (!data.title) data.title = "";
-      if (!data.summary) data.summary = "";
-      if (!data.location) data.location = "";
-      if (!data.email) data.email = "";
-      if (!data.phone) data.phone = "";
-      if (!data.experience || !Array.isArray(data.experience)) data.experience = [];
-      if (!data.skills || !data.skills.categories) data.skills = { categories: [] };
-      if (!data.education || !Array.isArray(data.education)) data.education = [];
-      if (!data.topMetrics || !Array.isArray(data.topMetrics)) data.topMetrics = [];
-      if (!data.certifications) data.certifications = [];
-      
-      // Fix each experience entry
-      data.experience = data.experience.map((exp: any) => ({
-        title: exp.title || "",
-        company: exp.company || "",
-        location: exp.location || "",
-        startDate: exp.startDate || "",
-        endDate: exp.endDate || "Present",
-        description: exp.description || "",
-        bullets: Array.isArray(exp.bullets) ? exp.bullets.filter(Boolean) : [],
-        achievements: Array.isArray(exp.achievements) ? exp.achievements.filter(Boolean) : [],
-      }));
+
       const buffer = await generateDocx(data);
-      const fileName = `${(data.name||"Resume").replace(/\s+/g,"_")}_ResumeIQ.docx`;
-      res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-      res.setHeader("Content-Disposition",`attachment; filename="${fileName}"`);
+      const docxBase64 = buffer.toString("base64");
+
+      // ── Save to DB if logged in ───────────────────────────────────
+      const tokenUser = getTokenUser(req);
+      if (tokenUser) {
+        try {
+          await saveResume(
+            tokenUser.userId,
+            data.name ? `${data.name}_ResumeIQ.docx` : "ResumeIQ.docx",
+            data.name || "Resume",
+            data,
+            docxBase64,
+            session.paid,
+          );
+          await incrementResumeCount(tokenUser.userId);
+          console.log(`[ResumeIQ] Saved resume for user ${tokenUser.userId}`);
+        } catch (saveErr) {
+          // Don't fail the download if save fails — just log it
+          console.error("[ResumeIQ] Failed to save resume to DB:", saveErr);
+        }
+      }
+
+      // Remove session after successful generation
+      sessionStore.delete(sessionId);
+
+      const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.send(buffer);
     } catch (error: any) {
       console.error("[ResumeIQ] Generate error:", error);
