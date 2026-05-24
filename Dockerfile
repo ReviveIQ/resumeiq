@@ -1,16 +1,14 @@
 FROM node:20-alpine
 
-RUN npm install -g pnpm
-
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 
-RUN pnpm install --no-frozen-lockfile --shamefully-hoist
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
-RUN pnpm build
+RUN npm run build
 
 EXPOSE 3000
 
