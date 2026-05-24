@@ -402,60 +402,57 @@ export default function ResumeIQ() {
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "14px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
-            <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "38px", height: "38px", flexShrink: 0 }}>
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "40px", height: "40px", flexShrink: 0 }}>
               <defs>
-                <linearGradient id="gA" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#93c5fd"/>
-                  <stop offset="100%" stopColor="#2563eb"/>
-                </linearGradient>
-                <linearGradient id="gB" x1="100%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#60a5fa"/>
-                  <stop offset="100%" stopColor="#1d4ed8"/>
-                </linearGradient>
-                <linearGradient id="gC" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#1e3a5f"/>
-                  <stop offset="100%" stopColor="#3b82f6"/>
-                </linearGradient>
-                <filter id="glw" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                <filter id="gemGlow">
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
-                <filter id="outerGlow" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="3" result="blur"/>
+                <filter id="iqGlow">
+                  <feGaussianBlur stdDeviation="1" result="blur"/>
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
               </defs>
 
-              {/* Outer glow ring */}
-              <circle cx="36" cy="36" r="32" fill="none" stroke="#3b82f6" strokeWidth="0.5" opacity="0.3" filter="url(#outerGlow)"/>
+              {/* Outer glow */}
+              <circle cx="40" cy="40" r="35" fill="#1d4ed8" opacity="0.12" filter="url(#gemGlow)"/>
 
-              {/* Main gem facets — octagonal diamond shape */}
-              {/* Top facet */}
-              <polygon points="36,6 50,18 36,24 22,18" fill="url(#gA)" opacity="0.95"/>
-              {/* Upper right */}
-              <polygon points="50,18 62,26 54,36 36,24" fill="url(#gB)" opacity="0.85"/>
-              {/* Lower right */}
-              <polygon points="62,26 66,42 54,48 54,36" fill="url(#gA)" opacity="0.7"/>
-              {/* Bottom right */}
-              <polygon points="66,42 52,58 36,48 54,48" fill="url(#gB)" opacity="0.9"/>
-              {/* Bottom */}
-              <polygon points="52,58 36,64 20,58 36,48" fill="url(#gC)" opacity="0.95"/>
-              {/* Bottom left */}
-              <polygon points="20,58 6,42 18,48 36,48" fill="url(#gB)" opacity="0.75"/>
-              {/* Upper left */}
-              <polygon points="6,42 10,26 18,36 18,48" fill="url(#gA)" opacity="0.65"/>
-              {/* Top left */}
-              <polygon points="10,26 22,18 36,24 18,36" fill="url(#gB)" opacity="0.8"/>
-              {/* Center */}
-              <polygon points="36,24 54,36 36,48 18,36" fill="url(#gC)" opacity="0.4"/>
+              {/* CRYSTAL — high contrast facets, diamond cut */}
+              {/* Top crown — bright */}
+              <polygon points="40,8 55,22 40,30 25,22" fill="#93c5fd" opacity="1"/>
+              {/* Top right — medium bright */}
+              <polygon points="55,22 68,34 56,40 40,30" fill="#60a5fa" opacity="0.95"/>
+              {/* Right — medium */}
+              <polygon points="68,34 70,50 56,52 56,40" fill="#3b82f6" opacity="0.85"/>
+              {/* Bottom right — darker */}
+              <polygon points="70,50 55,64 40,52 56,52" fill="#2563eb" opacity="0.9"/>
+              {/* Bottom — darkest */}
+              <polygon points="55,64 40,72 25,64 40,52" fill="#1d4ed8" opacity="1"/>
+              {/* Bottom left — dark */}
+              <polygon points="25,64 10,50 24,52 40,52" fill="#1e40af" opacity="0.95"/>
+              {/* Left — medium dark */}
+              <polygon points="10,50 12,34 24,40 24,52" fill="#2563eb" opacity="0.8"/>
+              {/* Top left — medium */}
+              <polygon points="12,34 25,22 40,30 24,40" fill="#3b82f6" opacity="0.7"/>
 
-              {/* Inner edge highlights */}
-              <polyline points="36,24 54,36 36,48 18,36 36,24" fill="none" stroke="rgba(147,197,253,0.4)" strokeWidth="0.5"/>
+              {/* Center pavilion — very dark for depth contrast */}
+              <polygon points="40,30 56,40 40,52 24,40" fill="#0f172a" opacity="0.6"/>
 
-              {/* IQ lettermark */}
-              <text x="36" y="41" textAnchor="middle" fontFamily="Arial, sans-serif"
-                fontSize="16" fontWeight="800" fill="white" opacity="0.95"
-                filter="url(#glw)" letterSpacing="-0.5">IQ</text>
+              {/* Edge highlight lines — crystal cut edges */}
+              <line x1="40" y1="8" x2="55" y2="22" stroke="#e0f2fe" strokeWidth="0.8" opacity="0.9"/>
+              <line x1="40" y1="8" x2="25" y2="22" stroke="#bae6fd" strokeWidth="0.8" opacity="0.7"/>
+              <line x1="40" y1="8" x2="40" y2="30" stroke="#ffffff" strokeWidth="0.6" opacity="0.5"/>
+              <line x1="68" y1="34" x2="56" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.6"/>
+              <line x1="12" y1="34" x2="24" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.4"/>
+
+              {/* Top specular highlight — the "light catching" effect */}
+              <polygon points="40,8 46,16 40,19 34,16" fill="white" opacity="0.5"/>
+
+              {/* IQ lettermark — crisp white */}
+              <text x="40" y="45" textAnchor="middle"
+                fontFamily="Arial, sans-serif" fontSize="15" fontWeight="900"
+                fill="white" opacity="1" filter="url(#iqGlow)"
+                letterSpacing="0.5">IQ</text>
             </svg>
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0px" }}>
