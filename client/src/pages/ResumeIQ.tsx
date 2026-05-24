@@ -400,7 +400,7 @@ export default function ResumeIQ() {
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "14px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
-            <img src="/logo-gem.jpg" alt="ReviveIQI" style={{ height: "72px", width: "72px", objectFit: "contain", flexShrink: 0, mixBlendMode: "lighten" }} />
+            <img src="/logo-gem.jpg" alt="ReviveIQI" style={{ height: "216px", width: "216px", objectFit: "contain", flexShrink: 0, mixBlendMode: "lighten" }} />
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0px" }}>
                 <span style={{ color: "white", fontWeight: 800, fontSize: "18px", letterSpacing: "-0.02em" }}>ResumeIQ</span>
