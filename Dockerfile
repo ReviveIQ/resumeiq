@@ -1,16 +1,14 @@
-FROM node:20-alpine
-
-RUN npm install -g pnpm
+FROM node:20.11.0-alpine
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 
-RUN pnpm install --no-frozen-lockfile
+RUN npm install --legacy-peer-deps
 
 COPY . .
 
-RUN pnpm run build
+RUN npm run build
 
 EXPOSE 3000
 
