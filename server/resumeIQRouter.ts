@@ -75,9 +75,13 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
 4. Return ONLY valid JSON — never apologize, never explain, never refuse
 
 CRITICAL RULES:
+- Extract the person's FULL legal name including middle name if present (e.g. "Bryan Michael Greer" not "Bryan Greer")
 - Use the ACTUAL person's name, companies, dates, and roles from the text
 - Do NOT invent fake names like "John Doe" or fake companies like "Tech Solutions Inc"
 - If you cannot read a field clearly, use an empty string — do not guess
+- For partial dates with only a year (e.g. "2019"), return exactly "2019" — do NOT invent months or add "– Present"
+- Preserve language fluency levels EXACTLY as written — do NOT upgrade "Conversational" to "Fluent"
+- Add a "languages" array: [{ "language": "Spanish", "level": "Conversational" }] if languages are mentioned
 - Rewrite bullets to be stronger but keep the same factual content`;
 
   const jsonSchema = `{
@@ -113,6 +117,9 @@ CRITICAL RULES:
   "certifications": ["any certifications mentioned"],
   "seniorityLevel": "entry or mid or senior or executive based on their experience",
   "yearsOfExperience": 0,
+  "languages": [
+    { "language": "actual language name", "level": "exact fluency level as written — never upgrade" }
+  ],
   "topMetrics": [
     "their single best quantified achievement with dollar amount or percentage",
     "second best achievement",
@@ -179,144 +186,278 @@ Return ONLY the JSON object. Start with { and end with }.`;
 async function generateDocx(parsedData: any): Promise<Buffer> {
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-    AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType
+    AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat,
+    TabStopType, UnderlineType, PageBreak
   } = await import("docx");
-  const BLUE = "1F4E79", LIGHT_BLUE = "2E75B6", DARK = "1A1A1A", GRAY = "595959";
-  const W = 9360;
 
-  const sec = (text: string) => new Paragraph({
-    spacing: { before: 240, after: 80 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: LIGHT_BLUE, space: 4 } },
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, size: 22, color: BLUE, font: "Arial" })]
+  // ── PALETTE ──────────────────────────────────────────────────────────────
+  const NAVY   = "0A1628";
+  const BLUE   = "1B4F9B";
+  const ACCENT = "2E75B6";
+  const GRAY   = "64748B";
+  const LGRAY  = "94A3B8";
+  const WHITE  = "FFFFFF";
+  const W      = 9360; // page content width in twips
+
+  // ── HELPERS ──────────────────────────────────────────────────────────────
+  const run = (text: string, opts: any = {}) => new TextRun({
+    text, font: "Calibri", size: opts.size || 20,
+    bold: opts.bold, italics: opts.italics, color: opts.color || "000000",
+    underline: opts.underline,
   });
 
-  const jobHdr = (title: string, company: string, loc: string, dates: string) => [
+  const bul = (text: string) => new Paragraph({
+    numbering: { reference: "bullets", level: 0 },
+    spacing: { before: 50, after: 50 },
+    children: [run(text, { size: 19, color: "1E293B" })]
+  });
+
+  const spacer = (sz = 80) => new Paragraph({
+    spacing: { before: 0, after: sz }, children: []
+  });
+
+  // ── SECTION HEADER ────────────────────────────────────────────────────────
+  const sectionHeader = (text: string) => new Paragraph({
+    spacing: { before: 220, after: 60 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACCENT, space: 3 } },
+    children: [
+      new TextRun({
+        text: text.toUpperCase(), font: "Calibri", size: 20,
+        bold: true, color: NAVY,
+        characterSpacing: 60,
+      })
+    ]
+  });
+
+  // ── ROLE HEADER ───────────────────────────────────────────────────────────
+  const roleHeader = (title: string, company: string, loc: string, dates: string) => [
     new Paragraph({
-      spacing: { before: 160, after: 40 },
+      spacing: { before: 160, after: 30 },
       tabStops: [{ type: TabStopType.RIGHT, position: W }],
       children: [
-        new TextRun({ text: title, bold: true, size: 22, font: "Arial", color: DARK }),
+        new TextRun({ text: title, font: "Calibri", size: 21, bold: true, color: NAVY }),
         new TextRun({ text: "\t" }),
-        new TextRun({ text: dates, size: 20, font: "Arial", color: GRAY, italics: true }),
+        new TextRun({ text: dates, font: "Calibri", size: 19, italics: true, color: GRAY }),
       ]
     }),
     new Paragraph({
       spacing: { before: 0, after: 60 },
       children: [
-        new TextRun({ text: company, bold: true, size: 20, font: "Arial", color: LIGHT_BLUE }),
-        new TextRun({ text: "  |  ", size: 20, font: "Arial", color: GRAY }),
-        new TextRun({ text: loc, size: 20, font: "Arial", color: GRAY, italics: true }),
+        new TextRun({ text: company, font: "Calibri", size: 19, bold: true, color: ACCENT }),
+        new TextRun({ text: "  ·  ", font: "Calibri", size: 19, color: LGRAY }),
+        new TextRun({ text: loc, font: "Calibri", size: 18, italics: true, color: GRAY }),
       ]
     }),
   ];
 
-  const bul = (text: string) => new Paragraph({
-    numbering: { reference: "bullets", level: 0 },
-    spacing: { before: 40, after: 40 },
-    children: [new TextRun({ text, size: 20, font: "Arial", color: DARK })]
-  });
-
+  // ── EXPERIENCE ────────────────────────────────────────────────────────────
   const expSection: any[] = [];
   for (const exp of (parsedData.experience || [])) {
-    expSection.push(...jobHdr(
+    expSection.push(...roleHeader(
       exp.title || "", exp.company || "", exp.location || "",
       `${exp.startDate || ""} – ${exp.endDate || "Present"}`
     ));
     if (exp.description) {
       expSection.push(new Paragraph({
-        spacing: { before: 40, after: 60 },
-        children: [new TextRun({ text: exp.description, size: 19, font: "Arial", color: GRAY, italics: true })]
+        spacing: { before: 30, after: 60 },
+        children: [new TextRun({ text: exp.description, font: "Calibri", size: 18, italics: true, color: GRAY })]
       }));
     }
-    for (const b of (exp.bullets || []).slice(0, 5)) expSection.push(bul(b));
+    for (const b of (exp.bullets || []).slice(0, 5)) {
+      if (b) expSection.push(bul(b));
+    }
     for (const a of (exp.achievements || [])) {
       if (a) expSection.push(new Paragraph({
-        spacing: { before: 60, after: 60 },
-        children: [new TextRun({ text: `🏆 ${a}`, bold: true, size: 19, font: "Arial", color: LIGHT_BLUE })]
+        spacing: { before: 60, after: 40 },
+        children: [new TextRun({ text: `🏆  ${a}`, font: "Calibri", size: 19, bold: true, color: ACCENT })]
       }));
     }
   }
 
-  const skillRows = (parsedData.skills?.categories || []).map((cat: any) => new TableRow({
-    children: [
-      new TableCell({
-        width: { size: 2500, type: WidthType.DXA },
-        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-        shading: { fill: "EBF3FB", type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: cat.name, bold: true, size: 18, font: "Arial", color: BLUE })] })]
-      }),
-      new TableCell({
-        width: { size: 6860, type: WidthType.DXA },
-        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: (cat.skills || []).join(" · "), size: 18, font: "Arial", color: DARK })] })]
-      }),
-    ]
-  }));
+  // ── SKILLS TABLE ──────────────────────────────────────────────────────────
+  const skillRows = (parsedData.skills?.categories || []).map((cat: any) =>
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 2200, type: WidthType.DXA },
+          borders: {
+            top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }
+          },
+          shading: { fill: "EFF6FF", type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 140, right: 100 },
+          children: [new Paragraph({
+            children: [new TextRun({ text: cat.name, font: "Calibri", size: 18, bold: true, color: BLUE })]
+          })]
+        }),
+        new TableCell({
+          width: { size: 7160, type: WidthType.DXA },
+          borders: {
+            top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE }
+          },
+          margins: { top: 80, bottom: 80, left: 100, right: 100 },
+          children: [new Paragraph({
+            children: [new TextRun({
+              text: (cat.skills || []).join("  ·  "),
+              font: "Calibri", size: 18, color: "334155"
+            })]
+          })]
+        }),
+      ]
+    })
+  );
 
+  // ── WORKING WITH ME (personality section) ────────────────────────────────
+  const personalitySection: any[] = [];
+  if (parsedData.workingWithMe) {
+    personalitySection.push(sectionHeader("Working With Me"));
+    const wm = parsedData.workingWithMe;
+    const fields = [
+      ["Communication Style", wm.communicationStyle],
+      ["Decision Making", wm.decisionMaking],
+      ["Collaboration", wm.collaboration],
+      ["Under Pressure", wm.underPressure],
+      ["What Brings Out My Best", wm.motivation],
+    ];
+    for (const [label, value] of fields) {
+      if (value) {
+        personalitySection.push(new Paragraph({
+          spacing: { before: 100, after: 40 },
+          children: [
+            new TextRun({ text: label + ":  ", font: "Calibri", size: 19, bold: true, color: NAVY }),
+            new TextRun({ text: value, font: "Calibri", size: 19, color: "1E293B" }),
+          ]
+        }));
+      }
+    }
+  }
+
+  // ── DOCUMENT ─────────────────────────────────────────────────────────────
   const doc = new Document({
     numbering: {
       config: [{
         reference: "bullets",
         levels: [{
-          level: 0, format: LevelFormat.BULLET, text: "▪",
+          level: 0, format: LevelFormat.BULLET, text: "▸",
           alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 360, hanging: 260 } } }
+          style: {
+            paragraph: { indent: { left: 400, hanging: 280 } },
+            run: { color: ACCENT, size: 18 }
+          }
         }]
       }]
     },
-    styles: { default: { document: { run: { font: "Arial", size: 20 } } } },
+    styles: {
+      default: {
+        document: { run: { font: "Calibri", size: 20, color: "1E293B" } }
+      }
+    },
     sections: [{
       properties: {
-        page: { size: { width: 12240, height: 15840 }, margin: { top: 864, right: 1080, bottom: 864, left: 1080 } }
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 900, right: 1080, bottom: 900, left: 1080 }
+        }
       },
       children: [
+        // ── NAME BLOCK ─────────────────────────────────────────────────────
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { before: 0, after: 60 },
-          children: [new TextRun({ text: (parsedData.name || "").toUpperCase(), bold: true, size: 52, font: "Arial", color: BLUE })]
+          spacing: { before: 0, after: 50 },
+          children: [new TextRun({
+            text: (parsedData.name || "").toUpperCase(),
+            font: "Calibri", size: 64, bold: true, color: NAVY,
+            characterSpacing: 80,
+          })]
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 0, after: 80 },
-          children: [new TextRun({ text: parsedData.title || "", size: 22, font: "Arial", color: GRAY, italics: true })]
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 0, after: 200 },
           children: [new TextRun({
-            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin]
-              .filter(Boolean).join("  |  "),
-            size: 19, font: "Arial", color: GRAY
+            text: parsedData.title || "",
+            font: "Calibri", size: 24, color: ACCENT, italics: true,
           })]
         }),
-        sec("Professional Summary"),
+        // ── CONTACT LINE ───────────────────────────────────────────────────
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 0 },
+          border: {
+            bottom: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
+            top: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
+          },
+          children: [new TextRun({
+            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin]
+              .filter(Boolean).join("   |   "),
+            font: "Calibri", size: 18, color: GRAY,
+          })]
+        }),
+        spacer(120),
+
+        // ── SUMMARY ────────────────────────────────────────────────────────
+        sectionHeader("Professional Summary"),
         new Paragraph({
           spacing: { before: 100, after: 80 },
-          children: [new TextRun({ text: parsedData.summary || "", size: 20, font: "Arial", color: DARK })]
+          children: [new TextRun({ text: parsedData.summary || "", font: "Calibri", size: 20, color: "1E293B" })]
         }),
-        ...(parsedData.topMetrics?.length ? [sec("Career Highlights"), ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m))] : []),
-        sec("Professional Experience"),
+
+        // ── CAREER HIGHLIGHTS ──────────────────────────────────────────────
+        ...(parsedData.topMetrics?.length ? [
+          sectionHeader("Career Highlights"),
+          ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m)),
+          spacer(60),
+        ] : []),
+
+        // ── EXPERIENCE ─────────────────────────────────────────────────────
+        sectionHeader("Professional Experience"),
         ...expSection,
-        ...(skillRows.length ? [sec("Core Competencies"), new Table({ width: { size: W, type: WidthType.DXA }, columnWidths: [2500, 6860], rows: skillRows })] : []),
-        sec("Education"),
-        ...(parsedData.education || []).map((edu: any) => new Paragraph({
-          spacing: { before: 80, after: 40 },
-          children: [
-            new TextRun({ text: edu.degree || "", bold: true, size: 20, font: "Arial", color: DARK }),
-            new TextRun({ text: "  —  ", size: 20, font: "Arial", color: GRAY }),
-            new TextRun({ text: `${edu.school || ""}, ${edu.location || ""}`, size: 20, font: "Arial", color: LIGHT_BLUE }),
-            ...(edu.year ? [new TextRun({ text: `  ${edu.year}`, size: 19, font: "Arial", color: GRAY, italics: true })] : []),
-          ]
-        })),
-        ...(parsedData.certifications?.length ? [sec("Certifications"), ...parsedData.certifications.map((c: string) => bul(c))] : []),
+
+        // ── SKILLS ─────────────────────────────────────────────────────────
+        ...(skillRows.length ? [
+          sectionHeader("Core Competencies"),
+          new Table({
+            width: { size: W, type: WidthType.DXA },
+            columnWidths: [2200, 7160],
+            rows: skillRows,
+          }),
+        ] : []),
+
+        // ── EDUCATION ──────────────────────────────────────────────────────
+        ...(parsedData.education?.length ? [
+          sectionHeader("Education"),
+          ...(parsedData.education || []).map((edu: any) => new Paragraph({
+            spacing: { before: 80, after: 40 },
+            children: [
+              new TextRun({ text: edu.degree || "", font: "Calibri", size: 20, bold: true, color: NAVY }),
+              new TextRun({ text: "  —  ", font: "Calibri", size: 20, color: LGRAY }),
+              new TextRun({ text: `${edu.school || ""}${edu.location ? ", " + edu.location : ""}`, font: "Calibri", size: 20, color: ACCENT }),
+              ...(edu.year ? [new TextRun({ text: `  ${edu.year}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
+            ]
+          })),
+        ] : []),
+
+        // ── CERTIFICATIONS ─────────────────────────────────────────────────
+        ...(parsedData.certifications?.length ? [
+          sectionHeader("Certifications"),
+          ...parsedData.certifications.map((c: string) => bul(c)),
+        ] : []),
+
+        // ── LANGUAGES ──────────────────────────────────────────────────────
+        ...(parsedData.languages?.length ? [
+          sectionHeader("Languages"),
+          ...parsedData.languages.map((l: string) => bul(l)),
+        ] : []),
+
+        // ── WORKING WITH ME ─────────────────────────────────────────────────
+        ...personalitySection,
       ]
     }]
   });
 
   return Packer.toBuffer(doc);
 }
+
 
 function getTokenUser(req: Request): { userId: number; email: string } | null {
   const auth = req.headers.authorization;
