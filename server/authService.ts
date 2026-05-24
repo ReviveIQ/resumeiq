@@ -1,8 +1,4 @@
 import mysql2 from "mysql2/promise";
-/**
- * ResumeIQ Auth Service
- * Simple email + password authentication with JWT
- */
 import crypto from "crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET || "resumeiq-secret-change-in-prod";
@@ -34,12 +30,16 @@ export function verifyToken(token: string): { userId: number; email: string } | 
 export async function getDb() {
   const dbUrl = process.env.RESUMEIQ_DATABASE_URL || process.env.DATABASE_URL;
   if (!dbUrl) return null;
-  return mysql2.createConnection(dbUrl);
+  // TiDB Cloud requires SSL — explicitly set it
+  return mysql2.createConnection({
+    uri: dbUrl,
+    ssl: { rejectUnauthorized: true },
+  });
 }
 
 export async function initDb() {
   const conn = await getDb();
-  if (!conn) return;
+  if (!conn) { console.warn("[ResumeIQ] No database URL configured — skipping DB init"); return; }
   try {
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_users (
@@ -119,7 +119,7 @@ export async function getUserById(id: number) {
   if (!conn) return null;
   try {
     const [rows] = await conn.execute(
-      "SELECT id, email, name, plan, createdAt FROM riq_users WHERE id = ?", [id]
+      "SELECT id, email, name, plan, resumeCount, createdAt FROM riq_users WHERE id = ?", [id]
     ) as any;
     return rows[0] || null;
   } finally {
@@ -155,7 +155,7 @@ export async function getUserResumes(userId: number) {
   if (!conn) return [];
   try {
     const [rows] = await conn.execute(
-      `SELECT id, originalFileName, candidateName, paid, createdAt 
+      `SELECT id, originalFileName, candidateName, paid, createdAt
        FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC`,
       [userId]
     ) as any;
