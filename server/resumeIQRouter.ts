@@ -2,10 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
 import JSZip from "jszip";
-import {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType
-} from "docx";
+// docx imported dynamically inside generateDocx to avoid ESM/CJS interop issues
 import {
   initDb, createUser, loginUser, getUserById, saveResume,
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
@@ -179,7 +176,11 @@ Return ONLY the JSON object. Start with { and end with }.`;
   throw new Error("Could not extract text from this file. Please try a different format.");
 }
 
-function generateDocx(parsedData: any): Promise<Buffer> {
+async function generateDocx(parsedData: any): Promise<Buffer> {
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, TabStopType
+  } = await import("docx");
   const BLUE = "1F4E79", LIGHT_BLUE = "2E75B6", DARK = "1A1A1A", GRAY = "595959";
   const W = 9360;
 
