@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
 import JSZip from "jszip";
+import mysql2Default from "mysql2/promise";
 import { initDb, createUser, loginUser, getUserById, saveResume, getUserResumes, getResumeById, captureEmail as dbCaptureEmail, generateToken, verifyToken, upgradeToStarter, incrementResumeCount } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
@@ -34,7 +35,6 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
   let textContent = "";
   if (isDocx) {
     try {
-      const JSZip = require("jszip");
       const buffer = Buffer.from(fileBase64, "base64");
       const zip = await JSZip.loadAsync(buffer);
       const docXml = await zip.file("word/document.xml")?.async("string");
@@ -270,8 +270,7 @@ async function captureEmail(email: string, name: string): Promise<void> {
   if (!dbUrl) return;
 
   try {
-    const mysql2 = require("mysql2/promise");
-    const conn = await mysql2.createConnection(dbUrl);
+    const conn = await mysql2Default.createConnection(dbUrl);
     
     // Create table if not exists
     await conn.execute(`
