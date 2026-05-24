@@ -1,15 +1,17 @@
 FROM node:20-alpine
 
+RUN npm install -g pnpm
+
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml ./
 
-RUN npm install --legacy-peer-deps
+RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
+CMD ["node_modules/.bin/tsx", "server/_core/index.ts"]
