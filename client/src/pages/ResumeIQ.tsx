@@ -400,37 +400,34 @@ export default function ResumeIQ() {
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "14px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
-            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "40px", height: "40px", flexShrink: 0 }}>
+            <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "38px", height: "38px", flexShrink: 0 }}>
               <defs>
-                <filter id="gemGlow">
-                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-                <filter id="iqGlow">
-                  <feGaussianBlur stdDeviation="1" result="blur"/>
+                <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#60a5fa"/>
+                  <stop offset="100%" stopColor="#2563eb"/>
+                </linearGradient>
+                <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#93c5fd"/>
+                  <stop offset="100%" stopColor="#3b82f6"/>
+                </linearGradient>
+                <linearGradient id="lg3" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1d4ed8"/>
+                  <stop offset="100%" stopColor="#1e3a5f"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="blur"/>
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
               </defs>
-              <circle cx="40" cy="40" r="35" fill="#1d4ed8" opacity="0.12" filter="url(#gemGlow)"/>
-              <polygon points="40,8 55,22 40,30 25,22" fill="#93c5fd" opacity="1"/>
-              <polygon points="55,22 68,34 56,40 40,30" fill="#60a5fa" opacity="0.95"/>
-              <polygon points="68,34 70,50 56,52 56,40" fill="#3b82f6" opacity="0.85"/>
-              <polygon points="70,50 55,64 40,52 56,52" fill="#2563eb" opacity="0.9"/>
-              <polygon points="55,64 40,72 25,64 40,52" fill="#1d4ed8" opacity="1"/>
-              <polygon points="25,64 10,50 24,52 40,52" fill="#1e40af" opacity="0.95"/>
-              <polygon points="10,50 12,34 24,40 24,52" fill="#2563eb" opacity="0.8"/>
-              <polygon points="12,34 25,22 40,30 24,40" fill="#3b82f6" opacity="0.7"/>
-              <polygon points="40,30 56,40 40,52 24,40" fill="#0f172a" opacity="0.6"/>
-              <line x1="40" y1="8" x2="55" y2="22" stroke="#e0f2fe" strokeWidth="0.8" opacity="0.9"/>
-              <line x1="40" y1="8" x2="25" y2="22" stroke="#bae6fd" strokeWidth="0.8" opacity="0.7"/>
-              <line x1="40" y1="8" x2="40" y2="30" stroke="#ffffff" strokeWidth="0.6" opacity="0.5"/>
-              <line x1="68" y1="34" x2="56" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.6"/>
-              <line x1="12" y1="34" x2="24" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.4"/>
-              <polygon points="40,8 46,16 40,19 34,16" fill="white" opacity="0.5"/>
-              <text x="40" y="45" textAnchor="middle"
-                fontFamily="Arial, sans-serif" fontSize="15" fontWeight="900"
-                fill="white" opacity="1" filter="url(#iqGlow)"
-                letterSpacing="0.5">IQ</text>
+              <polygon points="36,4 68,36 36,68 4,36" fill="url(#lg3)" opacity="0.35"/>
+              <polygon points="36,4 20,20 36,36 52,20" fill="url(#lg2)" opacity="0.9"/>
+              <polygon points="36,4 52,20 68,36 36,36" fill="url(#lg1)" opacity="0.65"/>
+              <polygon points="4,36 20,20 36,36 20,52" fill="url(#lg1)" opacity="0.5"/>
+              <polygon points="68,36 52,20 36,36 52,52" fill="url(#lg2)" opacity="0.75"/>
+              <polygon points="36,68 20,52 36,36 52,52" fill="url(#lg3)" opacity="0.95"/>
+              <circle cx="36" cy="36" r="10" fill="none" stroke="rgba(147,197,253,0.3)" strokeWidth="1"/>
+              <circle cx="36" cy="36" r="6" fill="white" opacity="0.95" filter="url(#glow)"/>
+              <circle cx="36" cy="36" r="3" fill="#93c5fd"/>
             </svg>
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0px" }}>
