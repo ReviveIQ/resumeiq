@@ -397,8 +397,6 @@ export default function ResumeIQ() {
   return (
     <div style={S}>
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} input,textarea{color-scheme:dark;}`}</style>
-
-      {/* ── HEADER ── */}
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "14px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
@@ -413,42 +411,22 @@ export default function ResumeIQ() {
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
               </defs>
-
-              {/* Outer glow */}
               <circle cx="40" cy="40" r="35" fill="#1d4ed8" opacity="0.12" filter="url(#gemGlow)"/>
-
-              {/* CRYSTAL — high contrast facets, diamond cut */}
-              {/* Top crown — bright */}
               <polygon points="40,8 55,22 40,30 25,22" fill="#93c5fd" opacity="1"/>
-              {/* Top right — medium bright */}
               <polygon points="55,22 68,34 56,40 40,30" fill="#60a5fa" opacity="0.95"/>
-              {/* Right — medium */}
               <polygon points="68,34 70,50 56,52 56,40" fill="#3b82f6" opacity="0.85"/>
-              {/* Bottom right — darker */}
               <polygon points="70,50 55,64 40,52 56,52" fill="#2563eb" opacity="0.9"/>
-              {/* Bottom — darkest */}
               <polygon points="55,64 40,72 25,64 40,52" fill="#1d4ed8" opacity="1"/>
-              {/* Bottom left — dark */}
               <polygon points="25,64 10,50 24,52 40,52" fill="#1e40af" opacity="0.95"/>
-              {/* Left — medium dark */}
               <polygon points="10,50 12,34 24,40 24,52" fill="#2563eb" opacity="0.8"/>
-              {/* Top left — medium */}
               <polygon points="12,34 25,22 40,30 24,40" fill="#3b82f6" opacity="0.7"/>
-
-              {/* Center pavilion — very dark for depth contrast */}
               <polygon points="40,30 56,40 40,52 24,40" fill="#0f172a" opacity="0.6"/>
-
-              {/* Edge highlight lines — crystal cut edges */}
               <line x1="40" y1="8" x2="55" y2="22" stroke="#e0f2fe" strokeWidth="0.8" opacity="0.9"/>
               <line x1="40" y1="8" x2="25" y2="22" stroke="#bae6fd" strokeWidth="0.8" opacity="0.7"/>
               <line x1="40" y1="8" x2="40" y2="30" stroke="#ffffff" strokeWidth="0.6" opacity="0.5"/>
               <line x1="68" y1="34" x2="56" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.6"/>
               <line x1="12" y1="34" x2="24" y2="40" stroke="#93c5fd" strokeWidth="0.5" opacity="0.4"/>
-
-              {/* Top specular highlight — the "light catching" effect */}
               <polygon points="40,8 46,16 40,19 34,16" fill="white" opacity="0.5"/>
-
-              {/* IQ lettermark — crisp white */}
               <text x="40" y="45" textAnchor="middle"
                 fontFamily="Arial, sans-serif" fontSize="15" fontWeight="900"
                 fill="white" opacity="1" filter="url(#iqGlow)"
@@ -489,8 +467,6 @@ export default function ResumeIQ() {
       </div>
 
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "32px 24px" }}>
-
-        {/* ── AUTH ── */}
         {(view === "login" || view === "register") && (
           <div style={{ maxWidth: "400px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -538,8 +514,6 @@ export default function ResumeIQ() {
             </div>
           </div>
         )}
-
-        {/* ── UPLOAD ── */}
         {view === "upload" && (
           <div style={{ maxWidth: "600px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -576,8 +550,6 @@ export default function ResumeIQ() {
             </div>
           </div>
         )}
-
-        {/* ── ANALYZING ── */}
         {view === "analyzing" && (
           <div style={{ maxWidth: "440px", margin: "0 auto", textAlign: "center", padding: "70px 0" }}>
             <Loader2 size={56} color="#60a5fa" style={{ margin: "0 auto 20px", ...spin }} />
@@ -585,8 +557,6 @@ export default function ResumeIQ() {
             <p style={{ color: "#94a3b8", fontSize: "14px" }}>AI is extracting your experience, skills, and achievements...</p>
           </div>
         )}
-
-        {/* ── INTERVIEW ── */}
         {view === "interview" && currentInterviewQ && (
           <div style={{ maxWidth: "520px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
@@ -630,11 +600,8 @@ export default function ResumeIQ() {
             </div>
           </div>
         )}
-
-        {/* ── PREVIEW ── */}
         {view === "preview" && parsedData && (
           <div style={{ maxWidth: "860px", margin: "0 auto" }}>
-            {/* Watermark overlay — branded but not obnoxious */}
             {!isFree && (
               <div style={{
                 position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
@@ -668,8 +635,6 @@ export default function ResumeIQ() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-
-              {/* LEFT COLUMN */}
               <div>
                 <Section title="Personal Info">
                   <EditField label="Full Name" value={parsedData.name || ""} onSave={v => updateField("name", v)} />
@@ -752,8 +717,6 @@ export default function ResumeIQ() {
                   </button>
                 </Section>
               </div>
-
-              {/* RIGHT COLUMN — Experience */}
               <div>
                 <Section title={`Experience (${(parsedData.experience || []).length} roles)`}>
                   <button onClick={addExp}
@@ -766,8 +729,6 @@ export default function ResumeIQ() {
                 </Section>
               </div>
             </div>
-
-            {/* Payment / download bar */}
             {isFree && !user && !emailCaptured && (
               <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "16px", marginBottom: "10px" }}>
                 <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: "10px" }}>🎉 Your first resume is free! Enter your email to download.</p>
@@ -813,8 +774,6 @@ export default function ResumeIQ() {
             )}
           </div>
         )}
-
-        {/* ── DONE ── */}
         {view === "done" && (
           <div style={{ maxWidth: "520px", margin: "0 auto", textAlign: "center", padding: "60px 0" }}>
             <div style={{ width: "72px", height: "72px", background: "rgba(74,222,128,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
@@ -837,8 +796,6 @@ export default function ResumeIQ() {
             </div>
           </div>
         )}
-
-        {/* ── HISTORY ── */}
         {view === "history" && (
           <div>
             <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
