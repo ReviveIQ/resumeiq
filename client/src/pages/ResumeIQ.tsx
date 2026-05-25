@@ -168,6 +168,11 @@ export default function ResumeIQ() {
   const [emailCaptured, setEmailCaptured] = useState(false);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [personalityStep, setPersonalityStep] = useState(false);
+  const [selectedAssessment, setSelectedAssessment] = useState("");
+  const [assessmentInput, setAssessmentInput] = useState("");
+  const [personalityLoading, setPersonalityLoading] = useState(false);
+  const [workingWithMe, setWorkingWithMe] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
   const [authEmail, setAuthEmail] = useState("");
@@ -331,12 +336,38 @@ export default function ResumeIQ() {
   }));
 
   // ── Download ─────────────────────────────────────────────────────────────
-  const handleDownload = async () => {
+  const handlePersonalityGenerate = async () => {
+    setPersonalityLoading(true);
+    try {
+      const res = await fetch("/api/resumeiq/personality", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assessmentType: selectedAssessment,
+          results: assessmentInput,
+          parsedResumeData: parsedData,
+        }),
+      });
+      const data = await res.json();
+      if (data.workingWithMe) {
+        const updatedData = { ...parsedData, workingWithMe: data.workingWithMe };
+        setParsedData(updatedData);
+        setWorkingWithMe(data.workingWithMe);
+        setPersonalityStep(false);
+        await handleDownloadWithData(updatedData);
+      }
+    } catch (err: any) { setError(err.message); }
+    finally { setPersonalityLoading(false); }
+  };
+
+  const handleDownload = async () => { await handleDownloadWithData(parsedData); };
+
+  const handleDownloadWithData = async (data: any) => {
     setDownloading(true);
     try {
       const res = await fetch("/api/resumeiq/generate", {
         method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ sessionId, parsedData }),
+        body: JSON.stringify({ sessionId, parsedData: data }),
       });
       if (res.status === 402) { setError("Payment required"); return; }
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed to generate"); }
@@ -769,6 +800,17 @@ export default function ResumeIQ() {
                 <button onClick={() => setView("register")} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}>Create a free account</button> to save your resumes and re-download anytime.
               </p>
             )}
+            {/* Personality upsell */}
+            <div style={{ marginTop: "16px", background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              <div>
+                <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>🧠 Add a "Working With Me" section</p>
+                <p style={{ color: "#64748b", fontSize: "12px", margin: "3px 0 0" }}>Upload your DISC, MBTI, PI, or TKI results and we'll translate them into professional workplace language.</p>
+              </div>
+              <button onClick={() => setPersonalityStep(true)}
+                style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "8px", padding: "8px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                Add It →
+              </button>
+            </div>
           </div>
         )}
         {view === "done" && (
@@ -840,6 +882,57 @@ export default function ResumeIQ() {
           </div>
         )}
 
+
+        {/* ── PERSONALITY STEP ── */}
+        {personalityStep && (
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
+            <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "520px", width: "100%" }}>
+              <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                <div style={{ fontSize: "36px", marginBottom: "10px" }}>🧠</div>
+                <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Add "Working With Me"</h2>
+                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Select your assessment type and paste your results. We'll translate them into professional language — no jargon, just self-awareness.</p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                {[
+                  { id: "disc", label: "DISC", hint: "e.g. C style — Accuracy, Stability, Challenge" },
+                  { id: "mbti", label: "Myers-Briggs (MBTI)", hint: "e.g. ISTJ — Introversion, Sensing, Thinking, Judging" },
+                  { id: "pi", label: "Predictive Index (PI)", hint: "e.g. Strategist — results-oriented, innovative, analytical" },
+                  { id: "tki", label: "Thomas-Kilmann (TKI)", hint: "e.g. Avoiding 65%, Collaborating 58%, Competing 57%" },
+                  { id: "other", label: "Other / Paste results", hint: "Paste any assessment results" },
+                ].map(a => (
+                  <button key={a.id} onClick={() => { setSelectedAssessment(a.id); setAssessmentInput(""); }}
+                    style={{ background: selectedAssessment === a.id ? "rgba(37,99,235,0.2)" : "rgba(255,255,255,0.04)", border: selectedAssessment === a.id ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px 14px", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>{a.label}</p>
+                      <p style={{ color: "#64748b", fontSize: "11px", margin: 0 }}>{a.hint}</p>
+                    </div>
+                    {selectedAssessment === a.id && <span style={{ color: "#3b82f6" }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+              {selectedAssessment && (
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>Paste your results or describe your profile:</label>
+                  <textarea rows={4} value={assessmentInput} onChange={e => setAssessmentInput(e.target.value)}
+                    placeholder={selectedAssessment === "disc" ? "e.g. C style. Priorities: Accuracy, Stability, Challenge. Motivated by logic, expertise, independence." : selectedAssessment === "mbti" ? "e.g. ISTJ. Very clear Thinking preference. Dependable, systematic, logical, values structure." : selectedAssessment === "pi" ? "e.g. Strategist. Results-oriented, innovative, analytical. Moderate across all four dimensions." : selectedAssessment === "tki" ? "e.g. Avoiding 65% (medium), Collaborating 58% (medium), Competing 57%, Accommodating 46%, Compromising 27%" : "Paste your full assessment results here..."}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
+                </div>
+              )}
+              {error && <p style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{error}</p>}
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={() => { setPersonalityStep(false); setSelectedAssessment(""); setAssessmentInput(""); }}
+                  style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                  Skip
+                </button>
+                <button onClick={handlePersonalityGenerate}
+                  disabled={!selectedAssessment || !assessmentInput.trim() || personalityLoading}
+                  style={{ flex: 2, background: selectedAssessment && assessmentInput.trim() ? "#2563eb" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: selectedAssessment && assessmentInput.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+                  {personalityLoading ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Generating...</> : <><span>✨</span> Add to My Resume →</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
