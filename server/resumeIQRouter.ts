@@ -485,7 +485,7 @@ function sanitizeData(data: any): any {
     company: exp.company || "",
     location: exp.location || "",
     startDate: exp.startDate || "",
-    endDate: exp.endDate || "Present",
+    endDate: exp.endDate && exp.endDate !== exp.startDate ? exp.endDate : exp.endDate === "" ? "" : "Present",
     description: exp.description || "",
     bullets: Array.isArray(exp.bullets) ? exp.bullets.filter(Boolean) : [],
     achievements: Array.isArray(exp.achievements) ? exp.achievements.filter(Boolean) : [],
