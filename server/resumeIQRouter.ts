@@ -554,6 +554,68 @@ export function registerResumeIQRoutes(app: Express) {
     }
   });
 
+
+  // ── PERSONALITY ASSESSMENT ───────────────────────────────────────────────
+  app.post("/api/resumeiq/personality", async (req: Request, res: Response) => {
+    try {
+      const { assessmentType, results, parsedResumeData } = req.body;
+      if (!results) { res.status(400).json({ error: "Assessment results required" }); return; }
+
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
+
+      const systemPrompt = `You are an expert workplace psychologist and professional resume writer.
+Translate personality assessment results into a professional "Working With Me" section for a resume.
+CRITICAL RULES:
+- Never mention assessment names (no DISC, MBTI, Predictive Index, TKI, etc.)
+- Never use assessment jargon (no "high D", "ISTJ", "C-style", etc.)
+- Write in first person, professional tone
+- Each field: 1-2 sentences maximum
+- Sound self-aware and authentic, not clinical
+- Base it on the assessment AND the person's actual career context
+- Never invent traits not supported by the assessment data`;
+
+      const userPrompt = `Assessment type: ${assessmentType}
+Assessment results: ${JSON.stringify(results)}
+Career context: ${JSON.stringify({
+  name: parsedResumeData?.name,
+  title: parsedResumeData?.title,
+  yearsOfExperience: parsedResumeData?.yearsOfExperience,
+  seniorityLevel: parsedResumeData?.seniorityLevel,
+  topMetrics: parsedResumeData?.topMetrics,
+})}
+
+Generate a "Working With Me" section. Return ONLY valid JSON:
+{
+  "communicationStyle": "1-2 sentences",
+  "decisionMaking": "1-2 sentences",
+  "collaboration": "1-2 sentences",
+  "underPressure": "1-2 sentences",
+  "motivation": "1-2 sentences"
+}`;
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          max_tokens: 600, temperature: 0.3,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+      const data = await response.json() as any;
+      const raw = data.choices?.[0]?.message?.content || "{}";
+      const clean = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+      const workingWithMe = JSON.parse(clean);
+      res.json({ workingWithMe });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Personality error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ── EMAIL CAPTURE ────────────────────────────────────────────────
   app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
     try {
