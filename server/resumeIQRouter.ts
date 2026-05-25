@@ -748,7 +748,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
     }
   });
 
-  app.get("/api/resumeiq/session/:sessionId", (req: Request, res: Response) => {
+  app.get("/api/resumeiq/session/:sessionId", async (req: Request, res: Response) => {
     const session = await getSession(req.params.sessionId);
     if (!session) { res.status(404).json({ error: "Session not found" }); return; }
     res.json(session.parsedData);
@@ -842,4 +842,93 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       res.status(500).json({ error: error.message || "Failed to generate resume" });
     }
   });
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  // GET /api/resumeiq/analytics?range=7d|30d|all
+  // Returns daily upload/paid/revenue buckets + funnel totals + Stripe session stats
+  app.get("/api/resumeiq/analytics", async (req: Request, res: Response) => {
+    try {
+      const range = (req.query.range as string) || "30d";
+      const days = range === "7d" ? 7 : range === "30d" ? 30 : 365;
+
+      const { getDb } = await import("./authService");
+      const conn = await getDb();
+      if (!conn) { res.status(503).json({ error: "Database unavailable" }); return; }
+
+      try {
+        // ── Daily uploads + paid + revenue ──────────────────────────────────
+        const [dailyRows] = await conn.execute(
+          `SELECT
+             DATE(createdAt)            AS date,
+             COUNT(*)                   AS uploads,
+             SUM(paid)                  AS paid,
+             SUM(CASE WHEN paid = 1 THEN 9.99 ELSE 0 END) AS revenue
+           FROM riq_resumes
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           GROUP BY DATE(createdAt)
+           ORDER BY date ASC`,
+          [days]
+        ) as any;
+
+        // ── Funnel: sessions created vs paid vs docx generated ───────────────
+        const [funnelRows] = await conn.execute(
+          `SELECT
+             COUNT(*)                                       AS sessionsCreated,
+             SUM(paid)                                      AS sessionsPaid,
+             SUM(CASE WHEN freeUsed = 1 THEN 1 ELSE 0 END) AS sessionsFree
+           FROM riq_sessions
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+          [days]
+        ) as any;
+
+        // ── Stripe: sessions by status (from riq_resumes as source of truth) ─
+        const [stripeRows] = await conn.execute(
+          `SELECT
+             SUM(CASE WHEN paid = 1 AND stripeSessionId IS NOT NULL THEN 1 ELSE 0 END) AS stripePaid,
+             SUM(CASE WHEN paid = 0 AND stripeSessionId IS NOT NULL THEN 1 ELSE 0 END) AS stripePending,
+             SUM(CASE WHEN stripeSessionId IS NULL AND paid = 1 THEN 1 ELSE 0 END)     AS freeDownloads
+           FROM riq_resumes
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+          [days]
+        ) as any;
+
+        // ── Tier breakdown ───────────────────────────────────────────────────
+        const [tierRows] = await conn.execute(
+          `SELECT plan, COUNT(*) AS count
+           FROM riq_users
+           GROUP BY plan`,
+        ) as any;
+
+        // ── Total revenue all-time ───────────────────────────────────────────
+        const [revenueRow] = await conn.execute(
+          `SELECT
+             SUM(CASE WHEN paid = 1 THEN 9.99 ELSE 0 END) AS totalRevenue,
+             COUNT(*) AS totalResumes,
+             SUM(paid) AS totalPaid
+           FROM riq_resumes`
+        ) as any;
+
+        // ── Email captures ───────────────────────────────────────────────────
+        const [emailRow] = await conn.execute(
+          `SELECT COUNT(*) AS emailCaptures FROM riq_email_captures`
+        ) as any;
+
+        res.json({
+          daily: dailyRows,
+          funnel: funnelRows[0] || {},
+          stripe: stripeRows[0] || {},
+          tiers: tierRows,
+          totals: revenueRow[0] || {},
+          emailCaptures: emailRow[0]?.emailCaptures || 0,
+        });
+      } finally {
+        await conn.end();
+      }
+    } catch (error: any) {
+      console.error("[ResumeIQ] Analytics error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
 }
+
