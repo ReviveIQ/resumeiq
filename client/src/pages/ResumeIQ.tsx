@@ -912,10 +912,47 @@ export default function ResumeIQ() {
               </div>
               {selectedAssessment && (
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "6px" }}>Paste your results or describe your profile:</label>
-                  <textarea rows={4} value={assessmentInput} onChange={e => setAssessmentInput(e.target.value)}
-                    placeholder={selectedAssessment === "disc" ? "e.g. C style. Priorities: Accuracy, Stability, Challenge. Motivated by logic, expertise, independence." : selectedAssessment === "mbti" ? "e.g. ISTJ. Very clear Thinking preference. Dependable, systematic, logical, values structure." : selectedAssessment === "pi" ? "e.g. Strategist. Results-oriented, innovative, analytical. Moderate across all four dimensions." : selectedAssessment === "tki" ? "e.g. Avoiding 65% (medium), Collaborating 58% (medium), Competing 57%, Accommodating 46%, Compromising 27%" : "Paste your full assessment results here..."}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
+                             <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "8px" }}>
+                    Upload your assessment PDF or paste your results:
+                  </label>
+                  <div onClick={() => (document.getElementById("assessment-upload") as HTMLInputElement)?.click()}
+                    style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: "8px", padding: "16px", textAlign: "center", cursor: "pointer", background: "rgba(255,255,255,0.02)", marginBottom: "10px" }}>
+                    <input id="assessment-upload" type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: "none" }}
+                      onChange={async (e: any) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const b64 = (reader.result as string).split(",")[1];
+                          setAssessmentInput(JSON.stringify({ fileBase64: b64, fileName: file.name }));
+                        };
+                        reader.readAsDataURL(file);
+                      }} />
+                    {assessmentInput.startsWith("{") ? (
+                      <div>
+                        <div style={{ fontSize: "24px", marginBottom: "4px" }}>📄</div>
+                        <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, margin: 0 }}>
+                          {(() => { try { return JSON.parse(assessmentInput).fileName; } catch { return "File uploaded"; } })()}
+                        </p>
+                        <p style={{ color: "#64748b", fontSize: "11px", margin: "3px 0 0" }}>Click to replace</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: "24px", marginBottom: "4px" }}>📎</div>
+                        <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>Upload assessment PDF</p>
+                        <p style={{ color: "#64748b", fontSize: "11px", margin: "3px 0 0" }}>PDF, DOCX, or TXT — we'll read it automatically</p>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }}/>
+                    <span style={{ color: "#475569", fontSize: "11px" }}>or paste results manually</span>
+                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }}/>
+                  </div>
+                  <textarea rows={3} value={assessmentInput.startsWith("{") ? "" : assessmentInput}
+                    onChange={e => setAssessmentInput(e.target.value)}
+                    placeholder={selectedAssessment === "disc" ? "e.g. C style — Accuracy, Stability, Challenge" : selectedAssessment === "mbti" ? "e.g. ISTJ — Introversion, Sensing, Thinking, Judging" : selectedAssessment === "pi" ? "e.g. Strategist — results-oriented, innovative, analytical" : selectedAssessment === "tki" ? "e.g. Avoiding 65%, Collaborating 58%, Competing 57%" : "Paste your assessment results here..."}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "12px", padding: "9px 12px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
                 </div>
               )}
               {error && <p style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{error}</p>}
