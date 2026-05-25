@@ -257,7 +257,7 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
   for (const exp of (parsedData.experience || [])) {
     expSection.push(...roleHeader(
       exp.title || "", exp.company || "", exp.location || "",
-      `${exp.startDate || ""} – ${exp.endDate || "Present"}`
+      `${exp.startDate || ""}${exp.endDate ? " – " + exp.endDate : ""}`
     ));
     if (exp.description) {
       expSection.push(new Paragraph({
@@ -448,7 +448,7 @@ async function generateDocx(parsedData: any): Promise<Buffer> {
         // ── LANGUAGES ──────────────────────────────────────────────────────
         ...(parsedData.languages?.length ? [
           sectionHeader("Languages"),
-          ...parsedData.languages.map((l: string) => bul(l)),
+          ...parsedData.languages.map((l: any) => bul(typeof l === "string" ? l : `${l.language}${l.level ? " — " + l.level : ""}`)),
         ] : []),
 
         // ── WORKING WITH ME ─────────────────────────────────────────────────
@@ -479,6 +479,7 @@ function sanitizeData(data: any): any {
   if (!data.education || !Array.isArray(data.education)) data.education = [];
   if (!data.topMetrics || !Array.isArray(data.topMetrics)) data.topMetrics = [];
   if (!data.certifications) data.certifications = [];
+  if (!data.languages || !Array.isArray(data.languages)) data.languages = [];
   data.experience = data.experience.map((exp: any) => ({
     title: exp.title || "",
     company: exp.company || "",
