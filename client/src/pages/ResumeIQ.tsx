@@ -400,7 +400,35 @@ export default function ResumeIQ() {
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "6px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
-            <img src="/logo-gem.jpg" alt="ReviveIQI" style={{ height: "120px", width: "120px", objectFit: "contain", flexShrink: 0, mixBlendMode: "lighten" }} />
+            <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "56px", height: "56px", flexShrink: 0 }}>
+              <defs>
+                <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#60a5fa"/>
+                  <stop offset="100%" stopColor="#2563eb"/>
+                </linearGradient>
+                <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#93c5fd"/>
+                  <stop offset="100%" stopColor="#3b82f6"/>
+                </linearGradient>
+                <linearGradient id="lg3" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#1d4ed8"/>
+                  <stop offset="100%" stopColor="#1e3a5f"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <polygon points="36,4 68,36 36,68 4,36" fill="url(#lg3)" opacity="0.35"/>
+              <polygon points="36,4 20,20 36,36 52,20" fill="url(#lg2)" opacity="0.9"/>
+              <polygon points="36,4 52,20 68,36 36,36" fill="url(#lg1)" opacity="0.65"/>
+              <polygon points="4,36 20,20 36,36 20,52" fill="url(#lg1)" opacity="0.5"/>
+              <polygon points="68,36 52,20 36,36 52,52" fill="url(#lg2)" opacity="0.75"/>
+              <polygon points="36,68 20,52 36,36 52,52" fill="url(#lg3)" opacity="0.95"/>
+              <circle cx="36" cy="36" r="10" fill="none" stroke="rgba(147,197,253,0.3)" strokeWidth="1"/>
+              <circle cx="36" cy="36" r="6" fill="white" opacity="0.95" filter="url(#glow)"/>
+              <circle cx="36" cy="36" r="3" fill="#93c5fd"/>
+            </svg>
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0px" }}>
                 <span style={{ color: "white", fontWeight: 800, fontSize: "36px", letterSpacing: "-0.02em" }}>ResumeIQ</span>
