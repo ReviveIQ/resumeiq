@@ -821,13 +821,15 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   // ── GENERATE (DOCX) ──────────────────────────────────────────────
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
-      const { sessionId } = req.body;
+      const { sessionId, parsedData: clientData } = req.body;
 
       const session = await getSession(sessionId);
       if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
       if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
 
-      const data = sanitizeData({ ...session.parsedData });
+      // Use client-side edited data if provided (preserves preview edits + workingWithMe),
+      // falling back to original session data
+      const data = sanitizeData({ ...session.parsedData, ...(clientData || {}) });
 
       // Mark free IP usage now (at actual download time, not transform time)
       if (session.freeUsed) {

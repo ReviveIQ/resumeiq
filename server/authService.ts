@@ -67,6 +67,17 @@ export async function initDb() {
       )
     `);
     await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_sessions (
+        sessionId VARCHAR(64) PRIMARY KEY,
+        parsedData MEDIUMTEXT NOT NULL,
+        paid TINYINT DEFAULT 0,
+        freeUsed TINYINT DEFAULT 0,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expiresAt TIMESTAMP NOT NULL,
+        INDEX idx_expiresAt (expiresAt)
+      )
+    `);
+    await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_email_captures (
         id INT AUTO_INCREMENT PRIMARY KEY,
         email VARCHAR(320) NOT NULL,
