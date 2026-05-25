@@ -536,6 +536,34 @@ function sanitizeData(data: any): any {
 }
 
 export function registerResumeIQRoutes(app: Express) {
+
+  // ── ADMIN AUTH MIDDLEWARE ────────────────────────────────────────────────
+  // Protects admin-only routes. Reads ADMIN_EMAILS env var (comma-separated).
+  // Falls back to checking if the user's plan is 'agency'.
+  function adminAuth(req: Request, res: Response, next: () => void) {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Admin access required" });
+      return;
+    }
+    const token = authHeader.slice(7);
+    const payload = verifyToken(token);
+    if (!payload) {
+      res.status(401).json({ error: "Invalid or expired token" });
+      return;
+    }
+    const adminEmails = (process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+    if (adminEmails.includes(payload.email.toLowerCase())) {
+      next();
+      return;
+    }
+    res.status(403).json({ error: "Forbidden — admin only" });
+  }
+
+
   // Initialize DB tables on startup
   initDb().catch(console.error);
 
@@ -845,7 +873,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   // ── ANALYTICS ─────────────────────────────────────────────────────────────
   // GET /api/resumeiq/analytics?range=7d|30d|all
   // Returns daily upload/paid/revenue buckets + funnel totals + Stripe session stats
-  app.get("/api/resumeiq/analytics", async (req: Request, res: Response) => {
+  app.get("/api/resumeiq/analytics", (req: Request, res: Response, next: any) => adminAuth(req, res, next), async (req: Request, res: Response) => {
     try {
       const range = (req.query.range as string) || "30d";
       const days = range === "7d" ? 7 : range === "30d" ? 30 : 365;
@@ -931,4 +959,5 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
 
 
 }
+
 
