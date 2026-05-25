@@ -401,12 +401,12 @@ export default function ResumeIQ() {
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
             <img src="/logo-gem.jpg" alt="ReviveIQI" style={{ height: "120px", width: "120px", objectFit: "contain", flexShrink: 0, mixBlendMode: "lighten" }} />
-            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0px" }}>
-                <span style={{ color: "white", fontWeight: 800, fontSize: "18px", letterSpacing: "-0.02em" }}>ResumeIQ</span>
-                <span style={{ color: "#60a5fa", fontWeight: 800, fontSize: "18px" }}>I</span>
+                <span style={{ color: "white", fontWeight: 800, fontSize: "36px", letterSpacing: "-0.02em" }}>ResumeIQ</span>
+                <span style={{ color: "#60a5fa", fontWeight: 800, fontSize: "36px" }}>I</span>
               </div>
-              <span style={{ color: "#475569", fontSize: "10px", letterSpacing: "0.04em" }}>by ReviveIQI</span>
+              <span style={{ color: "#64748b", fontSize: "14px", letterSpacing: "0.06em", fontWeight: 400 }}>by ReviveIQI</span>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
