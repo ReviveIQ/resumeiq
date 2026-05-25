@@ -885,91 +885,93 @@ export default function ResumeIQ() {
 
         {/* ── PERSONALITY STEP ── */}
         {personalityStep && (
-          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
-            <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "520px", width: "100%" }}>
-              <div style={{ textAlign: "center", marginBottom: "24px" }}>
-                <div style={{ fontSize: "36px", marginBottom: "10px" }}>🧠</div>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
+            <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "580px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <div style={{ fontSize: "36px", marginBottom: "8px" }}>🧠</div>
                 <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Add "Working With Me"</h2>
-                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Select your assessment type and paste your results. We'll translate them into professional language — no jargon, just self-awareness.</p>
+                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Add one or more assessments — we'll synthesize them into a single professional section that shows how you work best.</p>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-                {[
-                  { id: "disc", label: "DISC", hint: "e.g. C style — Accuracy, Stability, Challenge" },
-                  { id: "mbti", label: "Myers-Briggs (MBTI)", hint: "e.g. ISTJ — Introversion, Sensing, Thinking, Judging" },
-                  { id: "pi", label: "Predictive Index (PI)", hint: "e.g. Strategist — results-oriented, innovative, analytical" },
-                  { id: "tki", label: "Thomas-Kilmann (TKI)", hint: "e.g. Avoiding 65%, Collaborating 58%, Competing 57%" },
-                  { id: "other", label: "Other / Paste results", hint: "Paste any assessment results" },
-                ].map(a => (
-                  <button key={a.id} onClick={() => { setSelectedAssessment(a.id); setAssessmentInput(""); }}
-                    style={{ background: selectedAssessment === a.id ? "rgba(37,99,235,0.2)" : "rgba(255,255,255,0.04)", border: selectedAssessment === a.id ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px 14px", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>{a.label}</p>
-                      <p style={{ color: "#64748b", fontSize: "11px", margin: 0 }}>{a.hint}</p>
-                    </div>
-                    {selectedAssessment === a.id && <span style={{ color: "#3b82f6" }}>✓</span>}
-                  </button>
-                ))}
+
+              {/* Assessment type chips */}
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ color: "#64748b", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "8px" }}>Select assessments to include:</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {ASSESSMENT_TYPES.map((a: any) => {
+                    const added = assessmentFiles.find((f: any) => f.id === a.id);
+                    return (
+                      <button key={a.id} onClick={() => added ? removeAssessmentSlot(a.id) : addAssessmentSlot(a.id, a.label)}
+                        style={{ background: added ? "rgba(37,99,235,0.25)" : "rgba(255,255,255,0.05)", border: added ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "7px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ color: added ? "#4ade80" : "#64748b", fontSize: "14px", fontWeight: 700 }}>{added ? "✓" : "+"}</span>
+                        <div style={{ textAlign: "left" }}>
+                          <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0 }}>{a.label}</p>
+                          <p style={{ color: "#475569", fontSize: "10px", margin: 0 }}>{a.hint}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {selectedAssessment && (
-                <div style={{ marginBottom: "16px" }}>
-                             <label style={{ color: "#94a3b8", fontSize: "12px", display: "block", marginBottom: "8px" }}>
-                    Upload your assessment PDF or paste your results:
-                  </label>
-                  <div onClick={() => (document.getElementById("assessment-upload") as HTMLInputElement)?.click()}
-                    style={{ border: "2px dashed rgba(255,255,255,0.15)", borderRadius: "8px", padding: "16px", textAlign: "center", cursor: "pointer", background: "rgba(255,255,255,0.02)", marginBottom: "10px" }}>
-                    <input id="assessment-upload" type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: "none" }}
+
+              {/* Upload slot per assessment */}
+              {assessmentFiles.map((a: any) => (
+                <div key={a.id} style={{ marginBottom: "10px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600 }}>{a.label}</span>
+                    <button onClick={() => removeAssessmentSlot(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "18px", padding: "0 4px", lineHeight: 1 }}>×</button>
+                  </div>
+                  <div onClick={() => (document.getElementById(`upload-${a.id}`) as HTMLInputElement)?.click()}
+                    style={{ border: a.fileName ? "1px solid rgba(74,222,128,0.3)" : "2px dashed rgba(255,255,255,0.1)", borderRadius: "7px", padding: "10px", textAlign: "center", cursor: "pointer", marginBottom: "7px" }}>
+                    <input id={`upload-${a.id}`} type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: "none" }}
                       onChange={async (e: any) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         const reader = new FileReader();
-                        reader.onload = () => {
-                          const b64 = (reader.result as string).split(",")[1];
-                          setAssessmentInput(JSON.stringify({ fileBase64: b64, fileName: file.name }));
-                        };
+                        reader.onload = () => updateAssessmentFile(a.id, file.name, (reader.result as string).split(",")[1]);
                         reader.readAsDataURL(file);
                       }} />
-                    {assessmentInput.startsWith("{") ? (
-                      <div>
-                        <div style={{ fontSize: "24px", marginBottom: "4px" }}>📄</div>
-                        <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, margin: 0 }}>
-                          {(() => { try { return JSON.parse(assessmentInput).fileName; } catch { return "File uploaded"; } })()}
-                        </p>
-                        <p style={{ color: "#64748b", fontSize: "11px", margin: "3px 0 0" }}>Click to replace</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: "24px", marginBottom: "4px" }}>📎</div>
-                        <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>Upload assessment PDF</p>
-                        <p style={{ color: "#64748b", fontSize: "11px", margin: "3px 0 0" }}>PDF, DOCX, or TXT — we'll read it automatically</p>
-                      </div>
-                    )}
+                    {a.fileName
+                      ? <p style={{ color: "#4ade80", fontSize: "12px", margin: 0 }}>📄 {a.fileName} <span style={{ color: "#64748b" }}>(click to replace)</span></p>
+                      : <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>📎 Upload {a.label} PDF — click to browse</p>
+                    }
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }}/>
-                    <span style={{ color: "#475569", fontSize: "11px" }}>or paste results manually</span>
-                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }}/>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.06)" }}/>
+                    <span style={{ color: "#334155", fontSize: "10px" }}>or paste</span>
+                    <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.06)" }}/>
                   </div>
-                  <textarea rows={3} value={assessmentInput.startsWith("{") ? "" : assessmentInput}
-                    onChange={e => setAssessmentInput(e.target.value)}
-                    placeholder={selectedAssessment === "disc" ? "e.g. C style — Accuracy, Stability, Challenge" : selectedAssessment === "mbti" ? "e.g. ISTJ — Introversion, Sensing, Thinking, Judging" : selectedAssessment === "pi" ? "e.g. Strategist — results-oriented, innovative, analytical" : selectedAssessment === "tki" ? "e.g. Avoiding 65%, Collaborating 58%, Competing 57%" : "Paste your assessment results here..."}
-                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "12px", padding: "9px 12px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+                  <textarea rows={2} value={a.textInput} onChange={(e: any) => updateAssessmentText(a.id, e.target.value)}
+                    placeholder={`Paste ${a.label} results...`}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", color: "white", fontSize: "12px", padding: "7px 10px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+                </div>
+              ))}
+
+              {assessmentFiles.length === 0 && (
+                <div style={{ textAlign: "center", padding: "16px", color: "#334155", fontSize: "13px" }}>
+                  Select at least one assessment above to get started
                 </div>
               )}
+
               {error && <p style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{error}</p>}
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button onClick={() => { setPersonalityStep(false); setSelectedAssessment(""); setAssessmentInput(""); }}
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+                <button onClick={() => { setPersonalityStep(false); setAssessmentFiles([]); }}
                   style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
                   Skip
                 </button>
                 <button onClick={handlePersonalityGenerate}
-                  disabled={!selectedAssessment || !assessmentInput.trim() || personalityLoading}
-                  style={{ flex: 2, background: selectedAssessment && assessmentInput.trim() ? "#2563eb" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: selectedAssessment && assessmentInput.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {personalityLoading ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Generating...</> : <><span>✨</span> Add to My Resume →</>}
+                  disabled={assessmentFiles.filter((a: any) => a.fileBase64 || a.textInput).length === 0 || personalityLoading}
+                  style={{ flex: 2, background: assessmentFiles.filter((a: any) => a.fileBase64 || a.textInput).length > 0 ? "#2563eb" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+                  {personalityLoading
+                    ? <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span> Synthesizing...</>
+                    : <><span>✨</span> {assessmentFiles.length > 1 ? `Synthesize ${assessmentFiles.length} Assessments →` : "Add to My Resume →"}</>
+                  }
                 </button>
               </div>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
