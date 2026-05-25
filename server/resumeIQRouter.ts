@@ -791,7 +791,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
       const origin = req.headers.origin || `https://${req.headers.host}`;
       const { url } = await createCheckoutSession(
-        `${origin}/?payment=success`,
+        `${origin}/?payment=success&`,
         `${origin}/?payment=cancelled`,
         sessionId
       );

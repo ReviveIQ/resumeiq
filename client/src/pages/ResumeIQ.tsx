@@ -219,7 +219,7 @@ export default function ResumeIQ() {
             const restored = JSON.parse(savedData);
             setParsedData(restored);
             setSessionId(savedSession);
-            setIsFree(true);
+            setIsFree(false);
             // Clear saved state
             localStorage.removeItem("riq_pending_session");
             localStorage.removeItem("riq_pending_data");
@@ -237,7 +237,7 @@ export default function ResumeIQ() {
       const restored = JSON.parse(pendingData);
       setParsedData(restored);
       setSessionId(pendingSession);
-      setIsFree(true);
+      setIsFree(false);
       setView("preview");
     }
   }, []);

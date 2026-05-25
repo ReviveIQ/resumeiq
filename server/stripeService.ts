@@ -28,7 +28,7 @@ export async function createCheckoutSession(
       "line_items[0][price_data][unit_amount]": String(STRIPE_PRICE),
       "line_items[0][quantity]": "1",
       mode: "payment",
-      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}&resumeiq_session=${sessionId}`,
+      success_url: `${successUrl}session_id={CHECKOUT_SESSION_ID}&resumeiq_session=${sessionId}`,
       cancel_url: cancelUrl,
       "metadata[resumeiq_session]": sessionId,
     }),
