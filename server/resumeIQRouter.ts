@@ -11,19 +11,61 @@ import {
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
-const sessionStore = new Map<string, {
-  parsedData: any;
-  paid: boolean;
-  createdAt: number;
-  freeUsed: boolean;
-}>();
+// ── DB-BACKED SESSION STORE ──────────────────────────────────────────────
+// Sessions stored in TiDB so they survive server restarts and scale across instances
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of sessionStore.entries()) {
-    if (now - v.createdAt > 7200000) sessionStore.delete(k);
+async function createSession(sessionId: string, parsedData: any, paid: boolean, freeUsed: boolean) {
+  const { getDb } = await import("./authService");
+  const conn = await getDb();
+  if (!conn) {
+    // Fallback to memory if DB unavailable
+    memoryStore.set(sessionId, { parsedData, paid, createdAt: Date.now(), freeUsed });
+    return;
   }
-}, 1800000);
+  try {
+    await conn.execute(
+      `INSERT INTO riq_sessions (sessionId, parsedData, paid, freeUsed, createdAt, expiresAt)
+       VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 2 HOUR))
+       ON DUPLICATE KEY UPDATE parsedData=VALUES(parsedData), paid=VALUES(paid), freeUsed=VALUES(freeUsed), expiresAt=VALUES(expiresAt)`,
+      [sessionId, JSON.stringify(parsedData), paid ? 1 : 0, freeUsed ? 1 : 0]
+    );
+  } finally { await conn.end(); }
+}
+
+async function getSession(sessionId: string): Promise<{ parsedData: any; paid: boolean; freeUsed: boolean } | null> {
+  const { getDb } = await import("./authService");
+  const conn = await getDb();
+  if (!conn) return memoryStore.get(sessionId) || null;
+  try {
+    const [rows] = await conn.execute(
+      `SELECT parsedData, paid, freeUsed FROM riq_sessions WHERE sessionId = ? AND expiresAt > NOW()`,
+      [sessionId]
+    ) as any;
+    if (!rows[0]) return null;
+    return { parsedData: JSON.parse(rows[0].parsedData), paid: !!rows[0].paid, freeUsed: !!rows[0].freeUsed };
+  } finally { await conn.end(); }
+}
+
+async function updateSessionPaid(sessionId: string) {
+  const { getDb } = await import("./authService");
+  const conn = await getDb();
+  if (!conn) { const s = memoryStore.get(sessionId); if (s) s.paid = true; return; }
+  try {
+    await conn.execute(`UPDATE riq_sessions SET paid = 1 WHERE sessionId = ?`, [sessionId]);
+  } finally { await conn.end(); }
+}
+
+async function deleteSession(sessionId: string) {
+  const { getDb } = await import("./authService");
+  const conn = await getDb();
+  if (!conn) { memoryStore.delete(sessionId); return; }
+  try {
+    await conn.execute(`DELETE FROM riq_sessions WHERE sessionId = ?`, [sessionId]);
+  } finally { await conn.end(); }
+}
+
+// Memory fallback for when DB is unavailable
+const memoryStore = new Map<string, { parsedData: any; paid: boolean; createdAt: number; freeUsed: boolean }>();
 
 const freeUsedByIp = new Map<string, number>();
 
@@ -697,7 +739,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
         isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
       }
 
-      sessionStore.set(sessionId, { parsedData: parsed, paid: isFree, createdAt: Date.now(), freeUsed: isFree });
+      await createSession(sessionId, parsed, isFree, isFree);
       console.log(`[ResumeIQ] Session created for ${parsed.name} (free: ${isFree})`);
       res.json({ ...parsed, sessionId, isFree });
     } catch (error: any) {
@@ -707,7 +749,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   });
 
   app.get("/api/resumeiq/session/:sessionId", (req: Request, res: Response) => {
-    const session = sessionStore.get(req.params.sessionId);
+    const session = await getSession(req.params.sessionId);
     if (!session) { res.status(404).json({ error: "Session not found" }); return; }
     res.json(session.parsedData);
   });
@@ -716,8 +758,8 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   app.post("/api/resumeiq/checkout", async (req: Request, res: Response) => {
     try {
       const { sessionId } = req.body;
-      const session = sessionStore.get(sessionId);
-      if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+      const session = await getSession(sessionId);
+      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
       const origin = req.headers.origin || `https://${req.headers.host}`;
       const { url } = await createCheckoutSession(
@@ -734,11 +776,11 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   app.post("/api/resumeiq/verify-payment", async (req: Request, res: Response) => {
     try {
       const { stripeSessionId, resumeiqSession } = req.body;
-      const session = sessionStore.get(resumeiqSession);
+      const session = await getSession(resumeiqSession);
       if (!session) { res.status(404).json({ error: "Session expired" }); return; }
       const paid = await verifyPayment(stripeSessionId);
       if (paid) {
-        session.paid = true;
+        await updateSessionPaid(resumeiqSession);
         const ip = getClientIp(req);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
@@ -753,7 +795,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
     try {
       const { sessionId } = req.body;
 
-      const session = sessionStore.get(sessionId);
+      const session = await getSession(sessionId);
       if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
       if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
 
@@ -789,7 +831,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       }
 
       // Remove session after successful generation
-      sessionStore.delete(sessionId);
+      await deleteSession(sessionId);
 
       const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
