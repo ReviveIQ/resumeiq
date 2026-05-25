@@ -558,41 +558,78 @@ export function registerResumeIQRoutes(app: Express) {
   // ── PERSONALITY ASSESSMENT ───────────────────────────────────────────────
   app.post("/api/resumeiq/personality", async (req: Request, res: Response) => {
     try {
-      const { assessmentType, results, parsedResumeData } = req.body;
-      if (!results) { res.status(400).json({ error: "Assessment results required" }); return; }
+      const { assessments, parsedResumeData } = req.body;
+      if (!assessments || !assessments.length) { res.status(400).json({ error: "No assessment data provided" }); return; }
 
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
 
+      // Extract text from each assessment
+      const assessmentTexts: string[] = [];
+      for (const assessment of assessments) {
+        let text = "";
+        if (assessment.fileBase64 && assessment.fileName) {
+          // PDF/DOCX — extract readable text from base64
+          const buffer = Buffer.from(assessment.fileBase64, "base64");
+          if (assessment.fileName?.toLowerCase().endsWith(".docx")) {
+            try {
+              const JSZipModule = await import("jszip");
+              const JSZip = JSZipModule.default || JSZipModule;
+              const zip = await JSZip.loadAsync(buffer);
+              const docXml = await zip.file("word/document.xml")?.async("string");
+              if (docXml) {
+                text = docXml.replace(/<\/w:p>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+              }
+            } catch (e) { console.warn("DOCX parse failed:", e); }
+          } else {
+            // PDF or TXT — extract ASCII
+            text = buffer.toString("binary").replace(/[^\x20-\x7E\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+          }
+        } else if (assessment.text) {
+          text = assessment.text;
+        }
+        if (text) {
+          assessmentTexts.push(`=== ${assessment.label} ===\n${text}`);
+        }
+      }
+
+      if (assessmentTexts.length === 0) { res.status(400).json({ error: "Could not extract text from assessments" }); return; }
+
+      const isMultiple = assessmentTexts.length > 1;
       const systemPrompt = `You are an expert workplace psychologist and professional resume writer.
-Translate personality assessment results into a professional "Working With Me" section for a resume.
+${isMultiple ? "Synthesize multiple personality assessment results" : "Translate personality assessment results"} into a professional "Working With Me" section for a resume.
+
 CRITICAL RULES:
-- Never mention assessment names (no DISC, MBTI, Predictive Index, TKI, etc.)
-- Never use assessment jargon (no "high D", "ISTJ", "C-style", etc.)
+- Never mention assessment names (no DISC, MBTI, Predictive Index, TKI, 360, etc.)
+- Never use assessment jargon (no "high D", "ISTJ", "C-style", "Strategist", etc.)
 - Write in first person, professional tone
 - Each field: 1-2 sentences maximum
 - Sound self-aware and authentic, not clinical
-- Base it on the assessment AND the person's actual career context
-- Never invent traits not supported by the assessment data`;
+- ${isMultiple ? "Find the COMMON THEMES across all assessments — these are the most reliable insights" : "Base it on the assessment data provided"}
+- Never invent traits not supported by the assessment data
+- Focus on what's most relevant and useful for an employer to know`;
 
-      const userPrompt = `Assessment type: ${assessmentType}
-Assessment results: ${JSON.stringify(results)}
+      const userPrompt = `${isMultiple ? "Multiple assessment results to synthesize" : "Assessment results"}:
+
+${assessmentTexts.join("\n\n")}
+
 Career context: ${JSON.stringify({
   name: parsedResumeData?.name,
   title: parsedResumeData?.title,
   yearsOfExperience: parsedResumeData?.yearsOfExperience,
-  seniorityLevel: parsedResumeData?.seniorityLevel,
-  topMetrics: parsedResumeData?.topMetrics,
+  topMetrics: parsedResumeData?.topMetrics?.slice(0, 2),
 })}
 
 Generate a "Working With Me" section. Return ONLY valid JSON:
 {
-  "communicationStyle": "1-2 sentences",
-  "decisionMaking": "1-2 sentences",
-  "collaboration": "1-2 sentences",
-  "underPressure": "1-2 sentences",
-  "motivation": "1-2 sentences"
+  "communicationStyle": "1-2 sentences about how they communicate and prefer to receive information",
+  "decisionMaking": "1-2 sentences about how they approach decisions and problem solving",
+  "collaboration": "1-2 sentences about how they work with others and what they need from teammates",
+  "underPressure": "1-2 sentences about how they perform and what helps them when stakes are high",
+  "motivation": "1-2 sentences about what energizes them and brings out their best work"
 }`;
+
+      console.log(`[ResumeIQ] Generating Working With Me from ${assessmentTexts.length} assessment(s)`);
 
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -600,7 +637,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
         body: JSON.stringify({
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-          max_tokens: 600, temperature: 0.3,
+          max_tokens: 700, temperature: 0.3,
         }),
       });
 
@@ -609,6 +646,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       const raw = data.choices?.[0]?.message?.content || "{}";
       const clean = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
       const workingWithMe = JSON.parse(clean);
+      console.log(`[ResumeIQ] Working With Me generated successfully`);
       res.json({ workingWithMe });
     } catch (error: any) {
       console.error("[ResumeIQ] Personality error:", error);
@@ -616,7 +654,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
     }
   });
 
-  // ── EMAIL CAPTURE ────────────────────────────────────────────────
+    // ── EMAIL CAPTURE ────────────────────────────────────────────────
   app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
     try {
       const { email, name } = req.body;
