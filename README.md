@@ -1,181 +1,81 @@
+![ReviveIQI](logo-mark.jpg)
+
 # ResumeIQ
 
-> Transform any resume (PDF or DOCX) into a polished, ATS-optimized Word document using GPT-4o.
+**Part of the [ReviveIQI AI Suite](https://reviveiqi.com) · Live at [resumeiq.reviveiqi.com](https://resumeiq.reviveiqi.com)**
 
-**Product #1 in the [ReviveIQI](https://reviveiqi.com) suite.**
+> *Stop getting filtered out before a human sees your name.*
+
+ResumeIQ transforms any resume into a fully optimized, ATS-formatted Word document using AI — with keyword gap analysis built in. Built for revenue professionals and job seekers who move fast.
 
 ---
 
-## Live
+## What It Does
 
-| | |
-|---|---|
-| **Production** | `resumeiq-production-d97e.up.railway.app` |
-| **GitHub** | `github.com/ReviveIQ/resumeiq` (main = production) |
-| **Deploys** | Auto-deploy on push to `main` via Railway |
+- **ATS Optimization** — Reformats your resume to pass applicant tracking systems
+- **AI Keyword Gap Analysis** — Identifies missing keywords and weaves them in naturally
+- **Instant Word Download** — Professional `.docx` file ready to attach to any application
+- **60-Second Turnaround** — Paste or upload, get your optimized resume back in under a minute
+- **Role Targeting** — Customize for specific roles and industries
+- **Private & Secure** — No data stored or shared between sessions
+
+---
+
+## Unified Auth Layer
+
+ResumeIQ is built on the same OAuth architecture as the rest of the ReviveIQI suite — designed from day one to connect with:
+
+| Platform | Connection Type | Usage |
+|----------|----------------|-------|
+| LinkedIn | OAuth 2.0 | Pull profile data to pre-fill resume |
+| Google Workspace | OAuth 2.0 | Import existing docs |
+| MyCareerIQ | Internal | Pass optimized resume directly to applications |
+
+---
+
+## Pricing
+
+| Plan | Price | Details |
+|------|-------|---------|
+| One-Time | $9.99 | Single resume, no subscription |
+| Unlimited | $29/mo | Unlimited resumes, cancel anytime |
 
 ---
 
 ## Tech Stack
 
-| Layer | Tech |
-|---|---|
-| Frontend | React + TypeScript + Vite + Tailwind |
-| Backend | Node.js + Express |
-| Database | TiDB Cloud (MySQL-compatible) via `mysql2` |
-| Deployment | Railway (Docker) + GitHub auto-deploy |
-| AI | OpenAI GPT-4o |
-| Payments | Stripe Checkout |
-| DOCX Generation | `docx` npm package v8+ |
-| Server runner | `tsx` (TypeScript directly, no bundling) |
+- **TypeScript** · React · Vite · Tailwind CSS
+- **Auth:** OAuth aggregation layer (LinkedIn, Google)
+- **AI:** Anthropic Claude API
+- **Deployed on Railway**
 
 ---
 
-## File Structure
+## Roadmap
 
-```
-resumeiq/
-├── client/
-│   └── src/
-│       ├── App.tsx                         ← routing (wouter)
-│       └── pages/
-│           ├── ResumeIQ.tsx                ← main app (~980 lines)
-│           ├── PipelineTracker.jsx         ← admin: uploads/conversions/revenue
-│           └── StripeDashboard.jsx         ← admin: Stripe payment sessions
-├── server/
-│   ├── _core/
-│   │   └── index.ts                        ← Express entry + CORS config
-│   ├── resumeIQRouter.ts                   ← all API routes + DOCX generation
-│   └── authService.ts                      ← DB, auth, user/resume CRUD
-├── shared/
-│   └── const.ts
-├── client/public/
-│   └── logo-gem.jpg
-├── Dockerfile
-├── package.json
-└── railway.json                            ← start command lives here
-```
+- [x] Core ATS optimization
+- [x] Keyword gap analysis
+- [x] Word document download
+- [ ] LinkedIn OAuth — pull profile to pre-fill
+- [ ] Direct integration with MyCareerIQ
+- [ ] Role-specific optimization templates
+- [ ] Cover letter generator
 
 ---
 
-## Environment Variables
+## Part of the ReviveIQI AI Suite
 
-All set in Railway. **Never commit these.**
-
-| Variable | Purpose |
-|---|---|
-| `OPENAI_API_KEY` | GPT-4o resume parsing + generation |
-| `STRIPE_SECRET_KEY` | Stripe server-side (`sk_test_...`) |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe client-side (`pk_test_...`) |
-| `RESUMEIQ_DATABASE_URL` | TiDB Cloud connection string |
-| `JWT_SECRET` | Token signing |
-| `ADMIN_EMAILS` | Comma-separated emails with admin dashboard access |
-| `NODE_ENV` | `production` on Railway |
-| `PORT` | Set by Railway automatically |
+| Product | Status | Description |
+|---------|--------|-------------|
+| [ResumeIQ](https://resumeiq.reviveiqi.com) | ✅ Live | ATS-optimized resume in 60 seconds |
+| MyCareerIQ | ⚡ In Dev | AI-powered career pipeline management |
+| DealForge IQI | ⚡ In Dev | Diagnostic output + revenue recovery assets |
+| SalesAE Workflow Hub | 🔬 In Dev | Secure intake + AI analysis engine |
+| ClearIQ | 🔬 In Dev | Results-driven revenue pipeline tool |
 
 ---
 
-## API Routes
+## Contact
 
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| POST | `/api/resumeiq/auth/register` | — | Create account |
-| POST | `/api/resumeiq/auth/login` | — | Login |
-| GET | `/api/resumeiq/auth/me` | JWT | Get current user |
-| POST | `/api/resumeiq/transform` | — | Parse resume → create session |
-| GET | `/api/resumeiq/session/:id` | — | Get session data |
-| POST | `/api/resumeiq/checkout` | — | Create Stripe checkout session |
-| POST | `/api/resumeiq/verify-payment` | — | Verify Stripe payment |
-| POST | `/api/resumeiq/generate` | — | Generate DOCX + save to DB |
-| POST | `/api/resumeiq/capture-email` | — | Guest email capture |
-| GET | `/api/resumeiq/history` | JWT | User resume history |
-| GET | `/api/resumeiq/resume/:id/download` | JWT | Re-download saved resume |
-| POST | `/api/resumeiq/personality` | — | Generate Working With Me section |
-| GET | `/api/resumeiq/analytics` | Admin JWT | Pipeline + Stripe analytics |
-
----
-
-## Admin Dashboards
-
-Accessible at `/admin/pipeline` and `/admin/stripe` when logged in with an `ADMIN_EMAILS` account.
-
-- **Pipeline tracker** — uploads, conversions, revenue, funnel
-- **Stripe dashboard** — sessions, paid/failed/abandoned, daily revenue
-
-Both pull live data from `/api/resumeiq/analytics`.
-
----
-
-## Database Tables
-
-Auto-created by `initDb()` on server startup.
-
-```sql
-riq_users          -- accounts (email, password hash, plan, resumeCount)
-riq_resumes        -- resume history (userId, parsedData, docxBase64)
-riq_sessions       -- payment sessions (sessionId, parsedData, paid, expiresAt)
-riq_email_captures -- guest email capture for free tier
-```
-
-Sessions are stored in **TiDB** (not memory) — safe to redeploy anytime.
-
----
-
-## User Flow
-
-```
-upload → analyzing → [interview if bad parse] → preview → [Stripe checkout] → done
-```
-
-**Free tier:** 1 resume per user (tracked via `resumeCount`). Guests tracked via cookie + IP.
-
----
-
-## DOCX Style
-
-- Font: Calibri throughout
-- Palette: `#0A1628` (navy) · `#1B4F9B` · `#2E75B6` · `#64748B`
-- Bullets: `▸` in accent blue
-- Skills: borderless table with light blue category shading
-
----
-
-## Payments
-
-Stripe Checkout (sandbox). Test card: `4242 4242 4242 4242` / `12/28` / `123` / `12345`
-
-Pricing:
-- `$9.99` one-time per resume
-- `$29/month` unlimited
-
----
-
-## Personality Assessment Feature
-
-Optional after preview — user uploads DISC, PI, MBTI, TKI, or 360 PDFs.  
-GPT synthesizes into a **Working With Me** section appended to the DOCX.  
-Output fields: Communication Style, Decision Making, Collaboration, Under Pressure, What Brings Out My Best.
-
----
-
-## Workflow Rules
-
-1. No dev branch — push directly to `main`
-2. Always revoke GitHub tokens immediately after use
-3. Token scope needed: `repo` only
-4. Never ask Bryan for API keys already in Railway
-5. `railway.json` controls the start command — not Dockerfile CMD
-6. Sessions are TiDB-backed — safe to redeploy anytime
-
----
-
-## Brand
-
-**ReviveIQI** — *Where Revenue Intelligence Meets Real Execution*
-
-Colors: `#080f1e` · `#0f172a` · `#1e3a5f` (navy) + `#2563eb` · `#3b82f6` · `#60a5fa` · `#93c5fd` (blue)  
-Fonts: Syne 800 (headings) + DM Sans 300–500 (body)
-
----
-
-*ResumeIQ is Product #1 of the ReviveIQI ecosystem. See the full roadmap in `ResumeIQ_Project_Handoff.md`.*
+**Bryan Michael Greer** · Founder, ReviveIQI
+🌐 [reviveiqi.com](https://reviveiqi.com) · ✉️ bryan@reviveiqi.com · 📍 Fort Lauderdale, FL
