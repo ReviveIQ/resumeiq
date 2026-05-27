@@ -166,6 +166,10 @@ export default function ResumeIQ() {
   const [isFree, setIsFree] = useState(false);
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
+  const [guestPassword, setGuestPassword] = useState("");
+  const [guestPasswordConfirm, setGuestPasswordConfirm] = useState("");
+  const [guestAccountError, setGuestAccountError] = useState("");
+  const [showPaidGuestModal, setShowPaidGuestModal] = useState(false);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [personalityStep, setPersonalityStep] = useState(false);
@@ -209,21 +213,50 @@ export default function ResumeIQ() {
       // Restore session data saved before Stripe redirect
       const savedSession = localStorage.getItem("riq_pending_session");
       const savedData = localStorage.getItem("riq_pending_data");
+      const savedToken = localStorage.getItem("riq_token");
 
       if (savedSession && savedData) {
+        const restored = JSON.parse(savedData);
+        setParsedData(restored);
+        setSessionId(savedSession);
+        setIsFree(false);
+
         fetch("/api/resumeiq/verify-payment", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stripeSessionId, resumeiqSession: savedSession }),
-        }).then(r => r.json()).then(d => {
+        }).then(r => r.json()).then(async d => {
           if (d.paid) {
-            const restored = JSON.parse(savedData);
-            setParsedData(restored);
-            setSessionId(savedSession);
-            setIsFree(false);
             // Clear saved state
             localStorage.removeItem("riq_pending_session");
             localStorage.removeItem("riq_pending_data");
-            setView("preview");
+
+            // Auto-generate and download immediately — don't make them click Pay again
+            setDownloading(true);
+            try {
+              const genRes = await fetch("/api/resumeiq/generate", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...(savedToken ? { Authorization: `Bearer ${savedToken}` } : {}),
+                },
+                body: JSON.stringify({ sessionId: savedSession, parsedData: restored }),
+              });
+              if (genRes.ok) {
+                const blob = await genRes.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = `${restored?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
+                a.click(); URL.revokeObjectURL(url);
+                setView("done");
+              } else {
+                // Generation failed — fall back to preview so they can retry
+                setView("preview");
+              }
+            } catch {
+              setView("preview");
+            } finally {
+              setDownloading(false);
+            }
           }
         });
       }
@@ -383,7 +416,7 @@ export default function ResumeIQ() {
     finally { setDownloading(false); }
   };
 
-  const handlePayAndDownload = async () => {
+  const proceedToCheckout = async () => {
     const res = await fetch("/api/resumeiq/checkout", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),
@@ -396,6 +429,19 @@ export default function ResumeIQ() {
       localStorage.setItem("riq_pending_data", JSON.stringify(parsedData));
       window.location.href = data.url;
     }
+  };
+
+  const handlePayAndDownload = async () => {
+    // If not logged in, collect account first so the resume saves after payment
+    if (!user) {
+      setEmail("");
+      setGuestPassword("");
+      setGuestPasswordConfirm("");
+      setGuestAccountError("");
+      setShowPaidGuestModal(true);
+      return;
+    }
+    await proceedToCheckout();
   };
 
   const handleAuth = async (mode: "login" | "register") => {
@@ -423,7 +469,7 @@ export default function ResumeIQ() {
   };
 
   const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
-  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); };
+  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); };
 
   return (
     <div style={S}>
@@ -758,18 +804,51 @@ export default function ResumeIQ() {
               </div>
             </div>
             {isFree && !user && !emailCaptured && (
-              <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "16px", marginBottom: "10px" }}>
-                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: "10px" }}>🎉 Your first resume is free! Enter your email to download.</p>
-                <div style={{ display: "flex", gap: "7px" }}>
-                  <input type="email" placeholder="your@email.com" value={email} onChange={(e: any) => setEmail(e.target.value)}
-                    style={{ flex: 1, padding: "9px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", color: "white", fontSize: "13px", outline: "none" }} />
+              <div style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: "12px", padding: "20px", marginBottom: "10px" }}>
+                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>🎉 Your first resume is free!</p>
+                <p style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "14px" }}>Create a free account to download — your resume will be saved so you can re-download anytime.</p>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <input type="email" placeholder="Email address" value={email} onChange={(e: any) => { setEmail(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "9px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none" }} />
+                  <input type="password" placeholder="Create a password (6+ characters)" value={guestPassword} onChange={(e: any) => { setGuestPassword(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "9px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none" }} />
+                  <input type="password" placeholder="Confirm password" value={guestPasswordConfirm} onChange={(e: any) => { setGuestPasswordConfirm(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "9px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none" }} />
+                  {guestAccountError && <p style={{ color: "#f87171", fontSize: "12px", margin: 0 }}>{guestAccountError}</p>}
                   <button onClick={async () => {
-                    if (!email) return;
-                    await fetch("/api/resumeiq/capture-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, name: parsedData?.name }) });
-                    setEmailCaptured(true); handleDownload();
-                  }} style={{ background: "#4ade80", color: "#0f172a", border: "none", borderRadius: "7px", padding: "9px 18px", fontWeight: 700, cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap" }}>
-                    Get My Resume →
+                    setGuestAccountError("");
+                    if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                    if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
+                    if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
+                    try {
+                      const res = await fetch("/api/resumeiq/auth/register", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email, password: guestPassword }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        if (res.status === 409) {
+                          // Already registered — try login
+                          const loginRes = await fetch("/api/resumeiq/auth/login", {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email, password: guestPassword }),
+                          });
+                          const loginData = await loginRes.json();
+                          if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
+                          setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                        } else { setGuestAccountError(data.error || "Could not create account."); return; }
+                      } else {
+                        setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                      }
+                      setEmailCaptured(true); handleDownload();
+                    } catch { setGuestAccountError("Network error — please try again."); }
+                  }} style={{ background: "#4ade80", color: "#0f172a", border: "none", borderRadius: "7px", padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: "13px" }}>
+                    Create Account &amp; Download Free Resume →
                   </button>
+                  <p style={{ color: "#475569", fontSize: "11px", textAlign: "center", margin: 0 }}>
+                    Already have an account?{" "}
+                    <button onClick={() => setView("login")} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "11px", padding: 0 }}>Sign in</button>
+                  </p>
                 </div>
               </div>
             )}
@@ -967,6 +1046,64 @@ export default function ResumeIQ() {
                     : <><span>✨</span> {assessmentFiles.length > 1 ? `Synthesize ${assessmentFiles.length} Assessments →` : "Add to My Resume →"}</>
                   }
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PAID GUEST ACCOUNT CREATION MODAL ── */}
+        {showPaidGuestModal && (
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
+            <div style={{ background: "#0f172a", border: "1px solid #1e3a5f", borderRadius: "16px", padding: "28px", maxWidth: "420px", width: "100%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                <div style={{ width: "32px", height: "32px", background: "rgba(37,99,235,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <User size={16} color="#60a5fa" />
+                </div>
+                <h2 style={{ color: "white", fontSize: "17px", fontWeight: 700, margin: 0 }}>Create your free account</h2>
+              </div>
+              <p style={{ color: "#64748b", fontSize: "12px", marginBottom: "20px" }}>Your resume will be saved so you can re-download it anytime from your account.</p>
+              <div style={{ display: "grid", gap: "9px" }}>
+                <input type="email" placeholder="Email address" value={email} onChange={(e: any) => { setEmail(e.target.value); setGuestAccountError(""); }}
+                  style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }} />
+                <input type="password" placeholder="Create a password (6+ characters)" value={guestPassword} onChange={(e: any) => { setGuestPassword(e.target.value); setGuestAccountError(""); }}
+                  style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }} />
+                <input type="password" placeholder="Confirm password" value={guestPasswordConfirm} onChange={(e: any) => { setGuestPasswordConfirm(e.target.value); setGuestAccountError(""); }}
+                  style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }} />
+                {guestAccountError && <p style={{ color: "#f87171", fontSize: "12px", margin: 0 }}>{guestAccountError}</p>}
+                <button onClick={async () => {
+                  setGuestAccountError("");
+                  if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                  if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
+                  if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
+                  try {
+                    const res = await fetch("/api/resumeiq/auth/register", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email, password: guestPassword }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      if (res.status === 409) {
+                        const loginRes = await fetch("/api/resumeiq/auth/login", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email, password: guestPassword }),
+                        });
+                        const loginData = await loginRes.json();
+                        if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
+                        setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                      } else { setGuestAccountError(data.error || "Could not create account."); return; }
+                    } else {
+                      setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                    }
+                    setShowPaidGuestModal(false);
+                    await proceedToCheckout();
+                  } catch { setGuestAccountError("Network error — please try again."); }
+                }} style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "8px", padding: "12px", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                  Create Account &amp; Continue to Payment →
+                </button>
+                <p style={{ color: "#475569", fontSize: "11px", textAlign: "center", margin: 0 }}>
+                  Already have an account?{" "}
+                  <button onClick={() => { setShowPaidGuestModal(false); setView("login"); }} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "11px", padding: 0 }}>Sign in</button>
+                </p>
               </div>
             </div>
           </div>
