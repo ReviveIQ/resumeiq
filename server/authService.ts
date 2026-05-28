@@ -49,6 +49,8 @@ export async function initDb() {
         name VARCHAR(255),
         plan ENUM('free','starter','monthly','agency') DEFAULT 'free',
         resumeCount INT DEFAULT 0,
+        personalityUnlocked TINYINT DEFAULT 0,
+        workingWithMeData JSON,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -94,6 +96,21 @@ export async function initDb() {
   }
 }
 
+// Add new columns to existing tables if they don't exist yet (safe to run on every startup)
+export async function migrateDb() {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS personalityUnlocked TINYINT DEFAULT 0`);
+    await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS workingWithMeData JSON`);
+    console.log("[ResumeIQ] DB migration complete ✓");
+  } catch (err) {
+    console.warn("[ResumeIQ] DB migration warning:", err);
+  } finally {
+    await conn.end();
+  }
+}
+
 export async function createUser(email: string, password: string, name: string) {
   const conn = await getDb();
   if (!conn) throw new Error("Database not available");
@@ -130,9 +147,35 @@ export async function getUserById(id: number) {
   if (!conn) return null;
   try {
     const [rows] = await conn.execute(
-      "SELECT id, email, name, plan, resumeCount, createdAt FROM riq_users WHERE id = ?", [id]
+      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData, createdAt FROM riq_users WHERE id = ?", [id]
     ) as any;
     return rows[0] || null;
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function unlockPersonality(userId: number, workingWithMe: any) {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute(
+      "UPDATE riq_users SET personalityUnlocked = 1, workingWithMeData = ? WHERE id = ?",
+      [JSON.stringify(workingWithMe), userId]
+    );
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function saveWorkingWithMe(userId: number, workingWithMe: any) {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute(
+      "UPDATE riq_users SET workingWithMeData = ? WHERE id = ?",
+      [JSON.stringify(workingWithMe), userId]
+    );
   } finally {
     await conn.end();
   }
