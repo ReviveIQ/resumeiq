@@ -158,6 +158,16 @@ function ExperienceEntry({ exp, idx, onChange, onDelete }: { exp: any; idx: numb
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
+
+const ASSESSMENT_TYPES = [
+  { id: "disc",  label: "DISC",            hint: "Dominance, Influence, Steadiness, Compliance" },
+  { id: "mbti",  label: "Myers-Briggs",    hint: "ISTJ, ENFP, etc." },
+  { id: "pi",    label: "Predictive Index", hint: "Strategist, Maverick, etc." },
+  { id: "tki",   label: "Thomas-Kilmann",  hint: "Conflict style profile" },
+  { id: "360",   label: "360 Feedback",    hint: "Multi-rater assessment" },
+  { id: "other", label: "Other",           hint: "Any other assessment" },
+];
+
 export default function ResumeIQ() {
   const [view, setView] = useState<View>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -177,6 +187,7 @@ export default function ResumeIQ() {
   const [assessmentInput, setAssessmentInput] = useState("");
   const [personalityLoading, setPersonalityLoading] = useState(false);
   const [workingWithMe, setWorkingWithMe] = useState<any>(null);
+  const [assessmentFiles, setAssessmentFiles] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
   const [authEmail, setAuthEmail] = useState("");
@@ -368,18 +379,28 @@ export default function ResumeIQ() {
     ...p, experience: [{ title: "", company: "", location: "", startDate: "", endDate: "Present", description: "", bullets: [""], achievements: [] }, ...(p.experience || [])]
   }));
 
+  // ── Assessment helpers ───────────────────────────────────────────────────
+  const addAssessmentSlot = (id: string, label: string) =>
+    setAssessmentFiles(prev => [...prev, { id, label, fileName: "", fileBase64: "", textInput: "" }]);
+  const removeAssessmentSlot = (id: string) =>
+    setAssessmentFiles(prev => prev.filter(a => a.id !== id));
+  const updateAssessmentFile = (id: string, fileName: string, fileBase64: string) =>
+    setAssessmentFiles(prev => prev.map(a => a.id === id ? { ...a, fileName, fileBase64 } : a));
+  const updateAssessmentText = (id: string, textInput: string) =>
+    setAssessmentFiles(prev => prev.map(a => a.id === id ? { ...a, textInput } : a));
+
   // ── Download ─────────────────────────────────────────────────────────────
   const handlePersonalityGenerate = async () => {
     setPersonalityLoading(true);
     try {
+      const assessments = assessmentFiles
+        .filter(a => a.fileBase64 || a.textInput)
+        .map(a => ({ label: a.label, fileBase64: a.fileBase64 || undefined, fileName: a.fileName || undefined, text: a.textInput || undefined }));
+
       const res = await fetch("/api/resumeiq/personality", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assessmentType: selectedAssessment,
-          results: assessmentInput,
-          parsedResumeData: parsedData,
-        }),
+        body: JSON.stringify({ assessments, parsedResumeData: parsedData }),
       });
       const data = await res.json();
       if (data.workingWithMe) {
@@ -387,7 +408,10 @@ export default function ResumeIQ() {
         setParsedData(updatedData);
         setWorkingWithMe(data.workingWithMe);
         setPersonalityStep(false);
+        setAssessmentFiles([]);
         await handleDownloadWithData(updatedData);
+      } else {
+        setError(data.error || "Failed to generate Working With Me section");
       }
     } catch (err: any) { setError(err.message); }
     finally { setPersonalityLoading(false); }
@@ -469,7 +493,7 @@ export default function ResumeIQ() {
   };
 
   const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
-  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); };
+  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); };
 
   return (
     <div style={S}>
