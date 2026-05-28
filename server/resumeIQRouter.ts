@@ -1,12 +1,13 @@
 import type { Express, Request, Response } from "express";
-import { createCheckoutSession, verifyPayment } from "./stripeService";
+import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, verifyPayment } from "./stripeService";
 import crypto from "crypto";
 import JSZip from "jszip";
 // docx imported dynamically inside generateDocx to avoid ESM/CJS interop issues
 import {
-  initDb, createUser, loginUser, getUserById, saveResume,
+  initDb, migrateDb, createUser, loginUser, getUserById, saveResume,
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
-  generateToken, verifyToken, upgradeToStarter, incrementResumeCount
+  generateToken, verifyToken, upgradeToStarter, incrementResumeCount,
+  unlockPersonality, saveWorkingWithMe,
 } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
@@ -566,6 +567,7 @@ export function registerResumeIQRoutes(app: Express) {
 
   // Initialize DB tables on startup
   initDb().catch(console.error);
+  migrateDb().catch(console.error);
 
   // ── AUTH ──────────────────────────────────────────────────────────
   app.post("/api/resumeiq/auth/register", async (req: Request, res: Response) => {
@@ -639,7 +641,6 @@ export function registerResumeIQRoutes(app: Express) {
       for (const assessment of assessments) {
         let text = "";
         if (assessment.fileBase64 && assessment.fileName) {
-          // PDF/DOCX — extract readable text from base64
           const buffer = Buffer.from(assessment.fileBase64, "base64");
           if (assessment.fileName?.toLowerCase().endsWith(".docx")) {
             try {
@@ -652,15 +653,12 @@ export function registerResumeIQRoutes(app: Express) {
               }
             } catch (e) { console.warn("DOCX parse failed:", e); }
           } else {
-            // PDF or TXT — extract ASCII
             text = buffer.toString("binary").replace(/[^\x20-\x7E\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
           }
         } else if (assessment.text) {
           text = assessment.text;
         }
-        if (text) {
-          assessmentTexts.push(`=== ${assessment.label} ===\n${text}`);
-        }
+        if (text) assessmentTexts.push(`=== ${assessment.label} ===\n${text}`);
       }
 
       if (assessmentTexts.length === 0) { res.status(400).json({ error: "Could not extract text from assessments" }); return; }
@@ -677,7 +675,8 @@ CRITICAL RULES:
 - Sound self-aware and authentic, not clinical
 - ${isMultiple ? "Find the COMMON THEMES across all assessments — these are the most reliable insights" : "Base it on the assessment data provided"}
 - Never invent traits not supported by the assessment data
-- Focus on what's most relevant and useful for an employer to know`;
+- Focus on what's most relevant and useful for an employer to know
+- For teaserFields: pick the 2 field keys that are MOST compelling and differentiated for this specific person`;
 
       const userPrompt = `${isMultiple ? "Multiple assessment results to synthesize" : "Assessment results"}:
 
@@ -692,12 +691,16 @@ Career context: ${JSON.stringify({
 
 Generate a "Working With Me" section. Return ONLY valid JSON:
 {
-  "communicationStyle": "1-2 sentences about how they communicate and prefer to receive information",
-  "decisionMaking": "1-2 sentences about how they approach decisions and problem solving",
-  "collaboration": "1-2 sentences about how they work with others and what they need from teammates",
-  "underPressure": "1-2 sentences about how they perform and what helps them when stakes are high",
-  "motivation": "1-2 sentences about what energizes them and brings out their best work"
-}`;
+  "communicationStyle": "1-2 sentences",
+  "decisionMaking": "1-2 sentences",
+  "collaboration": "1-2 sentences",
+  "underPressure": "1-2 sentences",
+  "motivation": "1-2 sentences",
+  "teaserFields": ["fieldKey1", "fieldKey2"]
+}
+
+teaserFields must be exactly 2 keys from: communicationStyle, decisionMaking, collaboration, underPressure, motivation.
+Pick the 2 that are most insightful and compelling for THIS specific person.`;
 
       console.log(`[ResumeIQ] Generating Working With Me from ${assessmentTexts.length} assessment(s)`);
 
@@ -707,7 +710,7 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
         body: JSON.stringify({
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-          max_tokens: 700, temperature: 0.3,
+          max_tokens: 800, temperature: 0.3,
         }),
       });
 
@@ -715,11 +718,44 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       const data = await response.json() as any;
       const raw = data.choices?.[0]?.message?.content || "{}";
       const clean = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-      const workingWithMe = JSON.parse(clean);
-      console.log(`[ResumeIQ] Working With Me generated successfully`);
-      res.json({ workingWithMe });
+      const result = JSON.parse(clean);
+      const { teaserFields, ...workingWithMe } = result;
+
+      // Check if this user already has personality unlocked — if so, save immediately
+      const tokenUser = getTokenUser(req);
+      if (tokenUser) {
+        const dbUser = await getUserById(tokenUser.userId);
+        if (dbUser?.personalityUnlocked) {
+          await saveWorkingWithMe(tokenUser.userId, workingWithMe);
+        }
+      }
+
+      console.log(`[ResumeIQ] Working With Me generated, teaser fields: ${teaserFields}`);
+      res.json({ workingWithMe, teaserFields: teaserFields || ["communicationStyle", "decisionMaking"] });
     } catch (error: any) {
       console.error("[ResumeIQ] Personality error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── PERSONALITY CHECKOUT ─────────────────────────────────────────────────
+  app.post("/api/resumeiq/personality-checkout", async (req: Request, res: Response) => {
+    try {
+      const { resumeiqSession, type } = req.body; // type: "personality" | "bundle"
+      const session = await getSession(resumeiqSession);
+      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+      const origin = req.headers.origin || `https://${req.headers.host}`;
+      const successUrl = `${origin}/?payment=success&`;
+      const cancelUrl = `${origin}/?payment=cancelled`;
+
+      let result;
+      if (type === "bundle") {
+        result = await createBundleCheckoutSession(successUrl, cancelUrl, resumeiqSession);
+      } else {
+        result = await createPersonalityCheckoutSession(successUrl, cancelUrl, resumeiqSession);
+      }
+      res.json({ url: result.url });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
@@ -804,15 +840,47 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
   app.post("/api/resumeiq/verify-payment", async (req: Request, res: Response) => {
     try {
       const { stripeSessionId, resumeiqSession } = req.body;
-      const session = await getSession(resumeiqSession);
-      if (!session) { res.status(404).json({ error: "Session expired" }); return; }
       const paid = await verifyPayment(stripeSessionId);
-      if (paid) {
-        await updateSessionPaid(resumeiqSession);
-        const ip = getClientIp(req);
+      if (!paid) { res.json({ paid: false }); return; }
+
+      // Get the type from Stripe metadata
+      const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${stripeSessionId}`, {
+        headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+      });
+      const stripeData = await stripeRes.json() as any;
+      const type = stripeData.metadata?.type || "resume"; // resume | personality | bundle
+
+      const ip = getClientIp(req);
+      const tokenUser = getTokenUser(req);
+
+      if (type === "resume") {
+        const session = await getSession(resumeiqSession);
+        if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
+
+      } else if (type === "personality") {
+        // Personality-only: mark session as paid for generate, unlock on account
+        const session = await getSession(resumeiqSession);
+        if (session) await updateSessionPaid(resumeiqSession);
+        if (tokenUser) {
+          const pendingWWM = req.body.workingWithMe;
+          if (pendingWWM) await unlockPersonality(tokenUser.userId, pendingWWM);
+          else await unlockPersonality(tokenUser.userId, {});
+        }
+
+      } else if (type === "bundle") {
+        // Bundle: mark session paid + unlock personality
+        const session = await getSession(resumeiqSession);
+        if (session) await updateSessionPaid(resumeiqSession);
+        freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
+        if (tokenUser) {
+          const pendingWWM = req.body.workingWithMe;
+          if (pendingWWM) await unlockPersonality(tokenUser.userId, pendingWWM);
+          else await unlockPersonality(tokenUser.userId, {});
+        }
       }
-      res.json({ paid });
+
+      res.json({ paid: true, type });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -829,7 +897,19 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
 
       // Use client-side edited data if provided (preserves preview edits + workingWithMe),
       // falling back to original session data
-      const data = sanitizeData({ ...session.parsedData, ...(clientData || {}) });
+      let data = sanitizeData({ ...session.parsedData, ...(clientData || {}) });
+
+      // Auto-append stored workingWithMe for users who have personality unlocked
+      const tokenUser = getTokenUser(req);
+      if (tokenUser && !data.workingWithMe) {
+        const dbUser = await getUserById(tokenUser.userId);
+        if (dbUser?.personalityUnlocked && dbUser?.workingWithMeData) {
+          const stored = typeof dbUser.workingWithMeData === "string"
+            ? JSON.parse(dbUser.workingWithMeData)
+            : dbUser.workingWithMeData;
+          data = { ...data, workingWithMe: stored };
+        }
+      }
 
       // Mark free IP usage now (at actual download time, not transform time)
       if (session.freeUsed) {
@@ -841,7 +921,6 @@ Generate a "Working With Me" section. Return ONLY valid JSON:
       const docxBase64 = buffer.toString("base64");
 
       // ── Save to DB if logged in ───────────────────────────────────
-      const tokenUser = getTokenUser(req);
       if (tokenUser) {
         try {
           await saveResume(
