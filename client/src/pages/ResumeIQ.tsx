@@ -187,6 +187,8 @@ export default function ResumeIQ() {
   const [assessmentInput, setAssessmentInput] = useState("");
   const [personalityLoading, setPersonalityLoading] = useState(false);
   const [workingWithMe, setWorkingWithMe] = useState<any>(null);
+  const [workingWithMeTeaser, setWorkingWithMeTeaser] = useState<any>(null);
+  const [teaserFields, setTeaserFields] = useState<string[]>([]);
   const [assessmentFiles, setAssessmentFiles] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
@@ -225,23 +227,37 @@ export default function ResumeIQ() {
       const savedSession = localStorage.getItem("riq_pending_session");
       const savedData = localStorage.getItem("riq_pending_data");
       const savedToken = localStorage.getItem("riq_token");
+      const savedWWM = localStorage.getItem("riq_pending_wwm");
 
       if (savedSession && savedData) {
         const restored = JSON.parse(savedData);
+        const restoredWWM = savedWWM ? JSON.parse(savedWWM) : null;
         setParsedData(restored);
         setSessionId(savedSession);
         setIsFree(false);
 
         fetch("/api/resumeiq/verify-payment", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stripeSessionId, resumeiqSession: savedSession }),
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(savedToken ? { Authorization: `Bearer ${savedToken}` } : {}),
+          },
+          body: JSON.stringify({
+            stripeSessionId,
+            resumeiqSession: savedSession,
+            workingWithMe: restoredWWM,
+          }),
         }).then(r => r.json()).then(async d => {
           if (d.paid) {
-            // Clear saved state
             localStorage.removeItem("riq_pending_session");
             localStorage.removeItem("riq_pending_data");
+            localStorage.removeItem("riq_pending_wwm");
 
-            // Auto-generate and download immediately — don't make them click Pay again
+            // Merge workingWithMe into data if this was a personality or bundle purchase
+            const finalData = (d.type === "personality" || d.type === "bundle") && restoredWWM
+              ? { ...restored, workingWithMe: restoredWWM }
+              : restored;
+
             setDownloading(true);
             try {
               const genRes = await fetch("/api/resumeiq/generate", {
@@ -250,17 +266,16 @@ export default function ResumeIQ() {
                   "Content-Type": "application/json",
                   ...(savedToken ? { Authorization: `Bearer ${savedToken}` } : {}),
                 },
-                body: JSON.stringify({ sessionId: savedSession, parsedData: restored }),
+                body: JSON.stringify({ sessionId: savedSession, parsedData: finalData }),
               });
               if (genRes.ok) {
                 const blob = await genRes.blob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.href = url; a.download = `${restored?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
+                a.href = url; a.download = `${finalData?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
                 a.click(); URL.revokeObjectURL(url);
                 setView("done");
               } else {
-                // Generation failed — fall back to preview so they can retry
                 setView("preview");
               }
             } catch {
@@ -389,9 +404,18 @@ export default function ResumeIQ() {
   const updateAssessmentText = (id: string, textInput: string) =>
     setAssessmentFiles(prev => prev.map(a => a.id === id ? { ...a, textInput } : a));
 
+  const FIELD_LABELS: Record<string, string> = {
+    communicationStyle: "Communication Style",
+    decisionMaking: "Decision Making",
+    collaboration: "Collaboration",
+    underPressure: "Under Pressure",
+    motivation: "What Brings Out My Best",
+  };
+
   // ── Download ─────────────────────────────────────────────────────────────
   const handlePersonalityGenerate = async () => {
     setPersonalityLoading(true);
+    setError("");
     try {
       const assessments = assessmentFiles
         .filter(a => a.fileBase64 || a.textInput)
@@ -399,22 +423,44 @@ export default function ResumeIQ() {
 
       const res = await fetch("/api/resumeiq/personality", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ assessments, parsedResumeData: parsedData }),
       });
       const data = await res.json();
       if (data.workingWithMe) {
-        const updatedData = { ...parsedData, workingWithMe: data.workingWithMe };
-        setParsedData(updatedData);
-        setWorkingWithMe(data.workingWithMe);
+        setWorkingWithMeTeaser(data.workingWithMe);
+        setTeaserFields(data.teaserFields || ["communicationStyle", "decisionMaking"]);
         setPersonalityStep(false);
-        setAssessmentFiles([]);
-        await handleDownloadWithData(updatedData);
+        // personalityTeaser view will show
       } else {
         setError(data.error || "Failed to generate Working With Me section");
       }
     } catch (err: any) { setError(err.message); }
     finally { setPersonalityLoading(false); }
+  };
+
+  const handlePersonalityUnlock = async () => {
+    // Determine checkout type based on whether resume is already paid
+    const resumeAlreadyPaid = isFree || (sessionId && await (async () => {
+      try {
+        const s = await fetch(`/api/resumeiq/session/${sessionId}`);
+        return false; // session exists = not yet generated/paid via personality flow
+      } catch { return false; }
+    })());
+
+    const type = (!isFree) ? "bundle" : "personality";
+    const res = await fetch("/api/resumeiq/personality-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeiqSession: sessionId, type }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      localStorage.setItem("riq_pending_session", sessionId);
+      localStorage.setItem("riq_pending_data", JSON.stringify(parsedData));
+      localStorage.setItem("riq_pending_wwm", JSON.stringify(workingWithMeTeaser));
+      window.location.href = data.url;
+    }
   };
 
   const handleDownload = async () => { await handleDownloadWithData(parsedData); };
@@ -493,7 +539,7 @@ export default function ResumeIQ() {
   };
 
   const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
-  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); };
+  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); setWorkingWithMeTeaser(null); setTeaserFields([]); };
 
   return (
     <div style={S}>
@@ -986,17 +1032,16 @@ export default function ResumeIQ() {
         )}
 
 
-        {/* ── PERSONALITY STEP ── */}
-        {personalityStep && (
+        {/* ── PERSONALITY STEP: Upload assessments ── */}
+        {personalityStep && !workingWithMeTeaser && (
           <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
             <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "580px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
                 <div style={{ fontSize: "36px", marginBottom: "8px" }}>🧠</div>
                 <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Add "Working With Me"</h2>
-                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Add one or more assessments — we'll synthesize them into a single professional section that shows how you work best.</p>
+                <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Upload your assessments — we'll synthesize them into a professional section that shows how you work best.</p>
               </div>
 
-              {/* Assessment type chips */}
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ color: "#64748b", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "8px" }}>Select assessments to include:</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
@@ -1016,7 +1061,6 @@ export default function ResumeIQ() {
                 </div>
               </div>
 
-              {/* Upload slot per assessment */}
               {assessmentFiles.map((a: any) => (
                 <div key={a.id} style={{ marginBottom: "10px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
@@ -1035,8 +1079,7 @@ export default function ResumeIQ() {
                       }} />
                     {a.fileName
                       ? <p style={{ color: "#4ade80", fontSize: "12px", margin: 0 }}>📄 {a.fileName} <span style={{ color: "#64748b" }}>(click to replace)</span></p>
-                      : <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>📎 Upload {a.label} PDF — click to browse</p>
-                    }
+                      : <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>📎 Upload {a.label} PDF — click to browse</p>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                     <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.06)" }}/>
@@ -1050,9 +1093,7 @@ export default function ResumeIQ() {
               ))}
 
               {assessmentFiles.length === 0 && (
-                <div style={{ textAlign: "center", padding: "16px", color: "#334155", fontSize: "13px" }}>
-                  Select at least one assessment above to get started
-                </div>
+                <div style={{ textAlign: "center", padding: "16px", color: "#334155", fontSize: "13px" }}>Select at least one assessment above to get started</div>
               )}
 
               {error && <p style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{error}</p>}
@@ -1067,10 +1108,83 @@ export default function ResumeIQ() {
                   style={{ flex: 2, background: assessmentFiles.filter((a: any) => a.fileBase64 || a.textInput).length > 0 ? "#2563eb" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
                   {personalityLoading
                     ? <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span> Synthesizing...</>
-                    : <><span>✨</span> {assessmentFiles.length > 1 ? `Synthesize ${assessmentFiles.length} Assessments →` : "Add to My Resume →"}</>
-                  }
+                    : <><span>✨</span> {assessmentFiles.length > 1 ? `Synthesize ${assessmentFiles.length} Assessments →` : "Synthesize →"}</>}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PERSONALITY TEASER: Show 2 fields, blur 3, upsell ── */}
+        {workingWithMeTeaser && (
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
+            <div style={{ background: "#0f172a", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "16px", padding: "28px", maxWidth: "560px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <div style={{ fontSize: "32px", marginBottom: "8px" }}>✨</div>
+                <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Your "Working With Me" is Ready</h2>
+                <p style={{ color: "#94a3b8", fontSize: "13px" }}>Here's a preview of what gets added to your resume.</p>
+              </div>
+
+              {/* All 5 fields — teaser ones visible, others blurred */}
+              <div style={{ display: "grid", gap: "10px", marginBottom: "20px" }}>
+                {Object.entries(FIELD_LABELS).map(([key, label]) => {
+                  const isVisible = teaserFields.includes(key);
+                  return (
+                    <div key={key} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "14px", border: `1px solid ${isVisible ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`, position: "relative" }}>
+                      <p style={{ color: "#60a5fa", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "5px" }}>{label}</p>
+                      <p style={{
+                        color: "white", fontSize: "13px", lineHeight: "1.6", margin: 0,
+                        filter: isVisible ? "none" : "blur(4px)",
+                        userSelect: isVisible ? "auto" : "none",
+                        opacity: isVisible ? 1 : 0.6,
+                      }}>
+                        {workingWithMeTeaser[key]}
+                      </p>
+                      {!isVisible && (
+                        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "10px" }}>
+                          <span style={{ background: "rgba(37,99,235,0.2)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: "999px", padding: "4px 12px", color: "#60a5fa", fontSize: "11px", fontWeight: 600 }}>🔒 Unlock to reveal</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pricing */}
+              <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>
+                    {!isFree ? "Resume + Working With Me" : "Working With Me — Lifetime Unlock"}
+                  </span>
+                  <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>
+                    {!isFree ? "$13.98" : "$3.99"}
+                  </span>
+                </div>
+                {!isFree && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$9.99</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "#64748b", fontSize: "12px" }}>Working With Me unlock</span>
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$3.99</span>
+                    </div>
+                  </div>
+                )}
+                <p style={{ color: "#64748b", fontSize: "11px", marginTop: "8px", marginBottom: 0 }}>
+                  🎁 Once unlocked, Working With Me is auto-added to all your future resumes — free forever.
+                </p>
+              </div>
+
+              <button onClick={handlePersonalityUnlock}
+                style={{ width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginBottom: "10px" }}>
+                {!isFree ? "Pay $13.98 — Get Resume + Unlock Working With Me →" : "Pay $3.99 — Unlock Working With Me →"}
+              </button>
+              <button onClick={() => { setWorkingWithMeTeaser(null); setTeaserFields([]); setAssessmentFiles([]); }}
+                style={{ width: "100%", background: "none", color: "#475569", border: "none", fontSize: "12px", cursor: "pointer", padding: "6px" }}>
+                Skip for now
+              </button>
             </div>
           </div>
         )}
