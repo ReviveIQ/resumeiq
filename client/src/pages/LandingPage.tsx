@@ -264,7 +264,7 @@ export default function LandingPage() {
             ATS-OPTIMIZED · KEYWORD-RICH · READY TO DEPLOY
           </div>
 
-          <h1 className="fade-up-1" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(42px, 6vw, 72px)", fontWeight: 800, lineHeight: 1.08, marginBottom: "24px", letterSpacing: "-0.02em" }}>
+          <h1 className="fade-up-1" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, lineHeight: 1.1, marginBottom: "24px", letterSpacing: "-0.02em" }}>
             Your resume is a<br />
             <span style={{ background: "linear-gradient(135deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>digital asset.</span>
             <br />Treat it like one.
@@ -282,10 +282,6 @@ export default function LandingPage() {
               See how it works
             </button>
           </div>
-
-          <p className="fade-up-4" style={{ color: "#334155", fontSize: "12px", marginTop: "20px" }}>
-            $9.99 one-time · No subscription · Re-download anytime
-          </p>
         </div>
       </section>
 
@@ -294,7 +290,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>The problem</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, marginBottom: "16px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
               Most resumes fail before<br />a human ever reads them.
             </h2>
             <p style={{ color: "#64748b", fontSize: "16px", maxWidth: "500px", margin: "0 auto" }}>
@@ -356,7 +352,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "56px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>How it works</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, marginBottom: "16px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
               Upload. Review. Download.<br />Done in minutes.
             </h2>
           </div>
@@ -378,7 +374,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>Pricing</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, marginBottom: "12px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "12px" }}>
               One-time. No subscription. Yours forever.
             </h2>
             <p style={{ color: "#64748b", fontSize: "15px" }}>Pay once. Re-download anytime from your account.</p>
@@ -417,7 +413,7 @@ export default function LandingPage() {
       <section style={{ padding: "100px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
         <div className="mesh" style={{ background: "rgba(37,99,235,0.12)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
         <div style={{ position: "relative", maxWidth: "600px", margin: "0 auto" }}>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, marginBottom: "20px", lineHeight: 1.1 }}>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 32px)", fontWeight: 800, marginBottom: "20px", lineHeight: 1.1 }}>
             Your next opportunity<br />is reading your resume<br /><span style={{ color: "#60a5fa" }}>right now.</span>
           </h2>
           <p style={{ color: "#64748b", fontSize: "16px", marginBottom: "36px", lineHeight: 1.6 }}>
