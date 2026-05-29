@@ -147,7 +147,8 @@ const PRICING = [
       "Saved to your account forever",
       "Re-download anytime",
     ],
-    cta: "Transform My Resume",
+    note: null,
+    cta: "Try It Free →",
     highlighted: false,
   },
   {
@@ -156,25 +157,27 @@ const PRICING = [
     description: "Best value — one-time",
     features: [
       "Everything in Single Resume",
-      "Personality assessment synthesis",
-      "Professional 'Working With Me' section",
+      "Upload your personality assessments (DISC, MBTI, PI, TKI, 360, or any)",
+      "AI synthesizes them into a professional 'Working With Me' section",
       "Auto-added to all future resumes",
       "Free re-synthesis forever",
     ],
+    note: "📋 Requires at least one personality assessment PDF or results you can paste in.",
     cta: "Get Both →",
     highlighted: true,
   },
   {
-    name: "Personality Unlock",
+    name: "Working With Me Add-On",
     price: "$3.99",
     description: "Already have a resume? Add this.",
     features: [
-      "Synthesize DISC, MBTI, PI, TKI, 360",
-      "Jargon-free professional language",
+      "Upload DISC, MBTI, PI, TKI, 360, or any assessment",
+      "Jargon-free professional language — no test names mentioned",
       "5 workplace insight fields",
       "Lifetime unlock on your account",
       "Auto-appended to every future resume",
     ],
+    note: "📋 Requires at least one personality assessment PDF or results you can paste in.",
     cta: "Unlock Working With Me",
     highlighted: false,
   },
@@ -381,6 +384,9 @@ export default function LandingPage() {
               One-time. No subscription. Yours forever.
             </h2>
             <p style={{ color: "#64748b", fontSize: "15px" }}>Pay once. Re-download anytime from your account.</p>
+            <p style={{ color: "#475569", fontSize: "13px", marginTop: "10px" }}>
+              💡 The "Working With Me" add-on requires a personality assessment (DISC, Myers-Briggs, Predictive Index, TKI, 360 Feedback, or similar). Don't have one? The resume-only option is all you need.
+            </p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
             {PRICING.map((plan, i) => (
@@ -402,6 +408,11 @@ export default function LandingPage() {
                       <span>{f}</span>
                     </div>
                   ))}
+                  {plan.note && (
+                    <div style={{ marginTop: "12px", padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", fontSize: "12px", color: "#64748b", lineHeight: 1.5 }}>
+                      {plan.note}
+                    </div>
+                  )}
                 </div>
                 <button className={plan.highlighted ? "cta-btn" : "cta-btn-outline"} onClick={() => navigate("/app")} style={{ width: "100%", textAlign: "center" }}>
                   {plan.cta}
