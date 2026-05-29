@@ -776,6 +776,14 @@ export default function ResumeIQ() {
               <CheckCircle size={40} color="#4ade80" style={{ margin: "0 auto 10px" }} />
               <h2 style={{ color: "white", fontSize: "22px", fontWeight: "bold", marginBottom: "6px" }}>Analysis Complete</h2>
               <p style={{ color: "#94a3b8", fontSize: "13px" }}>Review and edit your information below — every section is editable before you download.</p>
+              {isFree && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "8px", padding: "8px 14px", marginTop: "10px" }}>
+                  <span style={{ fontSize: "14px" }}>✏️</span>
+                  <p style={{ color: "#4ade80", fontSize: "12px", margin: 0 }}>
+                    <strong>Make it yours before you download.</strong> Edit any field, bullet, or section — your free resume is fully editable. Get it exactly right, then download.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
