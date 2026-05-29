@@ -217,6 +217,7 @@ export default function LandingPage() {
         .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(37,99,235,0.4); }
         .cta-btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 14px 28px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
         .cta-btn-outline:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.4); }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
         .resume-dot { width: 8px; height: 8px; border-radius: 50%; border: none; cursor: pointer; transition: all 0.2s; }
         .step-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 28px; transition: all 0.3s; }
         .step-card:hover { background: rgba(255,255,255,0.05); border-color: rgba(37,99,235,0.3); transform: translateY(-4px); }
@@ -278,16 +279,27 @@ export default function LandingPage() {
           </p>
 
           <div className="fade-up-3" style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="cta-btn" onClick={() => navigate("/app")} style={{ fontSize: "16px", padding: "18px 42px" }}>
-              Try It Free →
+            <button className="cta-btn" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: "16px", padding: "18px 42px" }}>
+              See How It Works ↓
             </button>
-            <button className="cta-btn-outline" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
-              See how it works
+            <button className="cta-btn-outline" onClick={() => navigate("/app")}>
+              Try It Free →
             </button>
           </div>
           <p style={{ color: "#475569", fontSize: "12px", marginTop: "16px" }}>
             First resume free · $9.99 after that · No credit card required
           </p>
+          {/* Scroll nudge */}
+          <div style={{ marginTop: "48px", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", opacity: 0.4 }}>
+            <span style={{ color: "#94a3b8", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase" }}>Scroll to explore</span>
+            <svg width="16" height="24" viewBox="0 0 16 24" fill="none" style={{ animation: "bounce 1.8s infinite" }}>
+              <rect x="1" y="1" width="14" height="22" rx="7" stroke="#94a3b8" strokeWidth="1.5"/>
+              <rect x="6.5" y="5" width="3" height="5" rx="1.5" fill="#94a3b8">
+                <animate attributeName="y" values="5;11;5" dur="1.8s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite"/>
+              </rect>
+            </svg>
+          </div>
         </div>
       </section>
 
