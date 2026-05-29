@@ -1,13 +1,31 @@
 /**
  * ResumeIQ Stripe Integration
  * Handles payment sessions for resume transformations
+ *
+ * STRIPE_TEST_MODE env var:
+ *   Set to "true" in Railway to force test keys even in production.
+ *   Uses STRIPE_SECRET_KEY_TEST + STRIPE_PUBLISHABLE_KEY_TEST when active.
+ *   Remove or set to "false" to go live with real payments.
  */
 
-const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
-const STRIPE_PRICE = 999;       // $9.99 resume
-const STRIPE_PERSONALITY = 399; // $3.99 personality unlock
-const STRIPE_BUNDLE = 1398;     // $13.98 resume + personality
+const isTestMode = process.env.STRIPE_TEST_MODE === "true";
+
+// In test mode, fall back to test-specific keys if provided, otherwise use the main key
+const STRIPE_SECRET = isTestMode
+  ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
+  : process.env.STRIPE_SECRET_KEY;
+
+const STRIPE_PRICE       = 999;   // $9.99 resume
+const STRIPE_PERSONALITY = 399;   // $3.99 personality unlock
+const STRIPE_BUNDLE      = 1398;  // $13.98 resume + personality
 const CURRENCY = "usd";
+
+// Log mode on startup
+if (isTestMode) {
+  console.log("[Stripe] ⚠️  TEST MODE active — no real charges will occur");
+} else {
+  console.log("[Stripe] ✅ LIVE MODE — real payments enabled");
+}
 
 async function stripePost(body: Record<string, string>): Promise<any> {
   if (!STRIPE_SECRET) throw new Error("STRIPE_SECRET_KEY not configured");
@@ -85,19 +103,19 @@ export async function createBundleCheckoutSession(
 
 export async function verifyPayment(stripeSessionId: string): Promise<boolean> {
   if (!STRIPE_SECRET) return false;
-
   try {
     const res = await fetch(
       `https://api.stripe.com/v1/checkout/sessions/${stripeSessionId}`,
-      {
-        headers: { Authorization: `Bearer ${STRIPE_SECRET}` },
-      }
+      { headers: { Authorization: `Bearer ${STRIPE_SECRET}` } }
     );
-
     if (!res.ok) return false;
     const session = await res.json() as any;
     return session.payment_status === "paid";
   } catch {
     return false;
   }
+}
+
+export function getStripeMode(): "test" | "live" {
+  return isTestMode ? "test" : "live";
 }
