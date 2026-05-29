@@ -259,9 +259,9 @@ export default function LandingPage() {
         <div className="mesh" style={{ background: "rgba(99,102,241,0.1)", bottom: "-100px", right: "-100px" }} />
 
         <div style={{ position: "relative", maxWidth: "800px" }}>
-          <div className="fade-up" style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: "999px", padding: "6px 16px", marginBottom: "28px", fontSize: "12px", color: "#93c5fd", fontWeight: 500, letterSpacing: "0.04em" }}>
+          <div className="fade-up" style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "999px", padding: "6px 16px", marginBottom: "28px", fontSize: "12px", color: "#4ade80", fontWeight: 500, letterSpacing: "0.04em" }}>
             <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#4ade80", animation: "pulse 2s infinite" }} />
-            ATS-OPTIMIZED · KEYWORD-RICH · READY TO DEPLOY
+            YOUR FIRST RESUME IS FREE — NO CREDIT CARD REQUIRED
           </div>
 
           <h1 className="fade-up-1" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, lineHeight: 1.1, marginBottom: "24px", letterSpacing: "-0.02em" }}>
@@ -276,12 +276,15 @@ export default function LandingPage() {
 
           <div className="fade-up-3" style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
             <button className="cta-btn" onClick={() => navigate("/app")} style={{ fontSize: "16px", padding: "18px 42px" }}>
-              Transform My Resume →
+              Try It Free →
             </button>
             <button className="cta-btn-outline" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}>
               See how it works
             </button>
           </div>
+          <p style={{ color: "#475569", fontSize: "12px", marginTop: "16px" }}>
+            First resume free · $9.99 after that · No credit card required
+          </p>
         </div>
       </section>
 
@@ -340,7 +343,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <button className="cta-btn" onClick={() => navigate("/app")} style={{ width: "100%", textAlign: "center" }}>
-                Fix My Resume — $9.99 →
+                Try It Free →
               </button>
             </div>
           </div>
@@ -420,9 +423,9 @@ export default function LandingPage() {
             Make sure what they see gets you in the room.
           </p>
           <button className="cta-btn" onClick={() => navigate("/app")} style={{ fontSize: "17px", padding: "20px 52px" }}>
-            Transform My Resume — $9.99 →
+            Try It Free →
           </button>
-          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>No subscription · Re-download anytime · Takes 60 seconds</p>
+          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>First resume free · $9.99 after that · No credit card required</p>
         </div>
       </section>
 
