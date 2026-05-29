@@ -976,21 +976,99 @@ export default function ResumeIQ() {
           </div>
         )}
         {view === "done" && (
-          <div style={{ maxWidth: "520px", margin: "0 auto", textAlign: "center", padding: "60px 0" }}>
-            <div style={{ width: "72px", height: "72px", background: "rgba(74,222,128,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-              <CheckCircle size={36} color="#4ade80" />
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "48px 0" }}>
+            {/* Success icon + headline */}
+            <div style={{ textAlign: "center", marginBottom: "28px" }}>
+              <div style={{ width: "72px", height: "72px", background: "rgba(74,222,128,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <CheckCircle size={36} color="#4ade80" />
+              </div>
+              <h2 style={{ color: "white", fontSize: "26px", fontWeight: "bold", marginBottom: "8px" }}>Your Resume is Ready!</h2>
+              <p style={{ color: "#94a3b8", fontSize: "14px", margin: 0 }}>
+                {user
+                  ? "Saved to your account — re-download anytime from My Resumes."
+                  : "Your resume has been downloaded. Create a free account to save it and re-download anytime."}
+              </p>
             </div>
-            <h2 style={{ color: "white", fontSize: "28px", fontWeight: "bold", marginBottom: "10px" }}>Your Resume is Ready!</h2>
-            <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "28px" }}>
-              Your transformed resume has been downloaded.
-              {user && " It's also saved to your account — re-download anytime from My Resumes."}
-            </p>
+
+            {/* Guest: show account creation prompt */}
+            {!user && (
+              <div style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.35)", borderRadius: "14px", padding: "24px", marginBottom: "16px" }}>
+                <p style={{ color: "#93c5fd", fontSize: "13px", fontWeight: 700, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Save your resume for free</p>
+                <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "18px" }}>
+                  Create a free account to re-download this resume anytime, track your history, and get your next one at a discount.
+                </p>
+                <div style={{ display: "grid", gap: "9px" }}>
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={(e: any) => { setEmail(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Create a password (6+ characters)"
+                    value={guestPassword}
+                    onChange={(e: any) => { setGuestPassword(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={guestPasswordConfirm}
+                    onChange={(e: any) => { setGuestPasswordConfirm(e.target.value); setGuestAccountError(""); }}
+                    style={{ padding: "10px 13px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)", color: "white", fontSize: "13px", outline: "none" }}
+                  />
+                  {guestAccountError && <p style={{ color: "#f87171", fontSize: "12px", margin: 0 }}>{guestAccountError}</p>}
+                  <button
+                    onClick={async () => {
+                      setGuestAccountError("");
+                      if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                      if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
+                      if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
+                      try {
+                        const res = await fetch("/api/resumeiq/auth/register", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email, password: guestPassword, name: email.split("@")[0] }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                          if (res.status === 409) {
+                            const loginRes = await fetch("/api/resumeiq/auth/login", {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ email, password: guestPassword }),
+                            });
+                            const loginData = await loginRes.json();
+                            if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
+                            setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                          } else { setGuestAccountError(data.error || "Could not create account."); return; }
+                        } else {
+                          setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                        }
+                        setEmailCaptured(true);
+                        captureMarketingEmail(email, "done_screen");
+                        trackEvent("account_created_done_screen", { email });
+                      } catch { setGuestAccountError("Network error — please try again."); }
+                    }}
+                    style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "8px", padding: "11px 18px", fontWeight: 700, cursor: "pointer", fontSize: "14px" }}
+                  >
+                    Create Free Account →
+                  </button>
+                  <p style={{ color: "#475569", fontSize: "11px", textAlign: "center", margin: 0 }}>
+                    Already have an account?{" "}
+                    <button onClick={() => setView("login")} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "11px", padding: 0 }}>Sign in</button>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-              <button onClick={reset} style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "12px 28px", fontSize: "15px", fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={reset} style={{ background: user ? "#2563eb" : "rgba(255,255,255,0.08)", color: "white", border: "none", borderRadius: "10px", padding: "11px 24px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                 Transform Another
               </button>
               {user && (
-                <button onClick={() => { loadHistory(); setView("history"); }} style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "none", borderRadius: "10px", padding: "12px 28px", fontSize: "15px", fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => { loadHistory(); setView("history"); }} style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "none", borderRadius: "10px", padding: "11px 24px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                   My Resumes
                 </button>
               )}
