@@ -5,6 +5,8 @@ import {
   Pencil, Check, X, Plus, Trash2, ChevronDown, ChevronUp
 } from "lucide-react";
 
+import { trackEvent, captureEmail as captureMarketingEmail } from "../tracking";
+
 type View = "upload" | "analyzing" | "interview" | "preview" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
@@ -328,7 +330,8 @@ export default function ResumeIQ() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setParsedData(data); setSessionId(data.sessionId); setIsFree(data.isFree);
+      setParsedData(data); trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
+      setSessionId(data.sessionId); setIsFree(data.isFree);
 
       // Check for missing fields — launch interview if needed
       const missing = getMissingFields(data);
@@ -481,7 +484,7 @@ export default function ResumeIQ() {
       a.click(); URL.revokeObjectURL(url);
       // Only set cookie after confirmed successful download
       document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
-      setView("done");
+      setView("done"); trackEvent('resume_generated', { sessionId });
     } catch (err: any) { setError(err.message); }
     finally { setDownloading(false); }
   };
@@ -493,7 +496,7 @@ export default function ResumeIQ() {
     });
     const data = await res.json();
     if (data.alreadyPaid) handleDownload();
-    else if (data.url) {
+    else if (data.url) trackEvent('checkout_started', { sessionId }); {
       // Save session state before Stripe redirect so we can restore it on return
       localStorage.setItem("riq_pending_session", sessionId);
       localStorage.setItem("riq_pending_data", JSON.stringify(parsedData));
@@ -918,7 +921,9 @@ export default function ResumeIQ() {
                       } else {
                         setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
                       }
-                      setEmailCaptured(true); handleDownload();
+                      setEmailCaptured(true); captureMarketingEmail(email, 'upload_gate');
+                      
+                      handleDownload();
                     } catch { setGuestAccountError("Network error — please try again."); }
                   }} style={{ background: "#4ade80", color: "#0f172a", border: "none", borderRadius: "7px", padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: "13px" }}>
                     Create Account &amp; Download Free Resume →
