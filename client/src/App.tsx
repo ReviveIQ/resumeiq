@@ -4,11 +4,10 @@ import ResumeIQ from "./pages/ResumeIQ";
 import LandingPage from "./pages/LandingPage";
 import PipelineTracker from "./pages/PipelineTracker";
 import StripeDashboard from "./pages/StripeDashboard";
-import { trackEvent, captureAttribution } from "./tracking";
+import { trackEvent } from "./tracking";
 
 export default function App() {
   useEffect(() => {
-    captureAttribution();
     trackEvent('page_view', { path: window.location.pathname });
   }, []);
 
