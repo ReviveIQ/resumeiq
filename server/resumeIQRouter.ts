@@ -1021,13 +1021,68 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
           `SELECT COUNT(*) AS emailCaptures FROM riq_email_captures`
         ) as any;
 
+        // ── Top events breakdown ─────────────────────────────────────────────
+        const [eventRows] = await conn.execute(
+          `SELECT
+             eventType,
+             COUNT(*) AS count,
+             COUNT(DISTINCT sessionId) AS uniqueSessions
+           FROM riq_events
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           GROUP BY eventType
+           ORDER BY count DESC
+           LIMIT 20`,
+          [days]
+        ) as any;
+
+        // ── Daily event counts (page_view, checkout_started, resume_uploaded) ─
+        const [dailyEventsRows] = await conn.execute(
+          `SELECT
+             DATE(createdAt) AS date,
+             SUM(CASE WHEN eventType = 'page_view' THEN 1 ELSE 0 END)           AS pageViews,
+             SUM(CASE WHEN eventType = 'resume_uploaded' THEN 1 ELSE 0 END)     AS resumeUploads,
+             SUM(CASE WHEN eventType = 'checkout_started' THEN 1 ELSE 0 END)    AS checkoutStarts,
+             SUM(CASE WHEN eventType = 'resume_generated' THEN 1 ELSE 0 END)    AS resumeGenerated,
+             SUM(CASE WHEN eventType = 'account_created_done_screen' THEN 1 ELSE 0 END) AS accountsCreated,
+             COUNT(DISTINCT sessionId) AS uniqueVisitors
+           FROM riq_events
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           GROUP BY DATE(createdAt)
+           ORDER BY date ASC`,
+          [days]
+        ) as any;
+
+        // ── Top UTM sources ───────────────────────────────────────────────────
+        const [attributionRows] = await conn.execute(
+          `SELECT
+             source,
+             medium,
+             campaign,
+             COUNT(*) AS visits
+           FROM riq_attribution
+           WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           GROUP BY source, medium, campaign
+           ORDER BY visits DESC
+           LIMIT 10`,
+          [days]
+        ) as any;
+
+        // ── Total unique visitors (all time) ─────────────────────────────────
+        const [visitorsRow] = await conn.execute(
+          `SELECT COUNT(DISTINCT sessionId) AS totalVisitors FROM riq_events`
+        ) as any;
+
         res.json({
           daily: dailyRows,
+          dailyEvents: dailyEventsRows,
           funnel: funnelRows[0] || {},
           stripe: stripeRows[0] || {},
           tiers: tierRows,
           totals: revenueRow[0] || {},
           emailCaptures: emailRow[0]?.emailCaptures || 0,
+          events: eventRows,
+          attribution: attributionRows,
+          totalVisitors: visitorsRow[0]?.totalVisitors || 0,
         });
       } finally {
         await conn.end();
@@ -1035,70 +1090,6 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
     } catch (error: any) {
       console.error("[ResumeIQ] Analytics error:", error);
       res.status(500).json({ error: error.message });
-    }
-  });
-
-
-  // ── ANALYTICS EVENTS ──────────────────────────────────────────────────────
-  // POST /api/resumeiq/events — fire a tracking event (page_view, checkout_started, etc.)
-  app.post("/api/resumeiq/events", async (req: Request, res: Response) => {
-    try {
-      const { sessionId, eventType, metadata, path } = req.body;
-      if (!eventType) { res.status(400).json({ error: "eventType required" }); return; }
-      const { getDb } = await import("./authService");
-      const conn = await getDb();
-      if (conn) {
-        try {
-          await conn.execute(
-            `INSERT INTO riq_events (sessionId, eventType, metadata, path, ip)
-             VALUES (?, ?, ?, ?, ?)`,
-            [
-              sessionId || null,
-              eventType,
-              JSON.stringify(metadata || {}),
-              path || null,
-              req.headers["x-forwarded-for"]?.toString().split(",")[0] || req.socket.remoteAddress || null,
-            ]
-          );
-        } finally { await conn.end(); }
-      }
-      res.json({ ok: true });
-    } catch (err: any) {
-      // Never fail silently on tracking — just return ok
-      res.json({ ok: true });
-    }
-  });
-
-  // POST /api/resumeiq/attribution — capture UTM params on landing
-  app.post("/api/resumeiq/attribution", async (req: Request, res: Response) => {
-    try {
-      const { sessionId, source, medium, campaign, content, landingUrl, referrer } = req.body;
-      const { getDb } = await import("./authService");
-      const conn = await getDb();
-      if (conn) {
-        try {
-          await conn.execute(
-            `INSERT INTO riq_attribution (sessionId, source, medium, campaign, content, landingUrl, referrer, ip)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-               source = VALUES(source), medium = VALUES(medium),
-               campaign = VALUES(campaign), content = VALUES(content)`,
-            [
-              sessionId || null,
-              source || "direct",
-              medium || "organic",
-              campaign || null,
-              content || null,
-              landingUrl || null,
-              referrer || null,
-              req.headers["x-forwarded-for"]?.toString().split(",")[0] || req.socket.remoteAddress || null,
-            ]
-          );
-        } finally { await conn.end(); }
-      }
-      res.json({ ok: true });
-    } catch {
-      res.json({ ok: true });
     }
   });
 
