@@ -1174,6 +1174,151 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
   })();
 
 
+  // ── PERSONALITY ASSESSMENT → Working With Me ─────────────────────────────
+  // POST /api/resumeiq/personality
+  // Accepts array of assessments (PDF base64 or text input), synthesizes via GPT-4o
+  // Returns workingWithMe object + teaserFields (first 2 shown free, rest require unlock)
+  app.post("/api/resumeiq/personality", async (req: Request, res: Response) => {
+    try {
+      const { assessments, parsedResumeData } = req.body;
+
+      if (!assessments || !Array.isArray(assessments) || assessments.length === 0) {
+        res.status(400).json({ error: "At least one assessment is required" });
+        return;
+      }
+
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
+
+      const name = parsedResumeData?.name || "the candidate";
+      const title = parsedResumeData?.title || "a professional role";
+
+      // Build message content array for GPT-4o
+      const contentParts: any[] = [
+        {
+          type: "text",
+          text: `You are synthesizing ${assessments.length} personality assessment(s) for a professional named ${name} who works as ${title}.
+
+Analyze ALL assessments provided and find the consistent themes across them to produce a professional "Working With Me" section for their resume.
+
+CRITICAL RULES:
+- NEVER mention the name of any assessment tool (no DISC, Myers-Briggs, MBTI, Predictive Index, PI, Thomas-Kilmann, TKI, 360, PeopleTek, or any other tool name)
+- Write in first person ("I communicate...", "I work best...", "My approach...")
+- Be specific and behavioral — avoid generic platitudes
+- 2-3 sentences per field maximum
+- Professional resume tone
+
+Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no explanation, no markdown fences:
+{
+  "communicationStyle": "...",
+  "decisionMaking": "...",
+  "collaboration": "...",
+  "underPressure": "...",
+  "whatBringsMeBest": "..."
+}`
+        }
+      ];
+
+      // Add each assessment — PDF as base64 document or as text
+      for (const assessment of assessments) {
+        if (assessment.fileBase64) {
+          // Pass PDF as a document block — GPT-4o can read PDF content
+          contentParts.push({
+            type: "text",
+            text: `\n--- Assessment: ${assessment.label} (${assessment.fileName || "PDF"}) ---`
+          });
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: `data:application/pdf;base64,${assessment.fileBase64}`,
+              detail: "high"
+            }
+          });
+        }
+        if (assessment.text) {
+          contentParts.push({
+            type: "text",
+            text: `\n--- Assessment: ${assessment.label} ---\n${assessment.text}`
+          });
+        }
+      }
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 1000,
+          temperature: 0.35,
+          messages: [{ role: "user", content: contentParts }]
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("[ResumeIQ] OpenAI personality error:", errText);
+        res.status(500).json({ error: "AI generation failed" });
+        return;
+      }
+
+      const aiData = await response.json() as any;
+      const raw = aiData.choices?.[0]?.message?.content || "";
+      const clean = raw.replace(/```json|```/g, "").trim();
+
+      let workingWithMe: Record<string, string>;
+      try {
+        workingWithMe = JSON.parse(clean);
+      } catch {
+        console.error("[ResumeIQ] Personality JSON parse failed:", clean.slice(0, 200));
+        res.status(500).json({ error: "Failed to parse AI response — please try again" });
+        return;
+      }
+
+      // Ensure all 5 fields are present
+      const required = ["communicationStyle", "decisionMaking", "collaboration", "underPressure", "whatBringsMeBest"];
+      for (const field of required) {
+        if (!workingWithMe[field]) workingWithMe[field] = "See full profile for details.";
+      }
+
+      // communicationStyle and decisionMaking shown as teaser (free preview)
+      // collaboration, underPressure, whatBringsMeBest require unlock
+      const teaserFields = ["communicationStyle", "decisionMaking"];
+
+      console.log(`[ResumeIQ] Personality generated for ${name} (${assessments.length} assessment(s))`);
+      res.json({ workingWithMe, teaserFields });
+
+    } catch (error: any) {
+      console.error("[ResumeIQ] Personality route error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── PERSONALITY CHECKOUT ──────────────────────────────────────────────────
+  // POST /api/resumeiq/personality-checkout
+  // Creates a Stripe checkout for personality unlock or bundle (resume + personality)
+  app.post("/api/resumeiq/personality-checkout", async (req: Request, res: Response) => {
+    try {
+      const { resumeiqSession, type } = req.body;
+      const origin = req.headers.origin as string || "https://resumeiq.reviveiqi.com";
+      const successUrl = `${origin}/app?`;
+      const cancelUrl = `${origin}/app`;
+
+      let stripeResult: { url: string; sessionId: string };
+
+      if (type === "bundle") {
+        stripeResult = await createBundleCheckoutSession(successUrl, cancelUrl, resumeiqSession);
+      } else {
+        stripeResult = await createPersonalityCheckoutSession(successUrl, cancelUrl, resumeiqSession);
+      }
+
+      res.json({ url: stripeResult.url });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Personality checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
 }
 
 
