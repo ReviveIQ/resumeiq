@@ -130,9 +130,9 @@ Account Manager | PrimeLink Services | 2015 – 2017
 
 const HOW_IT_WORKS = [
   { step: "01", icon: "📄", title: "Upload your resume", body: "PDF or Word — any format, any mess. We've seen worse." },
-  { step: "02", icon: "🤖", title: "AI parses & transforms", body: "GPT-4o extracts every detail and restructures it into a keyword-rich, ATS-optimized format." },
-  { step: "03", icon: "✏️", title: "Review & edit", body: "Inspect every field before downloading. Add missing roles, sharpen bullets, adjust anything." },
-  { step: "04", icon: "📥", title: "Download & own it", body: "Clean Word document — yours forever, re-downloadable from your account anytime." },
+  { step: "02", icon: "✨", title: "AI parses & transforms", body: "GPT-4o extracts every detail and restructures it into a keyword-rich, ATS-optimized Word document." },
+  { step: "03", icon: "✏️", title: "Make it yours", body: "Every section is editable — add bullets, sharpen impact, and optionally add a personality-based Working With Me section before you download." },
+  { step: "04", icon: "🚀", title: "Download & start applying", body: "Clean Word document, yours forever. Re-download anytime — or feed it straight into the Job Search Pipeline to start applying immediately." },
 ];
 
 const PRICING = [
