@@ -118,6 +118,26 @@ export async function initDb() {
         INDEX idx_campaign (campaign)
       )
     `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_email_sends (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        email     VARCHAR(320) NOT NULL,
+        flowType  VARCHAR(64) NOT NULL,
+        sentAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_email_flow (email, flowType)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_email_subscribers (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        email        VARCHAR(320) NOT NULL UNIQUE,
+        sessionId    VARCHAR(128),
+        source       VARCHAR(64),
+        capturePoint VARCHAR(64),
+        subscribed   TINYINT DEFAULT 1,
+        createdAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     console.log("[ResumeIQ] Database initialized ✓");
   } catch (err) {
     console.warn("[ResumeIQ] DB init warning:", err);
