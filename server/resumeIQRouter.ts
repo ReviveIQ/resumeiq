@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, verifyPayment } from "./stripeService";
+import { sendEmail, logEmailSend, alreadySent } from "./emailService";
 import crypto from "crypto";
 import JSZip from "jszip";
 // docx imported dynamically inside generateDocx to avoid ESM/CJS interop issues
@@ -576,6 +577,8 @@ export function registerResumeIQRoutes(app: Express) {
       if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
       const user = await createUser(email, password, name || "");
       const token = generateToken(user.id, user.email);
+      // Fire welcome email (non-blocking)
+      sendEmail(user.email, "welcome").catch(() => {});
       res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
@@ -942,6 +945,21 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
       // Remove session after successful generation
       await deleteSession(sessionId);
 
+      // Fire post-conversion email (non-blocking)
+      if (tokenUser?.email) {
+        alreadySent(null as any, tokenUser.email, "post_conversion")
+          .then(async (sent) => {
+            if (sent) return;
+            const { getDb } = await import("./authService");
+            const emailConn = await getDb();
+            if (!emailConn) return;
+            try {
+              await logEmailSend(emailConn, tokenUser.email, "post_conversion");
+              sendEmail(tokenUser.email, "post_conversion").catch(() => {});
+            } finally { await emailConn.end(); }
+          }).catch(() => {});
+      }
+
       const fileName = `${(data.name || "Resume").replace(/\s+/g, "_")}_ResumeIQ.docx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -1092,6 +1110,68 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
       res.status(500).json({ error: error.message });
     }
   });
+
+
+  // ── EMAIL RECOVERY CRONS ─────────────────────────────────────────────────
+  // Runs every 15 min: send abandoned_1h to users who uploaded but didn't checkout
+  // Runs every hour: send reengagement_24h to users who uploaded but never downloaded
+  (async () => {
+    try {
+      const cronLib = await import("node-cron");
+      const { getDb } = await import("./authService");
+
+      // abandoned_1h — every 15 minutes
+      cronLib.default.schedule("*/15 * * * *", async () => {
+        const conn = await getDb();
+        if (!conn) return;
+        try {
+          const [rows] = await conn.execute(`
+            SELECT DISTINCT ec.email, e.sessionId
+            FROM riq_email_captures ec
+            JOIN riq_events e ON e.sessionId = (
+              SELECT sessionId FROM riq_events
+              WHERE eventType = 'resume_uploaded'
+                AND createdAt < DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                AND sessionId NOT IN (SELECT sessionId FROM riq_events WHERE eventType = 'checkout_started')
+              LIMIT 1
+            )
+            WHERE ec.email NOT IN (SELECT email FROM riq_email_sends WHERE flowType = 'abandoned_1h')
+            LIMIT 25
+          `) as any;
+          for (const row of rows) {
+            await logEmailSend(conn, row.email, "abandoned_1h");
+            sendEmail(row.email, "abandoned_1h").catch(() => {});
+          }
+          if (rows.length) console.log("[Cron] abandoned_1h:", rows.length, "emails");
+        } catch { /* non-fatal */ } finally { await conn.end(); }
+      });
+
+      // reengagement_24h — every hour
+      cronLib.default.schedule("0 * * * *", async () => {
+        const conn = await getDb();
+        if (!conn) return;
+        try {
+          const [rows] = await conn.execute(`
+            SELECT DISTINCT ec.email
+            FROM riq_email_captures ec
+            JOIN riq_events e ON e.eventType = 'resume_uploaded'
+              AND e.createdAt BETWEEN DATE_SUB(NOW(), INTERVAL 25 HOUR) AND DATE_SUB(NOW(), INTERVAL 23 HOUR)
+            WHERE ec.email NOT IN (SELECT email FROM riq_email_sends WHERE flowType IN ('reengagement_24h','post_conversion'))
+            LIMIT 25
+          `) as any;
+          for (const row of rows) {
+            await logEmailSend(conn, row.email, "reengagement_24h");
+            sendEmail(row.email, "reengagement_24h").catch(() => {});
+          }
+          if (rows.length) console.log("[Cron] reengagement_24h:", rows.length, "emails");
+        } catch { /* non-fatal */ } finally { await conn.end(); }
+      });
+
+      console.log("[ResumeIQ] Email recovery crons started");
+    } catch (err: any) {
+      console.warn("[ResumeIQ] node-cron not available:", err.message);
+    }
+  })();
 
 
 }
