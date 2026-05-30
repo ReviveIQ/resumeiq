@@ -1039,6 +1039,70 @@ Pick the 2 that are most insightful and compelling for THIS specific person.`;
   });
 
 
+  // ── ANALYTICS EVENTS ──────────────────────────────────────────────────────
+  // POST /api/resumeiq/events — fire a tracking event (page_view, checkout_started, etc.)
+  app.post("/api/resumeiq/events", async (req: Request, res: Response) => {
+    try {
+      const { sessionId, eventType, metadata, path } = req.body;
+      if (!eventType) { res.status(400).json({ error: "eventType required" }); return; }
+      const { getDb } = await import("./authService");
+      const conn = await getDb();
+      if (conn) {
+        try {
+          await conn.execute(
+            `INSERT INTO riq_events (sessionId, eventType, metadata, path, ip)
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+              sessionId || null,
+              eventType,
+              JSON.stringify(metadata || {}),
+              path || null,
+              req.headers["x-forwarded-for"]?.toString().split(",")[0] || req.socket.remoteAddress || null,
+            ]
+          );
+        } finally { await conn.end(); }
+      }
+      res.json({ ok: true });
+    } catch (err: any) {
+      // Never fail silently on tracking — just return ok
+      res.json({ ok: true });
+    }
+  });
+
+  // POST /api/resumeiq/attribution — capture UTM params on landing
+  app.post("/api/resumeiq/attribution", async (req: Request, res: Response) => {
+    try {
+      const { sessionId, source, medium, campaign, content, landingUrl, referrer } = req.body;
+      const { getDb } = await import("./authService");
+      const conn = await getDb();
+      if (conn) {
+        try {
+          await conn.execute(
+            `INSERT INTO riq_attribution (sessionId, source, medium, campaign, content, landingUrl, referrer, ip)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               source = VALUES(source), medium = VALUES(medium),
+               campaign = VALUES(campaign), content = VALUES(content)`,
+            [
+              sessionId || null,
+              source || "direct",
+              medium || "organic",
+              campaign || null,
+              content || null,
+              landingUrl || null,
+              referrer || null,
+              req.headers["x-forwarded-for"]?.toString().split(",")[0] || req.socket.remoteAddress || null,
+            ]
+          );
+        } finally { await conn.end(); }
+      }
+      res.json({ ok: true });
+    } catch {
+      res.json({ ok: true });
+    }
+  });
+
+
 }
 
 
