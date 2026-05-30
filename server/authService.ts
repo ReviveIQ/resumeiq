@@ -88,6 +88,36 @@ export async function initDb() {
         UNIQUE KEY unique_email (email)
       )
     `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_events (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sessionId VARCHAR(64),
+        eventType VARCHAR(64) NOT NULL,
+        metadata JSON,
+        path VARCHAR(512),
+        ip VARCHAR(64),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_eventType (eventType),
+        INDEX idx_sessionId (sessionId),
+        INDEX idx_createdAt (createdAt)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_attribution (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sessionId VARCHAR(64) UNIQUE,
+        source VARCHAR(128),
+        medium VARCHAR(128),
+        campaign VARCHAR(255),
+        content VARCHAR(255),
+        landingUrl VARCHAR(1024),
+        referrer VARCHAR(1024),
+        ip VARCHAR(64),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_source (source),
+        INDEX idx_campaign (campaign)
+      )
+    `);
     console.log("[ResumeIQ] Database initialized ✓");
   } catch (err) {
     console.warn("[ResumeIQ] DB init warning:", err);
