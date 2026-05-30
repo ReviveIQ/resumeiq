@@ -655,8 +655,14 @@ export function registerResumeIQRoutes(app: Express) {
                 text = docXml.replace(/<\/w:p>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
               }
             } catch (e) { console.warn("DOCX parse failed:", e); }
+          } else if (assessment.fileName?.toLowerCase().endsWith(".pdf")) {
+            try {
+              const pdfParse = await import("pdf-parse");
+              const parsed = await (pdfParse.default || pdfParse)(buffer);
+              text = parsed.text?.replace(/\s+/g, " ").trim().slice(0, 8000) || "";
+            } catch (e) { console.warn("PDF parse failed:", e); text = ""; }
           } else {
-            text = buffer.toString("binary").replace(/[^\x20-\x7E\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+            text = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
           }
         } else if (assessment.text) {
           text = assessment.text;
