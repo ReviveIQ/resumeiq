@@ -673,43 +673,58 @@ export function registerResumeIQRoutes(app: Express) {
       if (assessmentTexts.length === 0) { res.status(400).json({ error: "Could not extract text from assessments" }); return; }
 
       const isMultiple = assessmentTexts.length > 1;
-      const systemPrompt = `You are an expert workplace psychologist and professional resume writer.
-${isMultiple ? "Synthesize multiple personality assessment results" : "Translate personality assessment results"} into a professional "Working With Me" section for a resume.
+      const systemPrompt = `You are an expert workplace psychologist and elite resume writer who specializes in translating assessment data into vivid, specific, employer-relevant behavioral language.
 
-CRITICAL RULES:
-- Never mention assessment names (no DISC, MBTI, Predictive Index, TKI, 360, etc.)
-- Never use assessment jargon (no "high D", "ISTJ", "C-style", "Strategist", etc.)
-- Write in first person, professional tone
-- Each field: 1-2 sentences maximum
-- Sound self-aware and authentic, not clinical
-- ${isMultiple ? "Find the COMMON THEMES across all assessments — these are the most reliable insights" : "Base it on the assessment data provided"}
-- Never invent traits not supported by the assessment data
-- Focus on what's most relevant and useful for an employer to know
-- For teaserFields: pick the 2 field keys that are MOST compelling and differentiated for this specific person`;
+MISSION: Turn raw assessment data into a "Working With Me" section that feels unmistakably personal — not generic. A hiring manager should read this and think "this person really knows themselves."
 
-      const userPrompt = `${isMultiple ? "Multiple assessment results to synthesize" : "Assessment results"}:
+CRITICAL RULES — VIOLATIONS WILL FAIL:
+- NEVER mention any assessment name or tool (no DISC, MBTI, Myers-Briggs, Predictive Index, PI, TKI, Thomas-Kilmann, 360, PeopleTek, Strategist, C-style, ISTJ, or any other label)
+- NEVER use assessment jargon or scores
+- Write in first person, active voice
+- Each field: 2 sentences MAX — make every word earn its place
+- Be SPECIFIC and BEHAVIORAL — name the actual pattern, not a vague trait
+- BAD: "I am analytical and detail-oriented" — this describes half of all professionals
+- GOOD: "I make decisions by stress-testing assumptions before committing — I'd rather ask one more hard question than course-correct later"
+- BAD: "I work well under pressure"
+- GOOD: "When stakes are highest I get quieter and more precise — I pull back from noise and focus on what the data actually says"
+- Draw on CONCRETE BEHAVIORS from the assessments, not personality labels
+- ${isMultiple ? "Find the CONSISTENT PATTERNS across ALL assessments — these are the most reliable and defensible insights" : "Base everything on the assessment data"}
+- Capture what makes this specific person DISTINCT, not what makes them sound like a safe hire
+- For teaserFields: choose the 2 most compelling, surprising, or differentiated fields for THIS person`;
+
+      const userPrompt = `${isMultiple ? "MULTIPLE ASSESSMENTS TO SYNTHESIZE — find what is consistent across ALL of them:" : "ASSESSMENT DATA:"}
 
 ${assessmentTexts.join("\n\n")}
 
-Career context: ${JSON.stringify({
+CAREER CONTEXT:
+${JSON.stringify({
   name: parsedResumeData?.name,
   title: parsedResumeData?.title,
+  summary: parsedResumeData?.summary?.slice(0, 300),
   yearsOfExperience: parsedResumeData?.yearsOfExperience,
-  topMetrics: parsedResumeData?.topMetrics?.slice(0, 2),
 })}
 
-Generate a "Working With Me" section. Return ONLY valid JSON:
+INSTRUCTIONS:
+1. Read ALL assessment data carefully — note what patterns repeat across sources
+2. Write each field as a BEHAVIORAL statement, not a trait label
+3. Make it sound like this specific person wrote it themselves, not a generic template
+4. communicationStyle — HOW they actually communicate, not just "clearly and concisely"
+5. decisionMaking — their actual decision process and what drives it
+6. collaboration — the real dynamic they create on a team, their actual role
+7. underPressure — what specifically changes in their behavior when stakes are high
+8. motivation — what genuinely energizes them, specific to who they are
+
+Return ONLY valid JSON — no preamble, no explanation, no markdown:
 {
-  "communicationStyle": "1-2 sentences",
-  "decisionMaking": "1-2 sentences",
-  "collaboration": "1-2 sentences",
-  "underPressure": "1-2 sentences",
-  "motivation": "1-2 sentences",
+  "communicationStyle": "2 sentences max",
+  "decisionMaking": "2 sentences max",
+  "collaboration": "2 sentences max",
+  "underPressure": "2 sentences max",
+  "motivation": "2 sentences max",
   "teaserFields": ["fieldKey1", "fieldKey2"]
 }
 
-teaserFields must be exactly 2 keys from: communicationStyle, decisionMaking, collaboration, underPressure, motivation.
-Pick the 2 that are most insightful and compelling for THIS specific person.`;
+teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make a hiring manager say "that's interesting — tell me more."`;
 
       console.log(`[ResumeIQ] Generating Working With Me from ${assessmentTexts.length} assessment(s)`);
 
