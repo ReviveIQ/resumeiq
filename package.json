@@ -78,7 +78,8 @@
     "zod": "^4.1.12",
     "docx": "^8.5.0",
     "tsx": "^4.19.1",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
@@ -103,7 +104,8 @@
     "typescript": "5.9.3",
     "vite": "^7.1.7",
     "vitest": "^2.1.4",
-    "@types/node-cron": "^3.0.11"
+    "@types/node-cron": "^3.0.11",
+    "@types/pdf-parse": "^1.1.4"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
   "description": "ResumeIQ - Transform any resume into a polished ATS-optimized document"
