@@ -194,6 +194,28 @@ export default function ResumeIQ() {
   const [assessmentFiles, setAssessmentFiles] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
+
+  // Handle LinkedIn OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linkedinToken = params.get("linkedin_token");
+    const authError = params.get("auth_error");
+    if (linkedinToken) {
+      localStorage.setItem("riq_token", linkedinToken);
+      setToken(linkedinToken);
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (authError) {
+      const msgs: Record<string, string> = {
+        linkedin_denied: "LinkedIn sign-in was cancelled",
+        state_mismatch: "Security check failed — please try again",
+        token_failed: "LinkedIn authentication failed",
+        no_email: "LinkedIn account has no email — use email/password instead",
+        server_error: "Server error — please try again",
+      };
+      setError(msgs[authError] || "Authentication failed");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
@@ -625,6 +647,21 @@ export default function ResumeIQ() {
               </p>
             </div>
             <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: "14px", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* LinkedIn OAuth Button */}
+              <button
+                onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "10px", padding: "12px 20px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+              >
+                <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px", fill: "white", flexShrink: 0 }}>
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                Continue with LinkedIn
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "2px 0" }}>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.15)" }} />
+                <span style={{ color: "#64748b", fontSize: "12px" }}>or</span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.15)" }} />
+              </div>
               {view === "register" && (
                 <div>
                   <label style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "5px", display: "block" }}>Full Name</label>
