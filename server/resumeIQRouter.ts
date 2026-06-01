@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, verifyPayment } from "./stripeService";
+import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, createCareerLaunchSession, verifyPayment } from "./stripeService";
 import { sendEmail, logEmailSend, alreadySent } from "./emailService";
 import crypto from "crypto";
 import JSZip from "jszip";
@@ -763,6 +763,21 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
   });
 
   // ── PERSONALITY CHECKOUT ─────────────────────────────────────────────────
+  // Career Launch Bundle checkout
+  app.post("/api/resumeiq/career-checkout", async (req: Request, res: Response) => {
+    try {
+      const { resumeiqSession } = req.body;
+      const origin = req.headers.origin as string || "https://resumeiq.reviveiqi.com";
+      const successUrl = `${origin}/app?payment=success&`;
+      const cancelUrl = `${origin}/app`;
+      const result = await createCareerLaunchSession(successUrl, cancelUrl, resumeiqSession);
+      res.json({ url: result.url });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Career checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/resumeiq/personality-checkout", async (req: Request, res: Response) => {
     try {
       const { resumeiqSession, type } = req.body; // type: "personality" | "bundle"
@@ -1317,6 +1332,21 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
   // ── PERSONALITY CHECKOUT ──────────────────────────────────────────────────
   // POST /api/resumeiq/personality-checkout
   // Creates a Stripe checkout for personality unlock or bundle (resume + personality)
+  // Career Launch Bundle checkout
+  app.post("/api/resumeiq/career-checkout", async (req: Request, res: Response) => {
+    try {
+      const { resumeiqSession } = req.body;
+      const origin = req.headers.origin as string || "https://resumeiq.reviveiqi.com";
+      const successUrl = `${origin}/app?payment=success&`;
+      const cancelUrl = `${origin}/app`;
+      const result = await createCareerLaunchSession(successUrl, cancelUrl, resumeiqSession);
+      res.json({ url: result.url });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Career checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/resumeiq/personality-checkout", async (req: Request, res: Response) => {
     try {
       const { resumeiqSession, type } = req.body;
