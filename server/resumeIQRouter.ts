@@ -1340,6 +1340,139 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
   });
 
 
+  // ── LinkedIn OAuth ─────────────────────────────────────────────────────────
+  // GET /api/resumeiq/auth/linkedin — redirect to LinkedIn
+  app.get("/api/resumeiq/auth/linkedin", (req: Request, res: Response) => {
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ error: "LinkedIn OAuth not configured" });
+      return;
+    }
+    const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
+    const scope = "openid profile email";
+    const state = require("crypto").randomBytes(16).toString("hex");
+
+    res.cookie("riq_linkedin_state", state, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 10 * 60 * 1000,
+      sameSite: "lax",
+    });
+
+    const authUrl = new URL("https://www.linkedin.com/oauth/v2/authorization");
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("scope", scope);
+    authUrl.searchParams.set("state", state);
+
+    res.redirect(authUrl.toString());
+  });
+
+  // GET /api/resumeiq/auth/linkedin/callback — handle callback
+  app.get("/api/resumeiq/auth/linkedin/callback", async (req: Request, res: Response) => {
+    const { code, state, error } = req.query as Record<string, string>;
+    const frontendUrl = "https://resumeiq.reviveiqi.com";
+
+    if (error) {
+      res.redirect(`${frontendUrl}/app?auth_error=linkedin_denied`);
+      return;
+    }
+
+    // Validate state
+    const cookieHeader = req.headers.cookie || "";
+    const cookies: Record<string, string> = {};
+    cookieHeader.split(";").forEach((c) => {
+      const [k, ...v] = c.trim().split("=");
+      if (k) cookies[k.trim()] = decodeURIComponent(v.join("="));
+    });
+
+    if (!state || cookies["riq_linkedin_state"] !== state) {
+      res.redirect(`${frontendUrl}/app?auth_error=state_mismatch`);
+      return;
+    }
+
+    const clientId = process.env.LINKEDIN_CLIENT_ID!;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
+    const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
+
+    try {
+      // Exchange code for token
+      const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          client_secret: clientSecret,
+        }).toString(),
+      });
+
+      if (!tokenRes.ok) {
+        res.redirect(`${frontendUrl}/app?auth_error=token_failed`);
+        return;
+      }
+
+      const tokenData = await tokenRes.json() as any;
+      const accessToken = tokenData.access_token;
+
+      // Get profile
+      const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!userRes.ok) {
+        res.redirect(`${frontendUrl}/app?auth_error=profile_failed`);
+        return;
+      }
+
+      const profile = await userRes.json() as any;
+      const email = profile.email;
+      const name = profile.name || `${profile.given_name || ""} ${profile.family_name || ""}`.trim();
+
+      if (!email) {
+        res.redirect(`${frontendUrl}/app?auth_error=no_email`);
+        return;
+      }
+
+      // Find or create user
+      const { getDb, getUserByEmail, createUser } = await import("./authService");
+      const db = await getDb();
+      let user = db ? await getUserByEmail(db, email) : null;
+
+      if (!user) {
+        const crypto = require("crypto");
+        user = db ? await createUser(db, {
+          email,
+          name: name || email.split("@")[0],
+          passwordHash: crypto.randomBytes(32).toString("hex"),
+        }) : null;
+        console.log(`[ResumeIQ LinkedIn] Created new user: ${email}`);
+      } else {
+        console.log(`[ResumeIQ LinkedIn] Existing user: ${email}`);
+      }
+
+      if (!user) {
+        res.redirect(`${frontendUrl}/app?auth_error=server_error`);
+        return;
+      }
+
+      // Create JWT
+      const { createToken } = await import("./authService");
+      const token = createToken({ userId: user.id, email: user.email });
+      res.clearCookie("riq_linkedin_state");
+
+      // Redirect with token — client stores in localStorage
+      res.redirect(`${frontendUrl}/app?linkedin_token=${encodeURIComponent(token)}`);
+    } catch (err) {
+      console.error("[ResumeIQ LinkedIn] Callback error:", err);
+      res.redirect(`${frontendUrl}/app?auth_error=server_error`);
+    }
+  });
+
+
 }
 
 
