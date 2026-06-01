@@ -1136,7 +1136,7 @@ export default function ResumeIQ() {
                       <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Career Launch Bundle</span>
                       <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", marginLeft: "8px" }}>BEST VALUE</span>
                     </div>
-                    <span style={{ color: includeCareerLaunch ? "#10b981" : "#64748b", fontWeight: 700, fontSize: "15px" }}>$49.99 total</span>
+                    <span style={{ color: includeCareerLaunch ? "#10b981" : "#64748b", fontWeight: 700, fontSize: "15px" }}>$79.99 total</span>
                   </div>
                   <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
                     Everything above + 30 days of MyCareerIQ — AI-powered job search pipeline to put your new resume to work immediately.
@@ -1150,8 +1150,8 @@ export default function ResumeIQ() {
               <span style={{ color: "#94a3b8", fontSize: "14px" }}>Total</span>
               <span style={{ color: "white", fontSize: "22px", fontWeight: 700 }}>
                 {isFree
-                  ? (includeCareerLaunch ? "$49.99" : includePersonality ? "$7.99" : "Free")
-                  : (includeCareerLaunch ? "$49.99" : includePersonality ? "$19.99" : "$14.99")}
+                  ? (includeCareerLaunch ? "$79.99" : includePersonality ? "$7.99" : "Free")
+                  : (includeCareerLaunch ? "$79.99" : includePersonality ? "$19.99" : "$14.99")}
               </span>
             </div>
 
