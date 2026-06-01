@@ -7,7 +7,7 @@ import {
 
 import { trackEvent, captureEmail as captureMarketingEmail } from "../tracking";
 
-type View = "upload" | "analyzing" | "interview" | "preview" | "done" | "history" | "login" | "register";
+type View = "upload" | "analyzing" | "interview" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",      question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -185,6 +185,8 @@ export default function ResumeIQ() {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [personalityStep, setPersonalityStep] = useState(false);
+  const [includePersonality, setIncludePersonality] = useState(false);
+  const [includeCareerLaunch, setIncludeCareerLaunch] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState("");
   const [assessmentInput, setAssessmentInput] = useState("");
   const [personalityLoading, setPersonalityLoading] = useState(false);
