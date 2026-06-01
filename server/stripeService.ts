@@ -15,9 +15,10 @@ const STRIPE_SECRET = isTestMode
   ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
   : process.env.STRIPE_SECRET_KEY;
 
-const STRIPE_PRICE       = 999;   // $9.99 resume
-const STRIPE_PERSONALITY = 399;   // $3.99 personality unlock
-const STRIPE_BUNDLE      = 1398;  // $13.98 resume + personality
+const STRIPE_PRICE       = 1499;  // $14.99 resume only
+const STRIPE_PERSONALITY = 799;   // $7.99 Working With Me add-on
+const STRIPE_BUNDLE      = 1999;  // $19.99 resume + Working With Me
+const STRIPE_CAREER      = 4999;  // $49.99 Career Launch (resume + WM + MyCareerIQ 30 days)
 const CURRENCY = "usd";
 
 // Log mode on startup
@@ -46,8 +47,8 @@ export async function createCheckoutSession(
   const session = await stripePost({
     "payment_method_types[0]": "card",
     "line_items[0][price_data][currency]": CURRENCY,
-    "line_items[0][price_data][product_data][name]": "ResumeIQ Resume Transformation",
-    "line_items[0][price_data][product_data][description]": "Professional ATS-optimized resume — re-downloadable anytime",
+    "line_items[0][price_data][product_data][name]": "Resume Transformation",
+    "line_items[0][price_data][product_data][description]": "ATS-optimized, keyword-rich Word document — yours forever, re-downloadable anytime",
     "line_items[0][price_data][unit_amount]": String(STRIPE_PRICE),
     "line_items[0][quantity]": "1",
     mode: "payment",
@@ -97,6 +98,27 @@ export async function createBundleCheckoutSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "bundle",
+  });
+  return { url: session.url, sessionId: session.id };
+}
+
+export async function createCareerLaunchSession(
+  successUrl: string,
+  cancelUrl: string,
+  resumeiqSession: string
+): Promise<{ url: string; sessionId: string }> {
+  const session = await stripePost({
+    "payment_method_types[0]": "card",
+    "line_items[0][price_data][currency]": CURRENCY,
+    "line_items[0][price_data][product_data][name]": "Career Launch Bundle",
+    "line_items[0][price_data][product_data][description]": "ATS-optimized resume + Working With Me section + 30 days MyCareerIQ job search pipeline",
+    "line_items[0][price_data][unit_amount]": String(STRIPE_CAREER),
+    "line_items[0][quantity]": "1",
+    mode: "payment",
+    success_url: `${successUrl}session_id={CHECKOUT_SESSION_ID}&resumeiq_session=${resumeiqSession}&type=career`,
+    cancel_url: cancelUrl,
+    "metadata[resumeiq_session]": resumeiqSession,
+    "metadata[type]": "career",
   });
   return { url: session.url, sessionId: session.id };
 }
