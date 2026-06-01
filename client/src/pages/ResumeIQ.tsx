@@ -513,6 +513,51 @@ export default function ResumeIQ() {
     finally { setDownloading(false); }
   };
 
+  // ── Concierge Checkout Handler ─────────────────────────────────────────────
+  // Called from the checkout view when user confirms their selections
+  const handleFinalCheckout = async () => {
+    // Save state before redirect
+    localStorage.setItem("resumeiq_pending_session", sessionId);
+    localStorage.setItem("resumeiq_pending_data", JSON.stringify(parsedData));
+    if (workingWithMeTeaser) {
+      localStorage.setItem("resumeiq_pending_wwm", JSON.stringify(workingWithMeTeaser));
+    }
+
+    // Determine checkout type based on selections
+    let checkoutType: string;
+    if (includeCareerLaunch) {
+      checkoutType = "career";
+    } else if (includePersonality) {
+      checkoutType = isFree ? "bundle" : "personality";
+    } else {
+      checkoutType = "resume";
+    }
+
+    try {
+      let res: Response;
+      if (checkoutType === "career") {
+        res = await fetch("/api/resumeiq/career-checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resumeiqSession: sessionId }),
+        });
+      } else if (checkoutType === "personality" || checkoutType === "bundle") {
+        res = await fetch("/api/resumeiq/personality-checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resumeiqSession: sessionId, type: checkoutType }),
+        });
+      } else {
+        res = await fetch("/api/resumeiq/checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+      }
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      console.error("Checkout error:", err);
+    }
+  };
+
   const proceedToCheckout = async () => {
     const res = await fetch("/api/resumeiq/checkout", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -529,6 +574,11 @@ export default function ResumeIQ() {
   };
 
   const handlePayAndDownload = async () => {
+    // Go to concierge checkout view — user chooses options before paying
+    setView("checkout");
+  };
+
+  const _handlePayAndDownloadLegacy = async () => {
     // If not logged in, collect account first so the resume saves after payment
     if (!user) {
       setEmail("");
@@ -992,7 +1042,7 @@ export default function ResumeIQ() {
               {(isFree && (user || emailCaptured)) || !isFree ? (
                 <button onClick={isFree ? handleDownload : handlePayAndDownload} disabled={downloading}
                   style={{ flex: 2, background: isFree ? "#16a34a" : "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? <><Download size={18} />Download Free Resume</> : <><CreditCard size={18} />Pay $9.99 & Download</>}
+                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? <><Download size={18} />Download Free Resume</> : <><CreditCard size={18} />Review & Complete</>}
                 </button>
               ) : null}
             </div>
@@ -1014,6 +1064,115 @@ export default function ResumeIQ() {
             </div>
           </div>
         )}
+        {view === "checkout" && (
+          <div style={{ maxWidth: "520px", margin: "0 auto", padding: "40px 20px" }}>
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: "32px" }}>
+              <div style={{ fontSize: "28px", marginBottom: "8px" }}>✨</div>
+              <h2 style={{ color: "white", fontSize: "24px", fontWeight: 700, marginBottom: "8px" }}>
+                Your resume is ready.
+              </h2>
+              <p style={{ color: "#94a3b8", fontSize: "15px", lineHeight: "1.5" }}>
+                We've transformed your resume into a keyword-rich, ATS-optimized document. 
+                Review what's included below before completing your order.
+              </p>
+            </div>
+
+            {/* What's included card */}
+            <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
+              <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "20px" }}>
+                What we've prepared for you
+              </p>
+
+              {/* Resume — always included */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(37,99,235,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>📄</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Resume Transformation</span>
+                    <span style={{ color: "#60a5fa", fontWeight: 700, fontSize: "15px" }}>{isFree ? "Free" : "$14.99"}</span>
+                  </div>
+                  <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
+                    ATS-optimized Word document with measurable impact bullets. Re-downloadable from your account forever.
+                  </p>
+                </div>
+              </div>
+
+              {/* Working With Me — optional */}
+              <div
+                onClick={() => setIncludePersonality(!includePersonality)}
+                style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", borderRadius: "10px", padding: "12px", background: includePersonality ? "rgba(37,99,235,0.1)" : "transparent", transition: "background 0.2s" }}
+              >
+                <div style={{ width: "20px", height: "20px", borderRadius: "5px", border: `2px solid ${includePersonality ? "#2563eb" : "#475569"}`, background: includePersonality ? "#2563eb" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "2px" }}>
+                  {includePersonality && <span style={{ color: "white", fontSize: "12px" }}>✓</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Working With Me Section</span>
+                    <span style={{ color: includePersonality ? "#60a5fa" : "#64748b", fontWeight: 700, fontSize: "15px" }}>+ $7.99</span>
+                  </div>
+                  <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
+                    A personality-based section synthesized from your assessments. Added to your resume and unlocked on all future downloads.
+                  </p>
+                  {!workingWithMeTeaser && (
+                    <p style={{ color: "#f59e0b", fontSize: "12px", marginTop: "6px" }}>
+                      ↑ Upload personality assessments in the preview to enable this
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Career Launch — optional */}
+              <div
+                onClick={() => { setIncludeCareerLaunch(!includeCareerLaunch); if (!includeCareerLaunch) setIncludePersonality(true); }}
+                style={{ display: "flex", alignItems: "flex-start", gap: "14px", cursor: "pointer", borderRadius: "10px", padding: "12px", background: includeCareerLaunch ? "rgba(16,185,129,0.1)" : "transparent", transition: "background 0.2s" }}
+              >
+                <div style={{ width: "20px", height: "20px", borderRadius: "5px", border: `2px solid ${includeCareerLaunch ? "#10b981" : "#475569"}`, background: includeCareerLaunch ? "#10b981" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "2px" }}>
+                  {includeCareerLaunch && <span style={{ color: "white", fontSize: "12px" }}>✓</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Career Launch Bundle</span>
+                      <span style={{ background: "rgba(16,185,129,0.2)", color: "#10b981", fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", marginLeft: "8px" }}>BEST VALUE</span>
+                    </div>
+                    <span style={{ color: includeCareerLaunch ? "#10b981" : "#64748b", fontWeight: 700, fontSize: "15px" }}>$49.99 total</span>
+                  </div>
+                  <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
+                    Everything above + 30 days of MyCareerIQ — AI-powered job search pipeline to put your new resume to work immediately.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Total */}
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "12px", padding: "16px 20px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#94a3b8", fontSize: "14px" }}>Total</span>
+              <span style={{ color: "white", fontSize: "22px", fontWeight: 700 }}>
+                {isFree
+                  ? (includeCareerLaunch ? "$49.99" : includePersonality ? "$7.99" : "Free")
+                  : (includeCareerLaunch ? "$49.99" : includePersonality ? "$19.99" : "$14.99")}
+              </span>
+            </div>
+
+            {/* CTA */}
+            <button
+              onClick={handleFinalCheckout}
+              style={{ width: "100%", background: includeCareerLaunch ? "#10b981" : "#2563eb", color: "white", border: "none", borderRadius: "12px", padding: "16px", fontSize: "16px", fontWeight: 700, cursor: "pointer", marginBottom: "12px" }}
+            >
+              {isFree && !includePersonality && !includeCareerLaunch
+                ? "Download My Resume →"
+                : `Complete My Order →`}
+            </button>
+            <button
+              onClick={() => setView("preview")}
+              style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", padding: "10px", fontSize: "13px", cursor: "pointer" }}
+            >
+              ← Back to preview
+            </button>
+          </div>
+        )}
+
         {view === "done" && (
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "48px 0" }}>
             {/* Success icon + headline */}
