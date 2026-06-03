@@ -1472,18 +1472,31 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
         return;
       }
 
-      // Find or create user
-      const { getDb, getUserByEmail, createUser } = await import("./authService");
-      const db = await getDb();
-      let user = db ? await getUserByEmail(db, email) : null;
+      // Find or create user using actual authService API
+      const authService = await import("./authService");
+      const conn = await authService.getDb();
+      if (!conn) {
+        res.redirect(`${frontendUrl}/app?auth_error=server_error`);
+        return;
+      }
+
+      let user: any = null;
+      try {
+        // Look up by email directly
+        const [rows] = await conn.execute(
+          "SELECT id, email, name, plan, resumeCount FROM riq_users WHERE email = ?",
+          [email]
+        ) as any;
+        user = rows[0] || null;
+      } finally {
+        await conn.end();
+      }
 
       if (!user) {
+        // Create with random password — LinkedIn users don't use password auth
         const crypto = require("crypto");
-        user = db ? await createUser(db, {
-          email,
-          name: name || email.split("@")[0],
-          passwordHash: crypto.randomBytes(32).toString("hex"),
-        }) : null;
+        const randomPassword = crypto.randomBytes(32).toString("hex");
+        user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
         console.log(`[ResumeIQ LinkedIn] Created new user: ${email}`);
       } else {
         console.log(`[ResumeIQ LinkedIn] Existing user: ${email}`);
@@ -1494,12 +1507,8 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
         return;
       }
 
-      // Create JWT
-      const { createToken } = await import("./authService");
-      const token = createToken({ userId: user.id, email: user.email });
+      const token = authService.generateToken(user.id, user.email);
       res.clearCookie("riq_linkedin_state");
-
-      // Redirect with token — client stores in localStorage
       res.redirect(`${frontendUrl}/app?linkedin_token=${encodeURIComponent(token)}`);
     } catch (err) {
       console.error("[ResumeIQ LinkedIn] Callback error:", err);
