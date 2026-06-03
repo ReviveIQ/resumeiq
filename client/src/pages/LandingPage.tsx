@@ -201,7 +201,7 @@ export default function LandingPage() {
 
   return (
     <div style={{ background: "#080f1e", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "white", overflowX: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
       <style>{`
         @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -246,14 +246,23 @@ export default function LandingPage() {
             <circle cx="36" cy="36" r="6" fill="white" opacity="0.95"/>
             <circle cx="36" cy="36" r="3" fill="#93c5fd"/>
           </svg>
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: "18px", fontWeight: 800, color: "white" }}>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "18px", fontWeight: 800, color: "white" }}>
             Resume<span style={{ color: "#60a5fa" }}>IQ</span>
           </span>
           <span style={{ color: "#475569", fontSize: "11px", marginLeft: "2px" }}>by ReviveIQI</span>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button className="cta-btn-outline" onClick={() => navigate("/app")} style={{ padding: "10px 20px", fontSize: "13px" }}>Sign In</button>
-          <button className="cta-btn" onClick={() => navigate("/app")} style={{ padding: "10px 20px", fontSize: "13px" }}>Get Started →</button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <button
+            onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+            style={{ display: "flex", alignItems: "center", gap: "7px", background: "#0077B5", color: "white", border: "none", borderRadius: "7px", padding: "9px 16px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+          >
+            <svg viewBox="0 0 24 24" style={{ width: "14px", height: "14px", fill: "white", flexShrink: 0 }}>
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+            Continue with LinkedIn
+          </button>
+          <button className="cta-btn-outline" onClick={() => navigate("/app")} style={{ padding: "9px 16px", fontSize: "13px" }}>Sign In</button>
+          <button className="cta-btn" onClick={() => navigate("/app")} style={{ padding: "9px 16px", fontSize: "13px" }}>Get Started →</button>
         </div>
       </nav>
 
@@ -268,7 +277,7 @@ export default function LandingPage() {
             YOUR FIRST RESUME IS FREE — NO CREDIT CARD REQUIRED
           </div>
 
-          <h1 className="fade-up-1" style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, lineHeight: 1.1, marginBottom: "24px", letterSpacing: "-0.02em" }}>
+          <h1 className="fade-up-1" style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, lineHeight: 1.1, marginBottom: "24px", letterSpacing: "-0.02em" }}>
             Your resume is a<br />
             <span style={{ background: "linear-gradient(135deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>digital asset.</span>
             <br />Treat it like one.
@@ -279,10 +288,19 @@ export default function LandingPage() {
           </p>
 
           <div className="fade-up-3" style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="cta-btn" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: "16px", padding: "18px 42px" }}>
+            <button
+              onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+              style={{ display: "flex", alignItems: "center", gap: "9px", background: "#0077B5", color: "white", border: "none", borderRadius: "9px", padding: "16px 32px", fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+            >
+              <svg viewBox="0 0 24 24" style={{ width: "16px", height: "16px", fill: "white", flexShrink: 0 }}>
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              Continue with LinkedIn
+            </button>
+            <button className="cta-btn" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} style={{ fontSize: "15px", padding: "16px 32px" }}>
               See How It Works ↓
             </button>
-            <button className="cta-btn-outline" onClick={() => navigate("/app")}>
+            <button className="cta-btn-outline" onClick={() => navigate("/app")} style={{ fontSize: "15px", padding: "16px 32px" }}>
               Try It Free →
             </button>
           </div>
@@ -308,7 +326,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>The problem</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
+            <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
               Most resumes fail before<br />a human ever reads them.
             </h2>
             <p style={{ color: "#64748b", fontSize: "16px", maxWidth: "500px", margin: "0 auto" }}>
@@ -370,7 +388,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "56px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>How it works</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
+            <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "16px" }}>
               Upload. Review. Download.<br />Done in minutes.
             </h2>
           </div>
@@ -379,7 +397,7 @@ export default function LandingPage() {
               <div key={i} className="step-card">
                 <div style={{ fontSize: "28px", marginBottom: "12px" }}>{step.icon}</div>
                 <div style={{ color: "#1d4ed8", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", marginBottom: "8px" }}>{step.step}</div>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{step.title}</h3>
+                <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{step.title}</h3>
                 <p style={{ color: "#64748b", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>{step.body}</p>
               </div>
             ))}
@@ -392,7 +410,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>Pricing</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "12px" }}>
+            <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "12px" }}>
               One-time. No subscription. Yours forever.
             </h2>
             <p style={{ color: "#64748b", fontSize: "15px" }}>Pay once. Re-download anytime from your account.</p>
@@ -410,7 +428,7 @@ export default function LandingPage() {
                 )}
                 <p style={{ color: "#64748b", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>{plan.name}</p>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "4px" }}>
-                  <span style={{ fontFamily: "'Syne', sans-serif", fontSize: "36px", fontWeight: 800 }}>{plan.price}</span>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "36px", fontWeight: 800 }}>{plan.price}</span>
                 </div>
                 <p style={{ color: "#475569", fontSize: "12px", marginBottom: "24px" }}>{plan.description}</p>
                 <div style={{ marginBottom: "24px" }}>
@@ -439,7 +457,7 @@ export default function LandingPage() {
       <section style={{ padding: "100px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
         <div className="mesh" style={{ background: "rgba(37,99,235,0.12)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
         <div style={{ position: "relative", maxWidth: "600px", margin: "0 auto" }}>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(20px, 2.5vw, 32px)", fontWeight: 800, marginBottom: "20px", lineHeight: 1.1 }}>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 32px)", fontWeight: 800, marginBottom: "20px", lineHeight: 1.1 }}>
             Your next opportunity<br />is reading your resume<br /><span style={{ color: "#60a5fa" }}>right now.</span>
           </h2>
           <p style={{ color: "#64748b", fontSize: "16px", marginBottom: "36px", lineHeight: 1.6 }}>
@@ -455,7 +473,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer style={{ padding: "32px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 800, color: "white" }}>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "15px", fontWeight: 800, color: "white" }}>
             Resume<span style={{ color: "#60a5fa" }}>IQ</span>
           </span>
           <span style={{ color: "#1e3a5f", fontSize: "11px" }}>by ReviveIQI</span>
