@@ -197,16 +197,36 @@ export default function ResumeIQ() {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
 
-  // Handle LinkedIn OAuth redirect
+  // Handle LinkedIn OAuth redirect and cross-app SSO handoff
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const linkedinToken = params.get("linkedin_token");
     const authError = params.get("auth_error");
-    if (linkedinToken) {
+    const handoffToken = params.get("handoff");
+
+    if (handoffToken) {
+      // Cross-app SSO from MyCareerIQ — exchange for a riq_token
+      window.history.replaceState({}, "", window.location.pathname);
+      fetch("/api/resumeiq/auth/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: handoffToken }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.token) {
+            localStorage.setItem("riq_token", data.token);
+            localStorage.setItem("riq_from_mycareeriq", "1");
+            setToken(data.token);
+            setUser(data.user);
+            setView("upload");
+          }
+        })
+        .catch(() => setView("upload")); // Fail gracefully — still show app
+    } else if (linkedinToken) {
       localStorage.setItem("riq_token", linkedinToken);
       setToken(linkedinToken);
       window.history.replaceState({}, "", window.location.pathname);
-      // If a file was staged before OAuth redirect, auto-proceed
       if (file) {
         setTimeout(() => handleAnalyzeWithToken(linkedinToken), 200);
       }
@@ -885,12 +905,27 @@ export default function ResumeIQ() {
         )}
         {view === "upload" && (
           <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+            {/* SSO arrival banner — shown when coming from MyCareerIQ */}
+            {user && new URLSearchParams(window.location.search).get("handoff") === null && localStorage.getItem("riq_from_mycareeriq") === "1" && (
+              <div style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.4)", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "18px" }}>✓</span>
+                <div>
+                  <p style={{ color: "#93c5fd", fontSize: "13px", fontWeight: 600, margin: 0 }}>You're signed in as {user.email}</p>
+                  <p style={{ color: "#60a5fa", fontSize: "12px", margin: "2px 0 0 0" }}>Your first transformation is free — upload your resume below.</p>
+                </div>
+              </div>
+            )}
+
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
               <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>Transform Your Resume</h1>
               <p style={{ color: "#94a3b8", fontSize: "14px" }}>
                 Upload any resume and get back a polished, ATS-optimized Word document.
-                {!user && <> <strong style={{ color: "#4ade80" }}>Your first one is free.</strong></>}
               </p>
+              {/* Always show free messaging prominently */}
+              <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
+                <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
+                <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>First transformation is free</span>
+              </div>
             </div>
             <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
               onDragOver={e => e.preventDefault()} onClick={() => fileInputRef.current?.click()}

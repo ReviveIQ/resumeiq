@@ -1375,6 +1375,78 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
   });
 
 
+  // ── Cross-app SSO handoff ─────────────────────────────────────────────────
+  // Accepts a short-lived token from MyCareerIQ, verifies it, finds or creates
+  // the user in ResumeIQ's DB, and returns a riq_token for auto-login.
+  // Frontend calls this on /app load when ?handoff= param is present.
+  app.post("/api/resumeiq/auth/handoff", async (req: Request, res: Response) => {
+    const { token: crossToken } = req.body;
+    if (!crossToken) { res.status(400).json({ error: "Missing token" }); return; }
+
+    try {
+      const secret = process.env.CROSS_APP_SECRET || process.env.JWT_SECRET || "cross-app-secret";
+      const decoded = JSON.parse(Buffer.from(crossToken, "base64url").toString("utf-8"));
+      const { payload: payloadStr, sig } = decoded;
+
+      // Verify signature
+      const expectedSig = crypto.createHmac("sha256", secret).update(payloadStr).digest("hex");
+      if (sig !== expectedSig) {
+        console.warn("[CrossApp] Invalid signature on handoff token");
+        res.status(401).json({ error: "Invalid token" });
+        return;
+      }
+
+      const payload = JSON.parse(payloadStr);
+
+      // Check expiry
+      if (Date.now() > payload.expiresAt) {
+        console.warn("[CrossApp] Expired handoff token");
+        res.status(401).json({ error: "Token expired" });
+        return;
+      }
+
+      const { email, name } = payload;
+      if (!email) { res.status(400).json({ error: "No email in token" }); return; }
+
+      // Find or create ResumeIQ user
+      const authService = await import("./authService");
+      const conn = await authService.getDb();
+      if (!conn) { res.status(500).json({ error: "Database unavailable" }); return; }
+
+      let user: any = null;
+      try {
+        const [rows] = await conn.execute(
+          "SELECT id, email, name, plan, resumeCount FROM riq_users WHERE email = ?",
+          [email]
+        ) as any;
+        user = rows[0] || null;
+      } finally {
+        await conn.end();
+      }
+
+      if (!user) {
+        // Create account — no password needed (SSO user)
+        const randomPassword = crypto.randomBytes(32).toString("hex");
+        user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
+        console.log(`[CrossApp] Created ResumeIQ account for ${email} via SSO`);
+      } else {
+        console.log(`[CrossApp] SSO login for existing user ${email}`);
+      }
+
+      if (!user) { res.status(500).json({ error: "Failed to create account" }); return; }
+
+      const riqToken = authService.generateToken(user.id, user.email);
+      res.json({
+        token: riqToken,
+        user: { id: user.id, email: user.email, name: user.name, plan: user.plan, resumeCount: user.resumeCount || 0 },
+        isNew: !rows?.[0],
+      });
+    } catch (err) {
+      console.error("[CrossApp] Handoff failed:", err);
+      res.status(500).json({ error: "Handoff failed" });
+    }
+  });
+
   // ── LinkedIn OAuth ─────────────────────────────────────────────────────────
   // GET /api/resumeiq/auth/linkedin — redirect to LinkedIn
   app.get("/api/resumeiq/auth/linkedin", (req: Request, res: Response) => {
