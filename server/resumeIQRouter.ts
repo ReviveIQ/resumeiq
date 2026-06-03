@@ -1383,7 +1383,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       res.status(500).json({ error: "LinkedIn OAuth not configured" });
       return;
     }
-    const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
+    const redirectUri = "https://resumeiq.reviveiqi.com/api/auth/linkedin/callback";
     const scope = "openid profile email";
     const state = crypto.randomBytes(16).toString("hex");
 
@@ -1405,7 +1405,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
   });
 
   // GET /api/resumeiq/auth/linkedin/callback — handle callback
-  app.get("/api/resumeiq/auth/linkedin/callback", async (req: Request, res: Response) => {
+  app.get("/api/auth/linkedin/callback", async (req: Request, res: Response) => {
     const { code, state, error } = req.query as Record<string, string>;
     const frontendUrl = "https://resumeiq.reviveiqi.com";
 
@@ -1429,7 +1429,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
     const clientId = process.env.LINKEDIN_CLIENT_ID!;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
-    const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
+    const redirectUri = "https://resumeiq.reviveiqi.com/api/auth/linkedin/callback";
 
     try {
       // Exchange code for token
