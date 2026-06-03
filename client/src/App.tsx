@@ -4,6 +4,7 @@ import ResumeIQ from "./pages/ResumeIQ";
 import LandingPage from "./pages/LandingPage";
 import PipelineTracker from "./pages/PipelineTracker";
 import StripeDashboard from "./pages/StripeDashboard";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { trackEvent } from "./tracking";
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/app" component={ResumeIQ} />
+      <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/admin/pipeline" component={PipelineTracker} />
       <Route path="/admin/stripe" component={StripeDashboard} />
     </Switch>
