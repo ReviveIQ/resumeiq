@@ -571,6 +571,11 @@ export function registerResumeIQRoutes(app: Express) {
   migrateDb().catch(console.error);
 
   // ── AUTH ──────────────────────────────────────────────────────────
+  // Analytics event capture — accepts and silently acknowledges tracking events
+  app.post("/api/resumeiq/events", (req: Request, res: Response) => {
+    res.json({ ok: true });
+  });
+
   app.post("/api/resumeiq/auth/register", async (req: Request, res: Response) => {
     try {
       const { email, password, name } = req.body;
