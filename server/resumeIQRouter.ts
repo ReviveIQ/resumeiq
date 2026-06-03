@@ -1379,7 +1379,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       return;
     }
     const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
-    const scope = "openid profile email r_liteprofile";
+    const scope = "openid profile email";
     const state = require("crypto").randomBytes(16).toString("hex");
 
     res.cookie("riq_linkedin_state", state, {
