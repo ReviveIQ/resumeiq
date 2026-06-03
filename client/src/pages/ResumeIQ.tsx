@@ -206,6 +206,10 @@ export default function ResumeIQ() {
       localStorage.setItem("riq_token", linkedinToken);
       setToken(linkedinToken);
       window.history.replaceState({}, "", window.location.pathname);
+      // If a file was staged before OAuth redirect, auto-proceed
+      if (file) {
+        setTimeout(() => handleAnalyzeWithToken(linkedinToken), 200);
+      }
     } else if (authError) {
       const msgs: Record<string, string> = {
         linkedin_denied: "LinkedIn sign-in was cancelled",
@@ -338,7 +342,7 @@ export default function ResumeIQ() {
     setFile(f); setError("");
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyzeWithToken = async (authToken: string) => {
     if (!file) return;
     setView("analyzing"); setError("");
     try {
@@ -349,25 +353,32 @@ export default function ResumeIQ() {
         reader.readAsDataURL(file);
       });
       const res = await fetch("/api/resumeiq/transform", {
-        method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ fileBase64: base64, fileName: file.name }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setParsedData(data); trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
       setSessionId(data.sessionId); setIsFree(data.isFree);
-
-      // Check for missing fields — launch interview if needed
       const missing = getMissingFields(data);
       if (missing.length > 0) {
-        setInterviewFields(missing);
-        setInterviewStep(0);
-        setInterviewAnswer("");
-        setView("interview");
+        setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
       } else {
         setView("preview");
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
+  };
+
+  const handleAnalyze = async () => {
+    if (!file) return;
+
+    // Require account before transformation
+    if (!user) {
+      setView("register");
+      return;
+    }
+
+    await handleAnalyzeWithToken(token);
   };
 
   // ── Interview helpers ────────────────────────────────────────────────────
@@ -601,7 +612,15 @@ export default function ResumeIQ() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Auth failed");
       setToken(data.token); localStorage.setItem("riq_token", data.token);
-      setUser(data.user); setView("upload");
+      setUser(data.user);
+      // If they had a file ready, proceed straight to analysis
+      if (file) {
+        setView("analyzing");
+        // slight delay so token/user state settles before the fetch fires
+        setTimeout(() => handleAnalyzeWithToken(data.token), 100);
+      } else {
+        setView("upload");
+      }
     } catch (err: any) { setError(err.message); }
     finally { setAuthLoading(false); }
   };
@@ -792,10 +811,12 @@ export default function ResumeIQ() {
 
               <div style={{ marginBottom: "32px" }}>
                 <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "24px", color: "white", margin: "0 0 6px 0", letterSpacing: "-0.3px" }}>
-                  {view === "login" ? "Welcome back" : "Get started"}
+                  {view === "login" ? "Welcome back" : "Create your free account"}
                 </h1>
                 <p style={{ fontSize: "14px", color: "#64748b", margin: 0, fontWeight: 300 }}>
-                  {view === "login" ? "Sign in to access your resume history" : "Save and re-download all your resumes"}
+                  {view === "login"
+                    ? "Sign in to transform your resume"
+                    : "Your resume transformation is ready — create an account to get it"}
                 </p>
               </div>
 
