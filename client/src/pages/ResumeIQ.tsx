@@ -689,63 +689,175 @@ export default function ResumeIQ() {
 
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "32px 24px" }}>
         {(view === "login" || view === "register") && (
-          <div style={{ maxWidth: "400px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "28px" }}>
-              <h1 style={{ color: "white", fontSize: "26px", fontWeight: "bold", marginBottom: "6px" }}>
-                {view === "login" ? "Welcome back" : "Create your account"}
-              </h1>
-              <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                {view === "login" ? "Sign in to access your resume history" : "Save and re-download all your resumes"}
-              </p>
+          <div style={{
+            position: "fixed", inset: 0,
+            display: "flex",
+            fontFamily: "'DM Sans', sans-serif",
+            background: "#080f1e",
+            zIndex: 50,
+          }}>
+            {/* ── Left panel — product story ─────────────────────── */}
+            <div style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              padding: "64px 56px",
+              borderRight: "1px solid rgba(255,255,255,0.06)",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Background glows */}
+              <div style={{ position: "absolute", top: "-120px", left: "-80px", width: "500px", height: "500px", background: "radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: "-80px", right: "-40px", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(96,165,250,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+              {/* Brand */}
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "56px" }}>
+                <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "40px", height: "40px" }}>
+                  <defs>
+                    <linearGradient id="riq-lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#60a5fa"/><stop offset="100%" stopColor="#2563eb"/></linearGradient>
+                    <linearGradient id="riq-lg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#93c5fd"/><stop offset="100%" stopColor="#3b82f6"/></linearGradient>
+                    <linearGradient id="riq-lg3" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#1d4ed8"/><stop offset="100%" stopColor="#1e3a5f"/></linearGradient>
+                    <filter id="riq-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  </defs>
+                  <polygon points="36,4 68,36 36,68 4,36" fill="url(#riq-lg3)" opacity="0.35"/>
+                  <polygon points="36,4 20,20 36,36 52,20" fill="url(#riq-lg2)" opacity="0.9"/>
+                  <polygon points="36,4 52,20 68,36 36,36" fill="url(#riq-lg1)" opacity="0.65"/>
+                  <polygon points="4,36 20,20 36,36 20,52" fill="url(#riq-lg1)" opacity="0.5"/>
+                  <polygon points="68,36 52,20 36,36 52,52" fill="url(#riq-lg2)" opacity="0.75"/>
+                  <polygon points="36,68 20,52 36,36 52,52" fill="url(#riq-lg3)" opacity="0.95"/>
+                  <circle cx="36" cy="36" r="10" fill="none" stroke="rgba(147,197,253,0.3)" strokeWidth="1"/>
+                  <circle cx="36" cy="36" r="6" fill="white" opacity="0.95" filter="url(#riq-glow)"/>
+                  <circle cx="36" cy="36" r="3" fill="#93c5fd"/>
+                </svg>
+                <div>
+                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "22px", letterSpacing: "-0.5px", color: "white" }}>
+                    Resume<span style={{ color: "#60a5fa" }}>IQ</span>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#475569", letterSpacing: "0.5px", marginTop: "1px" }}>
+                    BY REVIVEIQ<span style={{ color: "#60a5fa" }}>I</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Headline */}
+              <div style={{ marginBottom: "48px" }}>
+                <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "32px", lineHeight: "1.15", color: "white", letterSpacing: "-0.5px", margin: 0 }}>
+                  Your resume,<br />
+                  rewritten to<br />
+                  <span style={{ color: "#60a5fa" }}>get callbacks.</span>
+                </h2>
+              </div>
+
+              {/* Steps */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "28px", position: "relative" }}>
+                <div style={{ position: "absolute", left: "18px", top: "28px", bottom: "28px", width: "1px", background: "linear-gradient(to bottom, rgba(37,99,235,0.5), rgba(96,165,250,0.2), rgba(37,99,235,0.1))" }} />
+                {[
+                  { n: "01", accent: "#60a5fa", title: "Upload any resume", body: "PDF or DOCX. We parse every role, bullet, and date — nothing gets lost." },
+                  { n: "02", accent: "#3b82f6", title: "AI rewrites every bullet", body: "GPT-4o adds measurable impact, fixes ATS formatting, and strengthens your summary — without hallucinating facts." },
+                  { n: "03", accent: "#2563eb", title: "Download and apply", body: "Clean Word document, ATS-safe. Then take it straight into MyCareerIQ to build your job search pipeline." },
+                ].map(step => (
+                  <div key={step.n} style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.3), rgba(8,15,30,0.9))", border: `1px solid ${step.accent}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: step.accent, fontFamily: "'Montserrat',sans-serif" }}>{step.n}</span>
+                    </div>
+                    <div style={{ paddingTop: "6px" }}>
+                      <div style={{ fontSize: "15px", fontWeight: 600, color: "white", marginBottom: "4px", lineHeight: "1.3" }}>{step.title}</div>
+                      <div style={{ fontSize: "13px", color: "#94a3b8", lineHeight: "1.6", fontWeight: 300 }}>{step.body}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: "48px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ fontSize: "12px", color: "#334155", margin: 0 }}>
+                  After your resume?{" "}
+                  <a href="https://mycareeriq.reviveiqi.com" target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", textDecoration: "none" }}>
+                    Build your job pipeline in MyCareerIQ →
+                  </a>
+                </p>
+              </div>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: "14px", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              {/* LinkedIn OAuth Button */}
+
+            {/* ── Right panel — auth form ─────────────────────────── */}
+            <div style={{ width: "420px", flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "64px 40px" }}>
+              {/* Back button */}
+              <button
+                onClick={() => setView("upload")}
+                style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "32px", padding: 0, fontFamily: "'DM Sans', sans-serif" }}
+              >
+                ← Back
+              </button>
+
+              <div style={{ marginBottom: "32px" }}>
+                <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "24px", color: "white", margin: "0 0 6px 0", letterSpacing: "-0.3px" }}>
+                  {view === "login" ? "Welcome back" : "Get started"}
+                </h1>
+                <p style={{ fontSize: "14px", color: "#64748b", margin: 0, fontWeight: 300 }}>
+                  {view === "login" ? "Sign in to access your resume history" : "Save and re-download all your resumes"}
+                </p>
+              </div>
+
+              {/* LinkedIn */}
               <button
                 onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "10px", padding: "12px 20px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "11px 16px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px", fill: "white", flexShrink: 0 }}>
                   <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                 </svg>
                 Continue with LinkedIn
               </button>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "2px 0" }}>
-                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.15)" }} />
-                <span style={{ color: "#64748b", fontSize: "12px" }}>or</span>
-                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.15)" }} />
+
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "20px 0" }}>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ fontSize: "12px", color: "#475569" }}>or email</span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
               </div>
-              {view === "register" && (
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {view === "register" && (
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 500, color: "#94a3b8", display: "block", marginBottom: "6px" }}>Full Name</label>
+                    <input type="text" value={authName} onChange={(e: any) => setAuthName(e.target.value)} placeholder="Bryan Greer"
+                      style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                  </div>
+                )}
                 <div>
-                  <label style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "5px", display: "block" }}>Full Name</label>
-                  <input type="text" value={authName} onChange={(e: any) => setAuthName(e.target.value)} placeholder="Bryan Greer"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none", boxSizing: "border-box" }} />
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#94a3b8", display: "block", marginBottom: "6px" }}>Email</label>
+                  <input type="email" value={authEmail} onChange={(e: any) => setAuthEmail(e.target.value)} placeholder="you@email.com"
+                    style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
                 </div>
-              )}
-              <div>
-                <label style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "5px", display: "block" }}>Email</label>
-                <input type="email" value={authEmail} onChange={(e: any) => setAuthEmail(e.target.value)} placeholder="you@email.com"
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div style={{ position: "relative" }}>
-                <label style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "5px", display: "block" }}>Password</label>
-                <input type={showPassword ? "text" : "password"} value={authPassword} onChange={(e: any) => setAuthPassword(e.target.value)} placeholder="••••••••"
-                  style={{ width: "100%", padding: "10px 36px 10px 12px", borderRadius: "7px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "white", fontSize: "13px", outline: "none", boxSizing: "border-box" }} />
-                <button onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "10px", top: "30px", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                <div style={{ position: "relative" }}>
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#94a3b8", display: "block", marginBottom: "6px" }}>Password</label>
+                  <input type={showPassword ? "text" : "password"} value={authPassword} onChange={(e: any) => setAuthPassword(e.target.value)} placeholder="••••••••"
+                    style={{ width: "100%", padding: "10px 36px 10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif" }} />
+                  <button onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "10px", top: "30px", background: "none", border: "none", cursor: "pointer", color: "#64748b" }}>
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+
+                {error && <p style={{ color: "#f87171", fontSize: "12px", textAlign: "center", margin: 0 }}>{error}</p>}
+
+                <button onClick={() => handleAuth(view as "login" | "register")} disabled={authLoading}
+                  style={{ width: "100%", padding: "11px 16px", background: authLoading ? "#1e3a5f" : "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: 600, cursor: authLoading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: authLoading ? "none" : "0 4px 20px rgba(37,99,235,0.35)", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+                  {authLoading ? <Loader2 size={16} style={spin} /> : null}
+                  {view === "login" ? "Sign In" : "Create Account"}
                 </button>
               </div>
-              {error && <p style={{ color: "#f87171", fontSize: "12px", textAlign: "center" }}>{error}</p>}
-              <button onClick={() => handleAuth(view as "login" | "register")} disabled={authLoading}
-                style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "15px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                {authLoading ? <Loader2 size={16} style={spin} /> : null}
-                {view === "login" ? "Sign In" : "Create Account"}
-              </button>
-              <p style={{ color: "#64748b", fontSize: "12px", textAlign: "center" }}>
+
+              <p style={{ fontSize: "13px", color: "#475569", textAlign: "center", marginTop: "24px" }}>
                 {view === "login" ? "Don't have an account? " : "Already have an account? "}
                 <button onClick={() => { setView(view === "login" ? "register" : "login"); setError(""); }}
-                  style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>
+                  style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: "13px", fontWeight: 500, padding: 0 }}>
                   {view === "login" ? "Create one" : "Sign in"}
                 </button>
+              </p>
+
+              <p style={{ fontSize: "11px", color: "#334155", textAlign: "center", marginTop: "32px", lineHeight: "1.6" }}>
+                By continuing you agree to ReviveIQI's{" "}
+                <a href="/privacy" style={{ color: "#475569", textDecoration: "underline" }}>Privacy Policy</a>
               </p>
             </div>
           </div>
