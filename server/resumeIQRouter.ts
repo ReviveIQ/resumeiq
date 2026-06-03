@@ -1385,7 +1385,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
     }
     const redirectUri = "https://resumeiq.reviveiqi.com/api/resumeiq/auth/linkedin/callback";
     const scope = "openid profile email";
-    const state = require("crypto").randomBytes(16).toString("hex");
+    const state = crypto.randomBytes(16).toString("hex");
 
     res.cookie("riq_linkedin_state", state, {
       httpOnly: true,
@@ -1494,7 +1494,6 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
       if (!user) {
         // Create with random password — LinkedIn users don't use password auth
-        const crypto = require("crypto");
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
         console.log(`[ResumeIQ LinkedIn] Created new user: ${email}`);
