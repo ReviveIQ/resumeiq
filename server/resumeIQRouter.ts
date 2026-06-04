@@ -1538,6 +1538,10 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       const profile = await userRes.json() as any;
       const email = profile.email;
       const name = profile.name || `${profile.given_name || ""} ${profile.family_name || ""}`.trim();
+      const picture = profile.picture || "";
+      // LinkedIn sub is the unique user ID — construct a best-effort profile URL
+      // Note: LinkedIn OpenID doesn't return vanity URL, only sub (numeric/alphanumeric ID)
+      // We store name+email so the resume can be pre-populated on login
 
       if (!email) {
         res.redirect(`${frontendUrl}/app?auth_error=no_email`);
@@ -1554,7 +1558,6 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
       let user: any = null;
       try {
-        // Look up by email directly
         const [rows] = await conn.execute(
           "SELECT id, email, name, plan, resumeCount FROM riq_users WHERE email = ?",
           [email]
@@ -1565,7 +1568,6 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       }
 
       if (!user) {
-        // Create with random password — LinkedIn users don't use password auth
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
         console.log(`[ResumeIQ LinkedIn] Created new user: ${email}`);
@@ -1580,7 +1582,13 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
       const token = authService.generateToken(user.id, user.email);
       res.clearCookie("riq_linkedin_state");
-      res.redirect(`${frontendUrl}/app?linkedin_token=${encodeURIComponent(token)}`);
+      // Pass name so the app can pre-populate resume fields
+      const params = new URLSearchParams({
+        linkedin_token: token,
+        linkedin_name: name,
+        linkedin_email: email,
+      });
+      res.redirect(`${frontendUrl}/app?${params.toString()}`);
     } catch (err) {
       console.error("[ResumeIQ LinkedIn] Callback error:", err);
       res.redirect(`${frontendUrl}/app?auth_error=server_error`);

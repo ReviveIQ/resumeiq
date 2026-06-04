@@ -226,6 +226,11 @@ export default function ResumeIQ() {
     } else if (linkedinToken) {
       localStorage.setItem("riq_token", linkedinToken);
       setToken(linkedinToken);
+      // Store LinkedIn profile data for pre-populating resume fields
+      const linkedinName = params.get("linkedin_name") || "";
+      const linkedinEmail = params.get("linkedin_email") || "";
+      if (linkedinName) localStorage.setItem("riq_linkedin_name", linkedinName);
+      if (linkedinEmail) localStorage.setItem("riq_linkedin_email", linkedinEmail);
       window.history.replaceState({}, "", window.location.pathname);
       if (file) {
         setTimeout(() => handleAnalyzeWithToken(linkedinToken), 200);
@@ -378,6 +383,16 @@ export default function ResumeIQ() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+      // Pre-populate missing fields from LinkedIn OAuth data if available
+      const linkedinName = localStorage.getItem("riq_linkedin_name") || "";
+      const linkedinEmail = localStorage.getItem("riq_linkedin_email") || "";
+      if (linkedinName && !data.name) data.name = linkedinName;
+      if (linkedinEmail && !data.email) data.email = linkedinEmail;
+      // Prompt for LinkedIn URL if signed in via LinkedIn but no URL in resume
+      if (linkedinName && !data.linkedin) {
+        data.linkedin = ""; // Will show empty field with placeholder prompting them to add it
+        data._linkedinSignedIn = true; // flag for UI hint
+      }
       setParsedData(data); trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
       setSessionId(data.sessionId); setIsFree(data.isFree);
       const missing = getMissingFields(data);
@@ -1055,6 +1070,11 @@ export default function ResumeIQ() {
                   <EditField label="Email" value={parsedData.email || ""} onSave={v => updateField("email", v)} />
                   <EditField label="Phone" value={parsedData.phone || ""} onSave={v => updateField("phone", v)} />
                   <EditField label="LinkedIn" value={parsedData.linkedin || ""} onSave={v => updateField("linkedin", v)} />
+                  {parsedData._linkedinSignedIn && !parsedData.linkedin && (
+                    <p style={{ fontSize: "11px", color: "#60a5fa", margin: "2px 0 6px 0" }}>
+                      💡 You signed in with LinkedIn — paste your profile URL above (linkedin.com/in/yourname)
+                    </p>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "4px" }}>
                     <div><span style={{ color: "#64748b", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Experience</span><p style={{ color: "white", fontSize: "13px", margin: "3px 0 0" }}>{parsedData.yearsOfExperience} years</p></div>
                     <div><span style={{ color: "#64748b", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Level</span><p style={{ color: "white", fontSize: "13px", margin: "3px 0 0", textTransform: "capitalize" }}>{parsedData.seniorityLevel}</p></div>
