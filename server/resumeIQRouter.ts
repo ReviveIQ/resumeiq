@@ -859,7 +859,6 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
       const tokenUser = getTokenUser(req);
       const cookies = req.headers.cookie || "";
       const hasCookie = cookies.includes("resumeiq_free_used=1");
-      const ip = getClientIp(req);
 
       let isFree = false;
 
