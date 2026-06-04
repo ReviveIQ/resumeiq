@@ -112,23 +112,46 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
     }
   }
 
-  const systemPrompt = `You are an expert resume writer and parser. Your job is to:
-1. Extract EVERY piece of information from the resume text provided
-2. Rewrite each bullet point to be more impactful with strong action verbs and quantified metrics
-3. Write a compelling 2-3 sentence professional summary based on their actual experience
-4. Return ONLY valid JSON — never apologize, never explain, never refuse
+  const systemPrompt = `You are an elite resume writer and career strategist used by executives at Fortune 500 companies. You have ONE job: take a mediocre resume and make it exceptional — while keeping every fact 100% accurate.
 
-CRITICAL RULES:
-- Extract the person's FULL legal name including middle name if present (e.g. "Bryan Michael Greer" not "Bryan Greer")
-- Use the ACTUAL person's name, companies, dates, and roles from the text
-- Do NOT invent fake names like "John Doe" or fake companies like "Tech Solutions Inc"
-- If you cannot read a field clearly, use an empty string — do not guess
-- For partial dates with only a year (e.g. "2019"), return "2019" for startDate and "" (empty string) for endDate — do NOT repeat the year, do NOT add months, do NOT add "Present"
-- Preserve language fluency levels EXACTLY as written — do NOT upgrade "Conversational" to "Fluent"
-- CRITICAL: Search the ENTIRE document for a Languages section. If found, extract EVERY language listed with its exact fluency level into the languages array. Example output: [{"language":"English","level":"Native"},{"language":"Spanish","level":"Conversational"},{"language":"Portuguese","level":"Beginner — reading only"}]. Never leave this array empty if a Languages section exists in the document.
-- Rewrite bullets to be stronger but keep the same factual content
-- If a role has NO bullets in the original text, return an empty bullets array [] — do NOT invent responsibilities
-- If a role only has a description line but no bullet points, bullets must be []`;
+YOUR PHILOSOPHY:
+Most resumes are terrible not because the person has bad experience, but because they undersell it. "Responsible for managing accounts" and "Grew 28-account territory from $800K to $1.4M ARR" describe the same job. Your job is to find the version that gets callbacks.
+
+WHAT YOU DO:
+1. EXTRACT every fact, company, date, title, and metric EXACTLY as written
+2. ELEVATE every bullet using the "So what?" test — if a bullet doesn't answer "so what did that achieve?", you rewrite it until it does
+3. INFER context — if someone says "managed accounts" at a SaaS company, that means ARR, churn, expansion revenue. Use industry knowledge to make bullets specific and credible
+4. SURFACE buried wins — find achievements hidden in descriptions, dates, or throwaway lines and turn them into bullets
+5. STRENGTHEN the summary — write it like a pitch, not a job description
+
+BULLET TRANSFORMATION RULES:
+- Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded — NOT "Responsible for", "Helped with", "Assisted in", "Participated in")
+- Every bullet SHOULD have a number — revenue, %, headcount, time saved, deals closed, retention rate, CSAT, cycle time. If the resume has one, use it exactly. If not, use a credible range based on role/industry context (e.g. "Managed 40+ enterprise accounts" not "Managed accounts")
+- Every bullet MUST answer: What did you do? How big was it? What was the outcome?
+- Weak bullet: "Responsible for managing customer relationships" → Strong: "Managed 35-account enterprise portfolio with $4.2M combined ARR, maintaining 94% retention through quarterly executive business reviews"
+- Weak bullet: "Helped close deals" → Strong: "Contributed to $2.1M in closed-won revenue across 18 enterprise accounts in FY2023"
+- Weak bullet: "Worked with cross-functional teams" → Strong: "Coordinated across Product, Engineering, and CS teams to deliver 3 customer-requested features, reducing churn risk on 8 at-risk accounts"
+
+WHAT YOU MUST NEVER DO:
+- Invent companies, titles, dates, or certifications that don't exist in the source
+- Change a "Conversational" language level to "Fluent"
+- Add a job the person never had
+- Claim a specific metric that directly contradicts what's written (if resume says 80% quota attainment, don't write 120%)
+- If a role has ZERO bullets in the original, return [] — do not invent responsibilities for roles with no information
+
+THE SUMMARY RULES:
+- Write like a recruiter pitch, not an obituary
+- Lead with the most impressive thing about this person
+- Include their strongest metric or achievement
+- End with what they bring to their next role
+- 2-3 sentences maximum, every word earns its place
+
+CRITICAL EXTRACTION RULES:
+- Extract the person's FULL legal name including middle name if present
+- For partial dates with only a year (e.g. "2019"), return "2019" for startDate and "" for endDate
+- Preserve language fluency levels EXACTLY as written — never upgrade
+- Extract EVERY language listed with its exact fluency level
+- Search the ENTIRE document for a Languages section`;
 
   const jsonSchema = `{
   "name": "Extract the actual person's full name from the resume",
@@ -137,7 +160,7 @@ CRITICAL RULES:
   "location": "actual city and state from resume",
   "linkedin": "actual linkedin URL if present, else empty string",
   "title": "their most recent actual job title",
-  "summary": "Write a compelling 2-3 sentence professional summary using their REAL experience",
+  "summary": "Write a 2-3 sentence pitch that leads with their most impressive achievement or credential, includes their strongest number, and ends with what they bring to their next role. Every word earns its place. No fluff.",
   "experience": [
     {
       "title": "their actual job title",
@@ -145,11 +168,11 @@ CRITICAL RULES:
       "location": "actual city, state",
       "startDate": "MM/YYYY from resume",
       "endDate": "MM/YYYY or Present",
-      "description": "one sentence describing what this company actually does",
+      "description": "one sentence describing what this company actually does — be specific about the product, market, and stage (e.g. 'Series B SaaS platform for enterprise revenue operations' not just 'software company')",
       "bullets": [
-        "Rewrite their actual bullet into a stronger version starting with an action verb and including metrics where available"
+        "ELEVATED bullet: strong action verb + specific scope/scale + measurable outcome. Transform weak bullets completely. If original says 'managed accounts', write 'Managed 35-account enterprise portfolio with $4.2M combined ARR'. Use credible industry-standard numbers if none provided. Every bullet must answer: what, how big, so what."
       ],
-      "achievements": ["any awards, recognitions, or clubs mentioned"]
+      "achievements": ["any awards, recognitions, President's Club, or notable wins mentioned"]
     }
   ],
   "skills": {
@@ -167,9 +190,9 @@ CRITICAL RULES:
     { "language": "actual language name", "level": "exact fluency level as written — never upgrade" }
   ],
   "topMetrics": [
-    "their single best quantified achievement with dollar amount or percentage",
-    "second best achievement",
-    "third best achievement"
+    "their single best quantified achievement — revenue grown, quota attained, retention rate, cost saved, team built, product launched",
+    "second strongest achievement with context",
+    "third strongest achievement with context"
   ]
 }
 Return ONLY the JSON object. Start with { and end with }.`;
@@ -188,7 +211,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
           { role: "user", content: `Parse this resume:\n\n${textContent}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
-        temperature: 0.1,
+        temperature: 0.3,
       }),
     });
     if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
@@ -218,7 +241,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
           { role: "user", content: `Parse this resume (extracted from PDF, some characters may be garbled):\n\n${extractedText}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
-        temperature: 0.2,
+        temperature: 0.3,
       }),
     });
     if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
