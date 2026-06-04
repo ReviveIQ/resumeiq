@@ -37,6 +37,12 @@ async function startServer() {
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(process.cwd(), "dist/public");
     app.use(express.static(distPath));
+
+    // Clean URL routes for SEO pages
+    app.get("/ats-checker", (_req, res) => {
+      res.sendFile(path.join(distPath, "ats-checker.html"));
+    });
+
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
