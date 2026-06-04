@@ -721,7 +721,16 @@ export default function ResumeIQ() {
 
   return (
     <div style={S}>
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} input,textarea{color-scheme:dark;}`}</style>
+      <style>{`
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        input,textarea{color-scheme:dark;}
+        @media (max-width: 640px) {
+          .riq-preview-grid { grid-template-columns: 1fr !important; }
+          .riq-features-grid { grid-template-columns: 1fr 1fr !important; }
+          .riq-upload-pad { padding: 28px 16px 48px !important; }
+          .riq-header { padding: 0 12px !important; }
+        }
+      `}</style>
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "6px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>
@@ -1007,7 +1016,7 @@ export default function ResumeIQ() {
                 <Sparkles size={18} /> Analyze My Resume
               </button>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginTop: "28px" }}>
+            <div className="riq-features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginTop: "28px" }}>
               {[{ icon: "✦", t: "ATS Optimized", d: "Passes all tracking systems" }, { icon: "◈", t: "AI Enhanced", d: "Stronger bullets & metrics" }, { icon: "▣", t: "Saved Forever", d: "Re-download anytime" }].map(i => (
                 <div key={i.t} style={{ background: "rgba(255,255,255,0.05)", borderRadius: "10px", padding: "14px", textAlign: "center" }}>
                   <div style={{ color: "#60a5fa", fontSize: "22px", marginBottom: "6px" }}>{i.icon}</div>
@@ -1110,7 +1119,7 @@ export default function ResumeIQ() {
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+            <div className="riq-preview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
               <div>
                 <Section title="Personal Info">
                   <EditField label="Full Name" value={parsedData.name || ""} onSave={v => updateField("name", v)} />

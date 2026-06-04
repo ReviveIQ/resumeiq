@@ -226,6 +226,25 @@ export default function LandingPage() {
         .pricing-card:hover { transform: translateY(-4px); }
         .check-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 13px; color: #94a3b8; }
         .mesh { position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+
+        /* ── Mobile responsive ── */
+        @media (max-width: 640px) {
+          nav { padding: 0 16px !important; }
+          nav .nav-desktop-only { display: none !important; }
+          .hero-section { padding: 80px 20px 60px !important; }
+          .hero-section h1 { font-size: clamp(22px, 6vw, 32px) !important; }
+          .hero-section p { font-size: 15px !important; }
+          .hero-btns { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+          .hero-btns button, .hero-btns a { width: 100% !important; justify-content: center !important; }
+          .section-pad { padding: 60px 20px !important; }
+          .step-card { padding: 20px !important; }
+          .pricing-card { padding: 24px !important; }
+          .grid-responsive { grid-template-columns: 1fr !important; }
+          .grid-responsive-2 { grid-template-columns: 1fr 1fr !important; }
+          .hide-mobile { display: none !important; }
+          .cta-btn { padding: 14px 24px !important; font-size: 14px !important; }
+          .cta-btn-outline { padding: 12px 20px !important; font-size: 13px !important; }
+        }
       `}</style>
 
       {/* NAV */}
@@ -267,7 +286,7 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "120px 40px 80px", textAlign: "center", overflow: "hidden" }}>
+      <section className="hero-section" style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "120px 40px 80px", textAlign: "center", overflow: "hidden" }}>
         <div className="mesh" style={{ background: "rgba(37,99,235,0.15)", top: "-100px", left: "-100px" }} />
         <div className="mesh" style={{ background: "rgba(99,102,241,0.1)", bottom: "-100px", right: "-100px" }} />
 
@@ -287,7 +306,7 @@ export default function LandingPage() {
             Ambitious professionals keep a polished, ATS-optimized resume in their digital filing cabinet — language aligned with job posts, keywords that pass filters, format that recruiters actually read.
           </p>
 
-          <div className="fade-up-3" style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
+          <div className="fade-up-3 hero-btns" style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
             <button
               onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
               style={{ display: "flex", alignItems: "center", gap: "9px", background: "#0077B5", color: "white", border: "none", borderRadius: "9px", padding: "16px 32px", fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
