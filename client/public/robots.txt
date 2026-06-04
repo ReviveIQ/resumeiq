@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://resumeiq.reviveiqi.com/sitemap.xml
