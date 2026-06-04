@@ -170,6 +170,53 @@ const ASSESSMENT_TYPES = [
   { id: "other", label: "Other",           hint: "Any other assessment" },
 ];
 
+// ── Delete Account Button ─────────────────────────────────────────────────
+function DeleteAccountButton({ onDeleted }: { onDeleted: () => void }) {
+  const [step, setStep] = useState<"idle" | "confirm" | "deleting">("idle");
+
+  const handleDelete = async () => {
+    setStep("deleting");
+    try {
+      const token = localStorage.getItem("riq_token");
+      const res = await fetch("/api/resumeiq/account", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onDeleted();
+      } else {
+        alert("Deletion failed — please email bryan@reviveiqi.com");
+        setStep("idle");
+      }
+    } catch {
+      alert("Deletion failed — please email bryan@reviveiqi.com");
+      setStep("idle");
+    }
+  };
+
+  if (step === "confirm") return (
+    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      <span style={{ color: "#f87171", fontSize: "12px" }}>Are you sure?</span>
+      <button onClick={handleDelete} style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "6px", padding: "7px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+        Yes, delete everything
+      </button>
+      <button onClick={() => setStep("idle")} style={{ background: "transparent", color: "#64748b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", padding: "7px 14px", fontSize: "12px", cursor: "pointer" }}>
+        Cancel
+      </button>
+    </div>
+  );
+
+  if (step === "deleting") return (
+    <span style={{ color: "#64748b", fontSize: "12px" }}>Deleting…</span>
+  );
+
+  return (
+    <button onClick={() => setStep("confirm")} style={{ background: "transparent", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "7px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+      Delete Account
+    </button>
+  );
+}
+
 export default function ResumeIQ() {
   const [view, setView] = useState<View>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -914,6 +961,8 @@ export default function ResumeIQ() {
               <p style={{ fontSize: "11px", color: "#334155", textAlign: "center", marginTop: "32px", lineHeight: "1.6" }}>
                 By continuing you agree to ReviveIQI's{" "}
                 <a href="/privacy" style={{ color: "#475569", textDecoration: "underline" }}>Privacy Policy</a>
+                <span style={{ color: "#334155", margin: "0 6px" }}>·</span>
+                <a href="/terms" style={{ color: "#475569", textDecoration: "underline" }}>Terms of Service</a>
               </p>
             </div>
           </div>
@@ -1505,6 +1554,18 @@ export default function ResumeIQ() {
                 ))}
               </div>
             )}
+
+            {/* Account management */}
+            <div style={{ marginTop: "48px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <p style={{ color: "#64748b", fontSize: "13px", fontWeight: 600, marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Account</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "10px", padding: "16px 20px" }}>
+                <div>
+                  <p style={{ color: "#fca5a5", fontSize: "14px", fontWeight: 600, margin: "0 0 4px" }}>Delete my account</p>
+                  <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>Permanently deletes your account and all resume data. Cannot be undone.</p>
+                </div>
+                <DeleteAccountButton onDeleted={() => { localStorage.removeItem("riq_token"); localStorage.removeItem("riq_linkedin_name"); localStorage.removeItem("riq_linkedin_email"); setToken(""); setUser(null); setView("upload"); }} />
+              </div>
+            </div>
           </div>
         )}
 

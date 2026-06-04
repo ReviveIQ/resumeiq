@@ -537,6 +537,31 @@ function sanitizeData(data: any): any {
   return data;
 }
 
+// ── In-memory rate limiter ─────────────────────────────────────────────────
+// Prevents abuse of the transform endpoint before auth check
+// 10 requests per IP per hour — resets on rolling window
+const transformRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string, maxPerHour = 10): boolean {
+  const now = Date.now();
+  const entry = transformRateLimit.get(ip);
+  if (!entry || now > entry.resetAt) {
+    transformRateLimit.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return true; // allowed
+  }
+  if (entry.count >= maxPerHour) return false; // blocked
+  entry.count++;
+  return true;
+}
+
+// Clean up old entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of transformRateLimit.entries()) {
+    if (now > entry.resetAt) transformRateLimit.delete(ip);
+  }
+}, 60 * 60 * 1000);
+
 export function registerResumeIQRoutes(app: Express) {
 
   // ── ADMIN AUTH MIDDLEWARE ────────────────────────────────────────────────
@@ -819,6 +844,12 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
   // ── TRANSFORM (parse + session) ──────────────────────────────────
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
+      const ip = getClientIp(req);
+      if (!checkRateLimit(ip)) {
+        res.status(429).json({ error: "Too many requests — please wait an hour before trying again." });
+        return;
+      }
+
       const { fileBase64, fileName } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
 
@@ -1444,6 +1475,33 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
     } catch (err) {
       console.error("[CrossApp] Handoff failed:", err);
       res.status(500).json({ error: "Handoff failed" });
+    }
+  });
+
+  // ── Account deletion ────────────────────────────────────────────────────────
+  // GDPR/CCPA right to erasure — deletes user account and all associated data
+  app.delete("/api/resumeiq/account", async (req: Request, res: Response) => {
+    try {
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+      const conn = await getDbConnection();
+      if (!conn) { res.status(500).json({ error: "Database unavailable" }); return; }
+
+      try {
+        // Delete all user data in order (FK constraints)
+        await conn.execute("DELETE FROM riq_sessions WHERE userId = ?", [tokenUser.userId]);
+        await conn.execute("DELETE FROM riq_resumes WHERE userId = ?", [tokenUser.userId]);
+        await conn.execute("DELETE FROM riq_users WHERE id = ?", [tokenUser.userId]);
+        console.log(`[ResumeIQ] Account deleted for userId ${tokenUser.userId}`);
+      } finally {
+        await conn.end();
+      }
+
+      res.json({ success: true, message: "Account and all associated data deleted." });
+    } catch (err) {
+      console.error("[ResumeIQ] Account deletion failed:", err);
+      res.status(500).json({ error: "Deletion failed — contact bryan@reviveiqi.com" });
     }
   });
 

@@ -478,7 +478,12 @@ export default function LandingPage() {
           </span>
           <span style={{ color: "#1e3a5f", fontSize: "11px" }}>by ReviveIQI</span>
         </div>
-        <p style={{ color: "#1e3a5f", fontSize: "12px", margin: 0 }}>© 2026 ReviveIQI. All rights reserved.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+          <a href="/terms" style={{ color: "#475569", fontSize: "12px", textDecoration: "none" }}>Terms of Service</a>
+          <a href="/privacy" style={{ color: "#475569", fontSize: "12px", textDecoration: "none" }}>Privacy Policy</a>
+          <a href="mailto:bryan@reviveiqi.com" style={{ color: "#475569", fontSize: "12px", textDecoration: "none" }}>Contact</a>
+        </div>
+        <p style={{ color: "#1e3a5f", fontSize: "12px", margin: 0 }}>© 2026 ReviveIQI. Fort Lauderdale, FL.</p>
       </footer>
     </div>
   );
