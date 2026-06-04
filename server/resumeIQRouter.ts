@@ -126,17 +126,19 @@ WHAT YOU DO:
 
 BULLET TRANSFORMATION RULES:
 - Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded — NOT "Responsible for", "Helped with", "Assisted in", "Participated in")
-- Every bullet SHOULD have a number — revenue, %, headcount, time saved, deals closed, retention rate, CSAT, cycle time. If the resume has one, use it exactly. If not, use a credible range based on role/industry context (e.g. "Managed 40+ enterprise accounts" not "Managed accounts")
-- Every bullet MUST answer: What did you do? How big was it? What was the outcome?
-- Weak bullet: "Responsible for managing customer relationships" → Strong: "Managed 35-account enterprise portfolio with $4.2M combined ARR, maintaining 94% retention through quarterly executive business reviews"
-- Weak bullet: "Helped close deals" → Strong: "Contributed to $2.1M in closed-won revenue across 18 enterprise accounts in FY2023"
-- Weak bullet: "Worked with cross-functional teams" → Strong: "Coordinated across Product, Engineering, and CS teams to deliver 3 customer-requested features, reducing churn risk on 8 at-risk accounts"
+- If the resume contains a number for this bullet — use it EXACTLY. Never round, inflate, or change it.
+- If the resume does NOT contain a number — do NOT invent one. Elevate the language, specificity, and framing instead. "Managed accounts" → "Managed enterprise accounts across the Northeast territory, serving as primary point of contact for C-suite stakeholders." Strong without fabricating a headcount.
+- Every bullet MUST answer: What did you do? What was the scope? What was the outcome or impact?
+- The scope can be specific without being numeric: "multi-million dollar", "50-person team", "Fortune 500 clients", "Series B startup" — but ONLY if that context is clear from the resume
+- Weak bullet: "Responsible for managing customer relationships" → Strong: "Managed enterprise customer relationships across a multi-state territory, focusing on executive-level engagement and long-term retention"
+- Weak bullet with a real number: "helped close deals, hit quota" → Strong: "Achieved 118% of $1.2M annual quota in FY2023 by shortening the average sales cycle from 90 to 47 days" — only if those numbers exist in the resume
+- NEVER write a specific dollar amount, percentage, headcount, or timeframe that does not appear somewhere in the resume
 
 WHAT YOU MUST NEVER DO:
-- Invent companies, titles, dates, or certifications that don't exist in the source
+- Invent companies, titles, dates, certifications, or metrics that don't exist in the source
+- Add a specific number ($4.2M, 35 accounts, 94%) that isn't in the resume
 - Change a "Conversational" language level to "Fluent"
 - Add a job the person never had
-- Claim a specific metric that directly contradicts what's written (if resume says 80% quota attainment, don't write 120%)
 - If a role has ZERO bullets in the original, return [] — do not invent responsibilities for roles with no information
 
 THE SUMMARY RULES:
@@ -170,7 +172,7 @@ CRITICAL EXTRACTION RULES:
       "endDate": "MM/YYYY or Present",
       "description": "one sentence describing what this company actually does — be specific about the product, market, and stage (e.g. 'Series B SaaS platform for enterprise revenue operations' not just 'software company')",
       "bullets": [
-        "ELEVATED bullet: strong action verb + specific scope/scale + measurable outcome. Transform weak bullets completely. If original says 'managed accounts', write 'Managed 35-account enterprise portfolio with $4.2M combined ARR'. Use credible industry-standard numbers if none provided. Every bullet must answer: what, how big, so what."
+        "ELEVATED bullet: strong action verb + specific scope + outcome. Use numbers from the resume exactly as written. If no number exists in the source, elevate the language and framing without inventing one. Every bullet must answer: what did you do, what was the scope, what was the result."
       ],
       "achievements": ["any awards, recognitions, President's Club, or notable wins mentioned"]
     }
@@ -211,7 +213,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
           { role: "user", content: `Parse this resume:\n\n${textContent}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
     if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
@@ -241,7 +243,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
           { role: "user", content: `Parse this resume (extracted from PDF, some characters may be garbled):\n\n${extractedText}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
     if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
@@ -795,7 +797,7 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
         body: JSON.stringify({
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-          max_tokens: 800, temperature: 0.3,
+          max_tokens: 800, temperature: 0.2,
         }),
       });
 
