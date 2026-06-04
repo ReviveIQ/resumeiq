@@ -939,7 +939,7 @@ topIssues = 3 most important things holding this resume back, in plain English f
             }
           ]
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(20000),
       });
 
       if (!scoreRes.ok) throw new Error("Scoring failed");

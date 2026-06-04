@@ -446,26 +446,21 @@ export default function ResumeIQ() {
       setSessionId(data.sessionId);
       setIsFree(data.isFree);
 
-      // Score the resume before showing preview
-      try {
-        setScoreLoading(true);
-        const scoreRes = await fetch("/api/resumeiq/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...(tokenToUse ? { "Authorization": `Bearer ${tokenToUse}` } : {}) },
-          body: JSON.stringify({ parsedData: data }),
-        });
-        if (scoreRes.ok) {
-          const scores = await scoreRes.json();
-          setResumeScore(scores);
-        }
-      } catch { /* score silently fails — continue to preview */ }
-      finally { setScoreLoading(false); }
-
       const missing = getMissingFields(data);
       if (missing.length > 0) {
         setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
       } else {
-        setView("scoring"); // Show score first, then preview
+        // Show scoring view immediately — score loads in background
+        setView("scoring");
+        setScoreLoading(true);
+        fetch("/api/resumeiq/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
+          body: JSON.stringify({ parsedData: data }),
+        }).then(r => r.ok ? r.json() : null)
+          .then(scores => { if (scores) setResumeScore(scores); })
+          .catch(() => {})
+          .finally(() => setScoreLoading(false));
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
   };
