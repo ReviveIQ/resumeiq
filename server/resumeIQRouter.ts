@@ -229,7 +229,15 @@ Return ONLY the JSON object. Start with { and end with }.`;
   throw new Error("Could not extract text from this file. Please try a different format.");
 }
 
-async function generateDocx(parsedData: any): Promise<Buffer> {
+async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> {
+  if (scoreFlags) {
+    // Log which flags are being applied so we can verify they're working
+    const flags = Object.entries(scoreFlags)
+      .filter(([, dim]: [string, any]) => dim.score < 7)
+      .map(([key, dim]: [string, any]) => `${key}: ${(dim as any).flag}`)
+      .join(" | ");
+    if (flags) console.log(`[ResumeIQ] Applying score flags to transformation: ${flags}`);
+  }
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
     AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat,
@@ -841,6 +849,86 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
     }
   });
 
+  // ── RESUME SCORE ────────────────────────────────────────────────────
+  // Scores the parsed resume on 4 ATS dimensions before transformation.
+  // Returns scores + specific flags that drive the GPT transformation.
+  app.post("/api/resumeiq/score", async (req: Request, res: Response) => {
+    try {
+      const { parsedData } = req.body;
+      if (!parsedData) { res.status(400).json({ error: "No parsed data" }); return; }
+
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
+
+      const resumeSummary = JSON.stringify({
+        name: parsedData.name,
+        title: parsedData.title,
+        email: parsedData.email,
+        phone: parsedData.phone,
+        linkedin: parsedData.linkedin,
+        summary: parsedData.summary,
+        experience: (parsedData.experience || []).map((e: any) => ({
+          title: e.title, company: e.company,
+          bullets: (e.bullets || []).slice(0, 3),
+        })).slice(0, 4),
+        skills: parsedData.skills,
+        education: parsedData.education,
+      });
+
+      const scoreRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          max_tokens: 600,
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content: `You are an ATS resume analyst. Score the resume on 4 dimensions (1-10 each) and return JSON only. No preamble, no markdown.
+
+Schema:
+{
+  "overall": number,
+  "dimensions": {
+    "atsFormat": { "score": number, "reason": string, "flag": string },
+    "bulletQuality": { "score": number, "reason": string, "flag": string },
+    "keywords": { "score": number, "reason": string, "flag": string },
+    "completeness": { "score": number, "reason": string, "flag": string }
+  },
+  "topIssues": [string, string, string]
+}
+
+Scoring guide:
+- atsFormat (1-10): single column layout detectable, no obvious table/multi-column structure, standard headings, contact info present
+- bulletQuality (1-10): bullets start with strong action verbs, include metrics/numbers, show impact. "Responsible for" = very low score
+- keywords (1-10): industry terms, role-specific vocabulary, tool names present
+- completeness (1-10): has name, email, phone, LinkedIn URL, dates on all roles, professional summary ≥40 words, skills section
+
+flag = one short specific instruction for GPT to fix this during transformation (e.g. "Rewrite all bullets starting with Responsible for to start with action verbs and include a metric")
+topIssues = 3 most important things holding this resume back, in plain English for the user`
+            },
+            {
+              role: "user",
+              content: `Score this resume:\n${resumeSummary}`,
+            }
+          ]
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!scoreRes.ok) throw new Error("Scoring failed");
+      const scoreData = await scoreRes.json() as any;
+      const raw = (scoreData.choices?.[0]?.message?.content || "").trim()
+        .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+      const scores = JSON.parse(raw);
+      res.json(scores);
+    } catch (err: any) {
+      console.error("[ResumeIQ] Score error:", err.message);
+      res.status(500).json({ error: "Scoring failed" });
+    }
+  });
+
   // ── TRANSFORM (parse + session) ──────────────────────────────────
   app.post("/api/resumeiq/transform", async (req: Request, res: Response) => {
     try {
@@ -963,7 +1051,7 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
   // ── GENERATE (DOCX) ──────────────────────────────────────────────
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
-      const { sessionId, parsedData: clientData } = req.body;
+      const { sessionId, parsedData: clientData, scoreFlags } = req.body;
 
       const session = await getSession(sessionId);
       if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
@@ -991,7 +1079,7 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
 
-      const buffer = await generateDocx(data);
+      const buffer = await generateDocx(data, scoreFlags);
       const docxBase64 = buffer.toString("base64");
 
       // ── Save to DB if logged in ───────────────────────────────────

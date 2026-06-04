@@ -7,7 +7,7 @@ import {
 
 import { trackEvent, captureEmail as captureMarketingEmail } from "../tracking";
 
-type View = "upload" | "analyzing" | "interview" | "preview" | "checkout" | "done" | "history" | "login" | "register";
+type View = "upload" | "analyzing" | "scoring" | "interview" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",      question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -219,6 +219,8 @@ function DeleteAccountButton({ onDeleted }: { onDeleted: () => void }) {
 
 export default function ResumeIQ() {
   const [view, setView] = useState<View>("upload");
+  const [resumeScore, setResumeScore] = useState<any>(null);
+  const [scoreLoading, setScoreLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
@@ -435,18 +437,35 @@ export default function ResumeIQ() {
       const linkedinEmail = localStorage.getItem("riq_linkedin_email") || "";
       if (linkedinName && !data.name) data.name = linkedinName;
       if (linkedinEmail && !data.email) data.email = linkedinEmail;
-      // Prompt for LinkedIn URL if signed in via LinkedIn but no URL in resume
       if (linkedinName && !data.linkedin) {
-        data.linkedin = ""; // Will show empty field with placeholder prompting them to add it
-        data._linkedinSignedIn = true; // flag for UI hint
+        data.linkedin = "";
+        data._linkedinSignedIn = true;
       }
-      setParsedData(data); trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
-      setSessionId(data.sessionId); setIsFree(data.isFree);
+      setParsedData(data);
+      trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
+      setSessionId(data.sessionId);
+      setIsFree(data.isFree);
+
+      // Score the resume before showing preview
+      try {
+        setScoreLoading(true);
+        const scoreRes = await fetch("/api/resumeiq/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(tokenToUse ? { "Authorization": `Bearer ${tokenToUse}` } : {}) },
+          body: JSON.stringify({ parsedData: data }),
+        });
+        if (scoreRes.ok) {
+          const scores = await scoreRes.json();
+          setResumeScore(scores);
+        }
+      } catch { /* score silently fails — continue to preview */ }
+      finally { setScoreLoading(false); }
+
       const missing = getMissingFields(data);
       if (missing.length > 0) {
         setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
       } else {
-        setView("preview");
+        setView("scoring"); // Show score first, then preview
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
   };
@@ -590,7 +609,7 @@ export default function ResumeIQ() {
     try {
       const res = await fetch("/api/resumeiq/generate", {
         method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ sessionId, parsedData: data }),
+        body: JSON.stringify({ sessionId, parsedData: data, scoreFlags: resumeScore?.dimensions }),
       });
       if (res.status === 402) { setError("Payment required"); return; }
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || "Failed to generate"); }
@@ -1032,6 +1051,80 @@ export default function ResumeIQ() {
             <Loader2 size={56} color="#60a5fa" style={{ margin: "0 auto 20px", ...spin }} />
             <h2 style={{ color: "white", fontSize: "24px", fontWeight: "bold", marginBottom: "10px" }}>Analyzing Your Resume</h2>
             <p style={{ color: "#94a3b8", fontSize: "14px" }}>AI is extracting your experience, skills, and achievements...</p>
+          </div>
+        )}
+
+        {/* ── SCORE VIEW ─────────────────────────────────────────────── */}
+        {view === "scoring" && (
+          <div style={{ maxWidth: "560px", margin: "0 auto", padding: "48px 16px" }}>
+            {scoreLoading || !resumeScore ? (
+              <div style={{ textAlign: "center", padding: "40px 0" }}>
+                <Loader2 size={40} color="#60a5fa" style={{ margin: "0 auto 16px", ...spin }} />
+                <p style={{ color: "#94a3b8", fontSize: "14px" }}>Scoring your resume...</p>
+              </div>
+            ) : (
+              <>
+                {/* Overall score */}
+                <div style={{ textAlign: "center", marginBottom: "32px" }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "88px", height: "88px", borderRadius: "50%", background: resumeScore.overall >= 7 ? "rgba(74,222,128,0.15)" : resumeScore.overall >= 5 ? "rgba(251,191,36,0.15)" : "rgba(239,68,68,0.15)", border: `2px solid ${resumeScore.overall >= 7 ? "#4ade80" : resumeScore.overall >= 5 ? "#fbbf24" : "#ef4444"}`, marginBottom: "16px" }}>
+                    <span style={{ fontSize: "32px", fontWeight: 800, color: resumeScore.overall >= 7 ? "#4ade80" : resumeScore.overall >= 5 ? "#fbbf24" : "#ef4444", fontFamily: "Montserrat, sans-serif" }}>{resumeScore.overall}</span>
+                  </div>
+                  <h2 style={{ color: "white", fontSize: "22px", fontWeight: 800, marginBottom: "8px", fontFamily: "Montserrat, sans-serif" }}>
+                    Your ATS Score: {resumeScore.overall}/10
+                  </h2>
+                  <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                    {resumeScore.overall >= 7 ? "Good foundation — transformation will make it excellent." : resumeScore.overall >= 5 ? "Room to improve — transformation will significantly boost your callbacks." : "Needs work — transformation will dramatically increase your chances."}
+                  </p>
+                </div>
+
+                {/* 4 dimension bars */}
+                <div style={{ background: "#0f172a", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", padding: "24px", marginBottom: "20px" }}>
+                  {Object.entries(resumeScore.dimensions || {}).map(([key, dim]: [string, any]) => {
+                    const labels: Record<string, string> = { atsFormat: "ATS Format", bulletQuality: "Bullet Quality", keywords: "Keywords", completeness: "Completeness" };
+                    const color = dim.score >= 7 ? "#4ade80" : dim.score >= 5 ? "#fbbf24" : "#ef4444";
+                    return (
+                      <div key={key} style={{ marginBottom: "18px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                          <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>{labels[key] || key}</span>
+                          <span style={{ color, fontSize: "13px", fontWeight: 700 }}>{dim.score}/10</span>
+                        </div>
+                        <div style={{ height: "5px", background: "rgba(255,255,255,0.08)", borderRadius: "999px", overflow: "hidden", marginBottom: "6px" }}>
+                          <div style={{ height: "100%", width: `${dim.score * 10}%`, background: color, borderRadius: "999px", transition: "width 1s ease" }} />
+                        </div>
+                        <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>{dim.reason}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Top issues */}
+                {resumeScore.topIssues?.length > 0 && (
+                  <div style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
+                    <p style={{ color: "#f87171", fontSize: "12px", fontWeight: 700, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>What's holding you back</p>
+                    {resumeScore.topIssues.map((issue: string, i: number) => (
+                      <div key={i} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "6px" }}>
+                        <span style={{ color: "#ef4444", fontSize: "12px", flexShrink: 0, marginTop: "1px" }}>✗</span>
+                        <span style={{ color: "#fca5a5", fontSize: "13px" }}>{issue}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* CTA */}
+                <button
+                  onClick={() => setView("preview")}
+                  style={{ width: "100%", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: "10px", padding: "16px", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", marginBottom: "10px" }}
+                >
+                  Transform My Resume → Fix These Issues
+                </button>
+                <button
+                  onClick={() => setView("preview")}
+                  style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", fontSize: "13px", cursor: "pointer", padding: "8px" }}
+                >
+                  Skip — review resume first
+                </button>
+              </>
+            )}
           </div>
         )}
         {view === "interview" && currentInterviewQ && (
