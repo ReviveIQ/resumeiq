@@ -808,7 +808,7 @@ export default function ResumeIQ() {
                 <div style={{ position: "absolute", left: "18px", top: "28px", bottom: "28px", width: "1px", background: "linear-gradient(to bottom, rgba(37,99,235,0.5), rgba(96,165,250,0.2), rgba(37,99,235,0.1))" }} />
                 {[
                   { n: "01", accent: "#60a5fa", title: "Upload any resume", body: "PDF or DOCX. We parse every role, bullet, and date — nothing gets lost." },
-                  { n: "02", accent: "#3b82f6", title: "AI rewrites every bullet", body: "GPT-4o adds measurable impact, fixes ATS formatting, and strengthens your summary — without hallucinating facts." },
+                  { n: "02", accent: "#3b82f6", title: "AI transformations every bullet", body: "GPT-4o adds measurable impact, fixes ATS formatting, and strengthens your summary — without hallucinating facts." },
                   { n: "03", accent: "#2563eb", title: "Download and apply", body: "Clean Word document, ATS-safe. Then take it straight into MyCareerIQ to build your job search pipeline." },
                 ].map(step => (
                   <div key={step.n} style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>

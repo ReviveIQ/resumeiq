@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
             <h2 style={h2}>1. Who We Are</h2>
             <p>
               ResumeIQ is a resume transformation product operated by ReviveIQI, based in Fort Lauderdale, Florida.
-              We use AI to rewrite resumes into ATS-optimized, polished Word documents ready for job applications.
+              We use AI to transform resumes into ATS-optimized, polished Word documents ready for job applications.
               Contact us at <a href="mailto:bryan@reviveiqi.com" style={link}>bryan@reviveiqi.com</a>.
             </p>
           </section>
