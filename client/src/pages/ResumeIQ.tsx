@@ -494,6 +494,7 @@ export default function ResumeIQ() {
             .then(result => {
               if (result?.workingWithMe) {
                 setWorkingWithMeTeaser(result.workingWithMe);
+                setTeaserFields(result.teaserFields || ["communicationStyle", "motivation"]);
                 setIncludePersonality(true); // pre-select in checkout
               }
             })
@@ -2043,7 +2044,9 @@ export default function ResumeIQ() {
               {/* All 5 fields — teaser ones visible, others blurred */}
               <div style={{ display: "grid", gap: "10px", marginBottom: "20px" }}>
                 {Object.entries(FIELD_LABELS).map(([key, label]) => {
-                  const isVisible = teaserFields.includes(key);
+                  // Product decision: Communication Style + What Brings Out My Best always visible
+                  const ALWAYS_VISIBLE = ["communicationStyle", "motivation"];
+                  const isVisible = ALWAYS_VISIBLE.includes(key);
                   return (
                     <div key={key} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "14px", border: `1px solid ${isVisible ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`, position: "relative" }}>
                       <p style={{ color: "#60a5fa", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "5px" }}>{label}</p>
