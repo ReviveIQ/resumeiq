@@ -239,6 +239,8 @@ export default function ResumeIQ() {
   const [view, setView] = useState<View>("upload");
   const [resumeScore, setResumeScore] = useState<any>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
+  const [showPersonalityOnUpload, setShowPersonalityOnUpload] = useState(false);
+  const [uploadAssessments, setUploadAssessments] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
@@ -479,6 +481,24 @@ export default function ResumeIQ() {
           .then(scores => { if (scores) setResumeScore(scores); })
           .catch(() => {})
           .finally(() => setScoreLoading(false));
+
+        // If personality assessments were uploaded on the upload screen,
+        // auto-generate Working With Me in background — ready in preview
+        const readyAssessments = uploadAssessments.filter(a => a.fileBase64 || a.textInput);
+        if (readyAssessments.length > 0) {
+          fetch("/api/resumeiq/personality", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
+            body: JSON.stringify({ assessments: readyAssessments, parsedResumeData: data }),
+          }).then(r => r.ok ? r.json() : null)
+            .then(result => {
+              if (result?.workingWithMe) {
+                setWorkingWithMeTeaser(result.workingWithMe);
+                setIncludePersonality(true); // pre-select in checkout
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
   };
@@ -1078,9 +1098,113 @@ export default function ResumeIQ() {
               )}
             </div>
             {error && <p style={{ color: "#f87171", textAlign: "center", marginTop: "10px", fontSize: "13px" }}>{error}</p>}
+
+            {/* Personality assessments — optional, above the fold */}
+            {file && (
+              <div style={{ marginTop: "16px" }}>
+                <div
+                  onClick={() => setShowPersonalityOnUpload(!showPersonalityOnUpload)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: showPersonalityOnUpload ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${showPersonalityOnUpload ? "rgba(124,58,237,0.35)" : "rgba(255,255,255,0.1)"}`, borderRadius: showPersonalityOnUpload ? "12px 12px 0 0" : "12px", padding: "12px 16px", cursor: "pointer", transition: "all 0.2s" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "18px" }}>🧠</span>
+                    <div>
+                      <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>
+                        Add personality assessments <span style={{ color: "#a78bfa", fontSize: "11px", fontWeight: 500, marginLeft: "6px" }}>Optional</span>
+                      </p>
+                      <p style={{ color: "#64748b", fontSize: "12px", margin: "2px 0 0" }}>
+                        DISC · MBTI · Predictive Index · TKI · 360 Feedback
+                      </p>
+                    </div>
+                  </div>
+                  <span style={{ color: "#64748b", fontSize: "18px", transition: "transform 0.2s", transform: showPersonalityOnUpload ? "rotate(180deg)" : "none" }}>⌄</span>
+                </div>
+
+                {showPersonalityOnUpload && (
+                  <div style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.2)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: "16px" }}>
+                    <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "14px", lineHeight: 1.6 }}>
+                      Upload your assessment results and we'll synthesize them into a <strong style={{ color: "white" }}>"Working With Me"</strong> section — professional behavioral language that shows hiring managers how you think, decide, and collaborate. The section that makes you memorable.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
+                      {ASSESSMENT_TYPES.map(a => {
+                        const isSelected = uploadAssessments.some(u => u.id === a.id);
+                        return (
+                          <button key={a.id} onClick={() => {
+                            if (isSelected) {
+                              setUploadAssessments(uploadAssessments.filter(u => u.id !== a.id));
+                            } else {
+                              setUploadAssessments([...uploadAssessments, { id: a.id, label: a.label, fileName: "", fileBase64: "", textInput: "" }]);
+                            }
+                          }}
+                            style={{ background: isSelected ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)", border: `1px solid ${isSelected ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.12)"}`, borderRadius: "8px", padding: "6px 12px", color: isSelected ? "#c4b5fd" : "#94a3b8", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+                            {isSelected ? "✓ " : ""}{a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {uploadAssessments.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {uploadAssessments.map((ua, idx) => (
+                          <div key={ua.id} style={{ background: "rgba(255,255,255,0.05)", borderRadius: "8px", padding: "10px 12px" }}>
+                            <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 600, marginBottom: "6px" }}>{ua.label}</p>
+                            {ua.fileName ? (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <span style={{ color: "#4ade80", fontSize: "12px" }}>✓ {ua.fileName}</span>
+                                <button onClick={() => {
+                                  const updated = [...uploadAssessments];
+                                  updated[idx] = { ...ua, fileName: "", fileBase64: "" };
+                                  setUploadAssessments(updated);
+                                }} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "12px" }}>Remove</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                <label style={{ flex: 1, background: "rgba(124,58,237,0.2)", border: "1px dashed rgba(124,58,237,0.4)", borderRadius: "6px", padding: "8px", textAlign: "center", cursor: "pointer", color: "#a78bfa", fontSize: "12px" }}>
+                                  <input type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: "none" }}
+                                    onChange={async (e: any) => {
+                                      const f = e.target.files?.[0];
+                                      if (!f) return;
+                                      const b64 = await new Promise<string>((resolve, reject) => {
+                                        const reader = new FileReader();
+                                        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+                                        reader.onerror = reject;
+                                        reader.readAsDataURL(f);
+                                      });
+                                      const updated = [...uploadAssessments];
+                                      updated[idx] = { ...ua, fileName: f.name, fileBase64: b64 };
+                                      setUploadAssessments(updated);
+                                    }} />
+                                  Upload PDF / DOCX
+                                </label>
+                                <input
+                                  type="text"
+                                  value={ua.textInput}
+                                  onChange={e => {
+                                    const updated = [...uploadAssessments];
+                                    updated[idx] = { ...ua, textInput: e.target.value };
+                                    setUploadAssessments(updated);
+                                  }}
+                                  placeholder="Or paste results here..."
+                                  style={{ flex: 2, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "white", fontSize: "12px", padding: "8px 10px", outline: "none" }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {uploadAssessments.length === 0 && (
+                      <p style={{ color: "#475569", fontSize: "12px", textAlign: "center", fontStyle: "italic" }}>
+                        Select the assessments you have above to upload them
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {file && (
               <button onClick={handleAnalyze} style={{ marginTop: "16px", width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "11px", padding: "14px", fontSize: "16px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                <Sparkles size={18} /> Analyze My Resume
+                <Sparkles size={18} /> {uploadAssessments.some(u => u.fileName || u.textInput) ? "Analyze Resume + Personality →" : "Analyze My Resume →"}
               </button>
             )}
             <div className="riq-features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginTop: "28px" }}>
