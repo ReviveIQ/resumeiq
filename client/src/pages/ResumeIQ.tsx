@@ -536,7 +536,17 @@ export default function ResumeIQ() {
       setInterviewStep(interviewStep + 1);
       setInterviewAnswer("");
     } else {
-      setView("preview");
+      // Always go to scoring after interview — never skip it
+      setView("scoring");
+      setScoreLoading(true);
+      fetch("/api/resumeiq/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ parsedData: updated }),
+      }).then(r => r.ok ? r.json() : null)
+        .then(scores => { if (scores) setResumeScore(scores); })
+        .catch(() => {})
+        .finally(() => setScoreLoading(false));
     }
   };
 
@@ -545,7 +555,17 @@ export default function ResumeIQ() {
       setInterviewStep(interviewStep + 1);
       setInterviewAnswer("");
     } else {
-      setView("preview");
+      // Skip remaining questions but still show scoring
+      setView("scoring");
+      setScoreLoading(true);
+      fetch("/api/resumeiq/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ parsedData: parsedData }),
+      }).then(r => r.ok ? r.json() : null)
+        .then(scores => { if (scores) setResumeScore(scores); })
+        .catch(() => {})
+        .finally(() => setScoreLoading(false));
     }
   };
 
@@ -1173,6 +1193,35 @@ export default function ResumeIQ() {
         )}
         {view === "interview" && currentInterviewQ && (
           <div style={{ maxWidth: "520px", margin: "0 auto" }}>
+
+            {/* Key insight banner — shown on first question only */}
+            {interviewStep === 0 && (
+              <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: "12px", padding: "16px 20px", marginBottom: "28px" }}>
+                <p style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>💡 Why we ask</p>
+                <p style={{ color: "#93c5fd", fontSize: "13px", margin: 0, lineHeight: 1.6 }}>
+                  The more context you provide, the stronger your transformation. Our AI elevates your experience into compelling, ATS-optimized bullets — but it can only work with what it knows about you. Every answer you give makes your resume more competitive.
+                </p>
+              </div>
+            )}
+
+            {/* Field-specific context for experience questions */}
+            {(currentInterviewQ.field === "experience_dates" || currentInterviewQ.field === "experience_bullets" || currentInterviewQ.field === "experience") && (
+              <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px" }}>
+                <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>
+                  {currentInterviewQ.field === "experience_dates" ? "📅 Dates matter to recruiters" :
+                   currentInterviewQ.field === "experience_bullets" ? "🎯 Accomplishments get callbacks" :
+                   "📋 Your experience is your proof"}
+                </p>
+                <p style={{ color: "#fde68a", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>
+                  {currentInterviewQ.field === "experience_dates"
+                    ? "ATS systems and recruiters use dates to calculate tenure and spot gaps. Missing dates can trigger automatic rejection before a human ever reads your resume."
+                    : currentInterviewQ.field === "experience_bullets"
+                    ? "Recruiters spend 8 seconds scanning. Bullet points with specific outcomes stop the scroll. Without them, even strong experience looks passive on paper."
+                    : "Work experience is the #1 thing recruiters look for. Even a brief description helps us build a stronger resume for you."}
+                </p>
+              </div>
+            )}
+
             <div style={{ textAlign: "center", marginBottom: "32px" }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "999px", padding: "6px 16px", marginBottom: "20px" }}>
                 <span style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600 }}>Question {interviewStep + 1} of {interviewFields.length}</span>
