@@ -1603,7 +1603,7 @@ export default function ResumeIQ() {
             )}
             {!isFree && (
               <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
-                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>Your free resume has been used. For <strong>$9.99</strong> you get 3 total resumes — re-downloadable anytime.</p>
+                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>Your free resume has been used. Additional transformations are <strong>$14.99</strong> each — re-downloadable from your account forever.</p>
               </div>
             )}
             {error && <p style={{ color: "#f87171", textAlign: "center", marginBottom: "10px", fontSize: "13px" }}>{error}</p>}
@@ -2072,21 +2072,21 @@ export default function ResumeIQ() {
               <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                   <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>
-                    {!isFree ? "Resume + Working With Me" : "Working With Me — Lifetime Unlock"}
+                    {!isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
                   </span>
                   <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>
-                    {!isFree ? "$13.98" : "$3.99"}
+                    {!isFree ? "$19.99" : "$7.99"}
                   </span>
                 </div>
                 {!isFree && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$9.99</span>
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$14.99</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#64748b", fontSize: "12px" }}>Working With Me unlock</span>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$3.99</span>
+                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$7.99</span>
                     </div>
                   </div>
                 )}
@@ -2097,7 +2097,7 @@ export default function ResumeIQ() {
 
               <button onClick={handlePersonalityUnlock}
                 style={{ width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginBottom: "10px" }}>
-                {!isFree ? "Pay $13.98 — Get Resume + Unlock Working With Me →" : "Pay $3.99 — Unlock Working With Me →"}
+                {!isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
               </button>
               <button onClick={() => { setWorkingWithMeTeaser(null); setTeaserFields([]); setAssessmentFiles([]); }}
                 style={{ width: "100%", background: "none", color: "#475569", border: "none", fontSize: "12px", cursor: "pointer", padding: "6px" }}>
