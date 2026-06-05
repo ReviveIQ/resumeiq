@@ -1181,6 +1181,15 @@ export default function ResumeIQ() {
                 >
                   Transform My Resume → Fix These Issues
                 </button>
+
+                {/* Working With Me nudge — show for all scores */}
+                <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px", textAlign: "left" }}>
+                  <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>🧠 Want to go further?</p>
+                  <p style={{ color: "#c4b5fd", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
+                    After transformation, upload your DISC, MBTI, or Predictive Index results to add a "Working With Me" section. It's the part of your resume that tells hiring managers <em>how</em> you think — the thing they actually remember.
+                  </p>
+                </div>
+
                 <button
                   onClick={() => setView("preview")}
                   style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", fontSize: "13px", cursor: "pointer", padding: "8px" }}
@@ -1483,16 +1492,26 @@ export default function ResumeIQ() {
                 <button onClick={() => setView("register")} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}>Create a free account</button> to save your resumes and re-download anytime.
               </p>
             )}
-            {/* Personality upsell */}
-            <div style={{ marginTop: "16px", background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-              <div>
-                <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>🧠 Add a "Working With Me" section</p>
-                <p style={{ color: "#64748b", fontSize: "12px", margin: "3px 0 0" }}>Upload your DISC, MBTI, PI, or TKI results and we'll translate them into professional workplace language.</p>
+            {/* Personality upsell — elevated */}
+            <div style={{ marginTop: "16px", background: "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "12px", padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "18px" }}>🧠</span>
+                    <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Stand out beyond your credentials</span>
+                  </div>
+                  <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
+                    Every candidate has accomplishments. <strong style={{ color: "#c7d2fe" }}>Few can articulate how they think, decide, and collaborate.</strong> Upload your DISC, MBTI, Predictive Index, or TKI and we'll translate your personality data into a professional "Working With Me" section — the section hiring managers actually remember.
+                  </p>
+                  <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
+                    Unlocked forever · Auto-added to every future resume
+                  </p>
+                </div>
+                <button onClick={() => setPersonalityStep(true)}
+                  style={{ background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  Add It →
+                </button>
               </div>
-              <button onClick={() => setPersonalityStep(true)}
-                style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "8px", padding: "8px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                Add It →
-              </button>
             </div>
           </div>
         )}
@@ -1543,12 +1562,16 @@ export default function ResumeIQ() {
                     <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Working With Me Section</span>
                     <span style={{ color: includePersonality ? "#60a5fa" : "#64748b", fontWeight: 700, fontSize: "15px" }}>+ $7.99</span>
                   </div>
-                  <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
-                    A personality-based section synthesized from your assessments. Added to your resume and unlocked on all future downloads.
+                  <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px", lineHeight: 1.5 }}>
+                    Most resumes show what you've done. This shows <em>how you work</em> — synthesized from your DISC, MBTI, PI, or TKI results into professional language that speaks directly to hiring managers. Unlocked forever on every future resume.
                   </p>
-                  {!workingWithMeTeaser && (
-                    <p style={{ color: "#f59e0b", fontSize: "12px", marginTop: "6px" }}>
-                      ↑ Upload personality assessments in the preview to enable this
+                  {!workingWithMeTeaser ? (
+                    <p style={{ color: "#f59e0b", fontSize: "12px", marginTop: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span>↑</span> Upload your personality assessments in the preview to generate this
+                    </p>
+                  ) : (
+                    <p style={{ color: "#4ade80", fontSize: "12px", marginTop: "6px" }}>
+                      ✓ Your Working With Me section is ready — check the box to include it
                     </p>
                   )}
                 </div>
@@ -1772,6 +1795,12 @@ export default function ResumeIQ() {
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
                 <div style={{ fontSize: "36px", marginBottom: "8px" }}>🧠</div>
                 <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Add "Working With Me"</h2>
+                  <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "4px" }}>
+                    Every candidate has a resume. This is the section that shows who you actually are to work with.
+                  </p>
+                  <p style={{ color: "#64748b", fontSize: "13px", lineHeight: 1.6 }}>
+                    Upload one or more personality assessments — DISC, MBTI, Predictive Index, TKI, 360 Feedback, or any other. We synthesize them into 5 behavioral dimensions written in professional language. No assessment jargon. No test scores. Just a clear, compelling picture of how you think, decide, and collaborate.
+                  </p>
                 <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: "1.6" }}>Upload your assessments — we'll synthesize them into a professional section that shows how you work best.</p>
               </div>
 
