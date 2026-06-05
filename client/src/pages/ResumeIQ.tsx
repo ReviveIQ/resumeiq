@@ -10,14 +10,17 @@ import { trackEvent, captureEmail as captureMarketingEmail } from "../tracking";
 type View = "upload" | "analyzing" | "scoring" | "interview" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
-  { field: "name",      question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
-  { field: "title",     question: "What's your current or most recent job title?",                   placeholder: "Enterprise Account Executive",     required: true },
-  { field: "email",     question: "What's your email address?",                                      placeholder: "you@email.com",                    required: true },
-  { field: "phone",     question: "What's your phone number?",                                       placeholder: "(561) 555-0100",                   required: false },
-  { field: "location",  question: "What city and state are you based in?",                           placeholder: "Fort Lauderdale, FL",              required: true },
-  { field: "summary",   question: "In 2–3 sentences, describe your professional background.",        placeholder: "Experienced sales leader with 10+ years...", required: true, multiline: true },
-  { field: "skills",    question: "List your top skills, tools, or technologies (comma separated).", placeholder: "Salesforce, HubSpot, Outreach, Excel...", required: false },
-  { field: "education", question: "Where did you go to school and what did you study?",              placeholder: "B.S. Marketing — Florida Atlantic University", required: false },
+  { field: "name",               question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
+  { field: "title",              question: "What's your current or most recent job title?",                   placeholder: "Enterprise Account Executive",     required: true },
+  { field: "email",              question: "What's your email address?",                                      placeholder: "you@email.com",                    required: true },
+  { field: "phone",              question: "What's your phone number?",                                       placeholder: "(561) 555-0100",                   required: false },
+  { field: "location",           question: "What city and state are you based in?",                           placeholder: "Fort Lauderdale, FL",              required: true },
+  { field: "summary",            question: "In 2–3 sentences, describe your professional background.",        placeholder: "Experienced sales leader with 10+ years...", required: true, multiline: true },
+  { field: "skills",             question: "List your top skills, tools, or technologies (comma separated).", placeholder: "Salesforce, HubSpot, Outreach, Excel...", required: false },
+  { field: "education",          question: "Where did you go to school and what did you study?",              placeholder: "B.S. Marketing — Florida Atlantic University", required: false },
+  { field: "experience",         question: "We couldn't find any work experience. Add your most recent role — company name, title, and 1–2 things you accomplished.",  placeholder: "Senior AE at Acme Corp — Closed $2M in new business, managed 30-account portfolio", required: true, multiline: true },
+  { field: "experience_dates",   question: "We noticed some roles are missing dates. Add start and end years for your positions so employers can see your timeline.",    placeholder: "e.g. Current role: Jan 2022 – Present, Previous: Mar 2019 – Dec 2021", required: false, multiline: true },
+  { field: "experience_bullets", question: "Your experience section looks thin. For your most recent 2 roles, what were your biggest accomplishments or responsibilities?", placeholder: "e.g. Led a team of 8 reps, exceeded quota 3 years running, grew territory 40%", required: false, multiline: true },
 ];
 
 function getMissingFields(data: any): string[] {
@@ -30,6 +33,21 @@ function getMissingFields(data: any): string[] {
   if (!data.summary || data.summary.length < 40) missing.push("summary");
   if (!data.skills?.categories?.length) missing.push("skills");
   if (!data.education?.length) missing.push("education");
+
+  // Experience quality checks
+  const exp = data.experience || [];
+  if (exp.length === 0) {
+    missing.push("experience");
+  } else {
+    // Check if most roles are missing dates
+    const missingDates = exp.filter((e: any) => !e.startDate || e.startDate === "MM/YYYY").length;
+    if (missingDates >= Math.ceil(exp.length / 2)) missing.push("experience_dates");
+
+    // Check if most roles have no bullets
+    const noBullets = exp.filter((e: any) => !e.bullets || e.bullets.length === 0).length;
+    if (noBullets >= Math.ceil(exp.length / 2)) missing.push("experience_bullets");
+  }
+
   return missing;
 }
 
@@ -489,11 +507,26 @@ export default function ResumeIQ() {
 
     const updated = { ...parsedData };
     if (field === "skills" && answer) {
-      updated.skills = { categories: [{ name: "Skills", skills: answer.split(",").map(s => s.trim()).filter(Boolean) }] };
+      updated.skills = { categories: [{ name: "Skills", skills: answer.split(",").map((s: string) => s.trim()).filter(Boolean) }] };
     } else if (field === "education" && answer) {
       updated.education = [{ degree: answer, school: "", location: "", year: "" }];
     } else if (field === "summary" && answer) {
       updated.summary = answer;
+    } else if (field === "experience" && answer) {
+      // Store the raw answer as a note for GPT to use during transformation
+      updated._experienceNote = answer;
+      if (!updated.experience?.length) {
+        updated.experience = [{ title: "Recent Role", company: "", startDate: "", endDate: "Present", bullets: [answer], description: "" }];
+      }
+    } else if (field === "experience_dates" && answer) {
+      updated._experienceDatesNote = answer;
+    } else if (field === "experience_bullets" && answer) {
+      // Append the user-provided accomplishments to the first role's bullets
+      if (updated.experience?.length > 0) {
+        const bullets = answer.split(/[,\n]/).map((b: string) => b.trim()).filter(Boolean);
+        updated.experience[0].bullets = [...(updated.experience[0].bullets || []), ...bullets];
+      }
+      updated._experienceBulletsNote = answer;
     } else if (answer) {
       updated[field] = answer;
     }
@@ -1068,8 +1101,16 @@ export default function ResumeIQ() {
                     Your ATS Score: {resumeScore.overall}/10
                   </h2>
                   <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                    {resumeScore.overall >= 7 ? "Good foundation — transformation will make it excellent." : resumeScore.overall >= 5 ? "Room to improve — transformation will significantly boost your callbacks." : "Needs work — transformation will dramatically increase your chances."}
+                    {resumeScore.overall >= 7 ? "Good foundation — transformation will make it excellent." : resumeScore.overall >= 5 ? "Room to improve — transformation will significantly boost your callbacks." : "Needs work — the more context you add in the preview, the stronger your transformation will be."}
                   </p>
+                  {resumeScore.overall <= 5 && (
+                    <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "10px", padding: "14px 16px", marginTop: "16px", textAlign: "left" }}>
+                      <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>💡 Get a better result</p>
+                      <p style={{ color: "#fde68a", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
+                        In the preview, check each role for missing dates, add accomplishments to thin roles, and fill in any blank fields. The more complete your resume, the stronger the transformation.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* 4 dimension bars */}
