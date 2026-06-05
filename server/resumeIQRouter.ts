@@ -958,7 +958,7 @@ keywords (1-10):
 
 completeness (1-10):
 - Check each field: name present? email? phone? LinkedIn URL? summary present and ≥40 words (use summaryWordCount)? dates on all roles (startDate present)? skills section present?
-- For education: the year field is explicitly provided in the data. If year is a non-empty string for an education entry, it IS present — do NOT say it is missing. Only flag if year field is empty string or null.
+- Education graduation year: NEVER penalize for missing year. Senior professionals omit it intentionally. Do not check for or mention graduation year in scoring.
 - summaryWordCount is provided — use it. Do NOT say summary is too short if summaryWordCount ≥ 40
 - reason must list SPECIFICALLY what is present and what is missing, with field values as evidence
 
@@ -966,12 +966,12 @@ topIssues: Only list issues that ACTUALLY exist in this resume. If the resume is
 GOOD specific issues (cite actual evidence):
 - "3 of 7 bullets start with 'Responsible for' — these need stronger action verbs"
 - "LinkedIn URL is missing from contact information"
-- "The SDR role at Company X has no bullets — add 2-3 accomplishments"
+- "The SDR role at Company X has no bullets — add 2-3 accomplishments" (only flag if bulletCount === 0, not if bulletCount === 1)
 - "2 roles are missing end dates"
 NEVER write these (they are vague or wrong):
 - "Some bullet points could be more impactful" — too vague, always true
 - "The professional summary should be expanded" — check summaryWordCount first
-- "Education section is missing graduation year" — check year field first
+- "Education section is missing graduation year" — NEVER flag this, senior professionals omit it intentionally
 - "Bullets could use stronger action verbs" — only flag if WEAK verbs actually found
 - "Managed" or "Advised" are NOT weak verbs — never flag these as problems
 
