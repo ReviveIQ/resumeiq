@@ -885,6 +885,7 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
       const openaiApiKey = process.env.OPENAI_API_KEY;
       if (!openaiApiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
 
+      // Send full resume data — truncating causes inaccurate scoring
       const resumeSummary = JSON.stringify({
         name: parsedData.name,
         title: parsedData.title,
@@ -892,12 +893,21 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
         phone: parsedData.phone,
         linkedin: parsedData.linkedin,
         summary: parsedData.summary,
+        summaryWordCount: (parsedData.summary || "").split(/\s+/).filter(Boolean).length,
         experience: (parsedData.experience || []).map((e: any) => ({
-          title: e.title, company: e.company,
-          bullets: (e.bullets || []).slice(0, 3),
-        })).slice(0, 4),
+          title: e.title,
+          company: e.company,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          bullets: e.bullets || [],
+          bulletCount: (e.bullets || []).length,
+        })),
         skills: parsedData.skills,
-        education: parsedData.education,
+        education: (parsedData.education || []).map((e: any) => ({
+          degree: e.degree, school: e.school, year: e.year,
+        })),
+        certifications: parsedData.certifications,
+        languages: parsedData.languages,
       });
 
       const scoreRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -905,16 +915,18 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          max_tokens: 600,
+          max_tokens: 800,
           temperature: 0,
           messages: [
             {
               role: "system",
-              content: `You are an ATS resume analyst. Score the resume on 4 dimensions (1-10 each) and return JSON only. No preamble, no markdown.
+              content: `You are an ATS resume analyst. Score the resume on 4 dimensions and return JSON only. No preamble, no markdown.
+
+CRITICAL RULE: Every reason and topIssue MUST be based on specific evidence from THIS resume. Never give generic advice. If the resume has graduation years, don't say it's missing them. If bullets already have metrics, don't say they need metrics. Only flag what is actually missing or weak IN THIS SPECIFIC RESUME.
 
 Schema:
 {
-  "overall": number,
+  "overall": number (1-10, average of 4 dimensions),
   "dimensions": {
     "atsFormat": { "score": number, "reason": string, "flag": string },
     "bulletQuality": { "score": number, "reason": string, "flag": string },
@@ -924,14 +936,41 @@ Schema:
   "topIssues": [string, string, string]
 }
 
-Scoring guide:
-- atsFormat (1-10): single column layout detectable, no obvious table/multi-column structure, standard headings, contact info present
-- bulletQuality (1-10): bullets start with strong action verbs, include metrics/numbers, show impact. "Responsible for" = very low score
-- keywords (1-10): industry terms, role-specific vocabulary, tool names present
-- completeness (1-10): has name, email, phone, LinkedIn URL, dates on all roles, professional summary ≥40 words, skills section
+Scoring rules — only penalize what is ACTUALLY missing or weak:
 
-flag = one short specific instruction for GPT to fix this during transformation (e.g. "Rewrite all bullets starting with Responsible for to start with action verbs and include a metric")
-topIssues = 3 most important things holding this resume back, in plain English for the user`
+atsFormat (1-10):
+- Deduct points if: no contact info, no standard headings (Experience/Education/Skills), obvious multi-column detected
+- Do NOT deduct for formatting you cannot verify from text alone
+- Score 8+ if contact info present, headings present, no obvious structural issues
+
+bulletQuality (1-10):
+- Check each bullet: does it start with an action verb? Does it include a metric?
+- Count how many bullets start with "Responsible for", "Helped", "Assisted", "Participated"
+- If ALL bullets have strong verbs and metrics: score 9-10
+- If MOST bullets have strong verbs but few metrics: score 6-7
+- If MANY bullets are passive or vague: score 3-5
+- reason must cite a SPECIFIC bullet from the resume as evidence
+
+keywords (1-10):
+- Check for: industry terms, tool names, methodology names, role-specific vocabulary
+- Score based on what IS there, not hypothetical missing terms
+- reason must cite specific keywords found or specifically missing
+
+completeness (1-10):
+- Check each field: name present? email? phone? LinkedIn URL? summary present and ≥40 words (use summaryWordCount)? dates on all roles? graduation years on education? skills section?
+- summaryWordCount is provided — use it. Do NOT say summary is too short if summaryWordCount ≥ 40
+- reason must list SPECIFICALLY what is present and what is missing
+
+topIssues: Only list issues that ACTUALLY exist in this resume. If the resume is strong, say so. Examples of GOOD specific issues:
+- "3 of 7 bullets start with 'Responsible for' — these need stronger action verbs"
+- "LinkedIn URL is missing from contact information"
+- "The SDR role at [Company] has no bullets — add 2-3 accomplishments"
+BAD generic issues (never write these):
+- "Some bullet points could be more impactful" (too vague)
+- "The professional summary should be expanded" (check summaryWordCount first)
+- "Education section is missing graduation year" (check if year field is present first)
+
+flag = a specific GPT instruction to fix this dimension during transformation`
             },
             {
               role: "user",
