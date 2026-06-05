@@ -957,23 +957,19 @@ keywords (1-10):
 - reason must cite specific keywords found or specifically missing
 
 completeness (1-10):
-- Check each field: name present? email? phone? LinkedIn URL? summary present and ≥40 words (use summaryWordCount)? dates on all roles (startDate present)? skills section present?
-- Education graduation year: NEVER penalize for missing year. Senior professionals omit it intentionally. Do not check for or mention graduation year in scoring.
-- summaryWordCount is provided — use it. Do NOT say summary is too short if summaryWordCount ≥ 40
-- reason must list SPECIFICALLY what is present and what is missing, with field values as evidence
+- Check: name? email? phone? LinkedIn URL? summary ≥40 words (use summaryWordCount)? all roles have startDate? skills section?
+- Education graduation year: NOT part of completeness score. Do not mention it in reason or deduct for it.
+- summaryWordCount is provided — never say summary is too short if summaryWordCount ≥ 40
+- Score 10 if all above present. Deduct 1 point per missing field.
+- reason must list specifically what is present and what (if anything) is missing
 
-topIssues: Only list issues that ACTUALLY exist in this resume. If the resume is strong, say so.
-GOOD specific issues (cite actual evidence):
-- "3 of 7 bullets start with 'Responsible for' — these need stronger action verbs"
-- "LinkedIn URL is missing from contact information"
-- "The SDR role at Company X has no bullets — add 2-3 accomplishments" (only flag if bulletCount === 0, not if bulletCount === 1)
-- "2 roles are missing end dates"
-NEVER write these (they are vague or wrong):
-- "Some bullet points could be more impactful" — too vague, always true
-- "The professional summary should be expanded" — check summaryWordCount first
-- "Education section is missing graduation year" — NEVER flag this, senior professionals omit it intentionally
-- "Bullets could use stronger action verbs" — only flag if WEAK verbs actually found
-- "Managed" or "Advised" are NOT weak verbs — never flag these as problems
+topIssues: Only list issues that ACTUALLY exist in this resume.
+- If the resume scores 8+ overall AND has no real issues: return 3 genuine strengths instead (e.g. "Strong metrics throughout — $7M+ ARR and top 0.3% ranking give recruiters clear proof points")
+- Only flag issues with bulletCount === 0 (truly empty roles), not bulletCount === 1
+- NEVER flag: missing graduation year (senior professionals omit intentionally), "Managed"/"Advised" as weak verbs, generic "bullets could be stronger"
+- Never mix — if showing strengths, all 3 must be strengths. If showing issues, all 3 must be real specific issues with evidence.
+GOOD issue examples: "LinkedIn URL is missing", "3 bullets start with Responsible for", "Role X has zero bullets"
+GOOD strength examples: "Executive-level metrics throughout", "Clear progression from IC to VP to Founder", "All roles have dates and context"
 
 flag = a specific GPT instruction to fix this dimension during transformation`
             },

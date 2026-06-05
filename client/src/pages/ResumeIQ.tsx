@@ -1092,20 +1092,26 @@ export default function ResumeIQ() {
                   })}
                 </div>
 
-                {/* Top issues */}
-                {resumeScore.topIssues?.length > 0 && (
-                  <div style={{ background: resumeScore.overall >= 8 ? "rgba(74,222,128,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${resumeScore.overall >= 8 ? "rgba(74,222,128,0.15)" : "rgba(239,68,68,0.15)"}`, borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
-                    <p style={{ color: resumeScore.overall >= 8 ? "#4ade80" : "#f87171", fontSize: "12px", fontWeight: 700, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {resumeScore.overall >= 8 ? "Strengths identified" : "What's holding you back"}
-                    </p>
-                    {resumeScore.topIssues.map((issue: string, i: number) => (
-                      <div key={i} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "6px" }}>
-                        <span style={{ color: resumeScore.overall >= 8 ? "#4ade80" : "#ef4444", fontSize: "12px", flexShrink: 0, marginTop: "1px" }}>{resumeScore.overall >= 8 ? "✓" : "✗"}</span>
-                        <span style={{ color: resumeScore.overall >= 8 ? "#bbf7d0" : "#fca5a5", fontSize: "13px" }}>{issue}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Top issues or strengths */}
+                {resumeScore.topIssues?.length > 0 && (() => {
+                  const isStrengths = resumeScore.overall >= 8 &&
+                    !resumeScore.topIssues.some((t: string) =>
+                      /missing|no bullets|add \d|should be|needs|weak|missing/i.test(t)
+                    );
+                  return (
+                    <div style={{ background: isStrengths ? "rgba(74,222,128,0.06)" : "rgba(239,68,68,0.06)", border: `1px solid ${isStrengths ? "rgba(74,222,128,0.15)" : "rgba(239,68,68,0.15)"}`, borderRadius: "10px", padding: "16px", marginBottom: "24px" }}>
+                      <p style={{ color: isStrengths ? "#4ade80" : "#f87171", fontSize: "12px", fontWeight: 700, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        {isStrengths ? "Strengths identified" : "What's holding you back"}
+                      </p>
+                      {resumeScore.topIssues.map((issue: string, i: number) => (
+                        <div key={i} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "6px" }}>
+                          <span style={{ color: isStrengths ? "#4ade80" : "#ef4444", fontSize: "12px", flexShrink: 0, marginTop: "1px" }}>{isStrengths ? "✓" : "✗"}</span>
+                          <span style={{ color: isStrengths ? "#bbf7d0" : "#fca5a5", fontSize: "13px" }}>{issue}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* CTA */}
                 <button
