@@ -1603,7 +1603,7 @@ export default function ResumeIQ() {
             )}
             {!isFree && (
               <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
-                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>Your free resume has been used. Additional transformations are <strong>$14.99</strong> each — re-downloadable from your account forever.</p>
+                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>You've used your free transformation. Each additional resume is <strong>$14.99</strong> — one-time, no subscription, re-downloadable forever. Or bundle with Working With Me for <strong>$19.99</strong>.</p>
               </div>
             )}
             {error && <p style={{ color: "#f87171", textAlign: "center", marginBottom: "10px", fontSize: "13px" }}>{error}</p>}
