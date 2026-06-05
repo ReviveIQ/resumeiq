@@ -944,12 +944,12 @@ atsFormat (1-10):
 - Score 8+ if contact info present, headings present, no obvious structural issues
 
 bulletQuality (1-10):
-- Check each bullet: does it start with an action verb? Does it include a metric?
-- Count how many bullets start with "Responsible for", "Helped", "Assisted", "Participated"
-- If ALL bullets have strong verbs and metrics: score 9-10
-- If MOST bullets have strong verbs but few metrics: score 6-7
-- If MANY bullets are passive or vague: score 3-5
-- reason must cite a SPECIFIC bullet from the resume as evidence
+- WEAK verbs that MUST be flagged: "Responsible for", "Helped", "Assisted", "Participated in", "Worked on", "Was involved in", "Supported", "Contributed to" (when used as the opening verb without a specific action)
+- STRONG verbs that must NEVER be flagged: Managed, Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded, Advised, Developed, Created, Delivered, Drove, Achieved, Oversaw, Established, Implemented, Executed, Coordinated, Secured, Generated, Increased, Decreased, Trained, Hired, Designed, Deployed, Streamlined — these are all acceptable strong action verbs
+- Count ONLY bullets that start with the WEAK verb list above
+- If ALL bullets use strong verbs: score 8-10 regardless of metrics
+- Metrics improve score but absence of metrics alone is NOT a reason to score below 7 if verbs are strong
+- reason must cite a SPECIFIC bullet from the resume as evidence, quoting the exact opening words
 
 keywords (1-10):
 - Check for: industry terms, tool names, methodology names, role-specific vocabulary
@@ -957,18 +957,23 @@ keywords (1-10):
 - reason must cite specific keywords found or specifically missing
 
 completeness (1-10):
-- Check each field: name present? email? phone? LinkedIn URL? summary present and ≥40 words (use summaryWordCount)? dates on all roles? graduation years on education? skills section?
+- Check each field: name present? email? phone? LinkedIn URL? summary present and ≥40 words (use summaryWordCount)? dates on all roles (startDate present)? skills section present?
+- For education: the year field is explicitly provided in the data. If year is a non-empty string for an education entry, it IS present — do NOT say it is missing. Only flag if year field is empty string or null.
 - summaryWordCount is provided — use it. Do NOT say summary is too short if summaryWordCount ≥ 40
-- reason must list SPECIFICALLY what is present and what is missing
+- reason must list SPECIFICALLY what is present and what is missing, with field values as evidence
 
-topIssues: Only list issues that ACTUALLY exist in this resume. If the resume is strong, say so. Examples of GOOD specific issues:
+topIssues: Only list issues that ACTUALLY exist in this resume. If the resume is strong, say so.
+GOOD specific issues (cite actual evidence):
 - "3 of 7 bullets start with 'Responsible for' — these need stronger action verbs"
 - "LinkedIn URL is missing from contact information"
-- "The SDR role at [Company] has no bullets — add 2-3 accomplishments"
-BAD generic issues (never write these):
-- "Some bullet points could be more impactful" (too vague)
-- "The professional summary should be expanded" (check summaryWordCount first)
-- "Education section is missing graduation year" (check if year field is present first)
+- "The SDR role at Company X has no bullets — add 2-3 accomplishments"
+- "2 roles are missing end dates"
+NEVER write these (they are vague or wrong):
+- "Some bullet points could be more impactful" — too vague, always true
+- "The professional summary should be expanded" — check summaryWordCount first
+- "Education section is missing graduation year" — check year field first
+- "Bullets could use stronger action verbs" — only flag if WEAK verbs actually found
+- "Managed" or "Advised" are NOT weak verbs — never flag these as problems
 
 flag = a specific GPT instruction to fix this dimension during transformation`
             },
