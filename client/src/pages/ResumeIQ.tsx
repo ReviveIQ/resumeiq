@@ -617,6 +617,7 @@ export default function ResumeIQ() {
     collaboration: "Collaboration",
     underPressure: "Under Pressure",
     motivation: "What Brings Out My Best",
+    motivation: "What Brings Out My Best",
   };
 
   // ── Download ─────────────────────────────────────────────────────────────
@@ -636,7 +637,7 @@ export default function ResumeIQ() {
       const data = await res.json();
       if (data.workingWithMe) {
         setWorkingWithMeTeaser(data.workingWithMe);
-        setTeaserFields(data.teaserFields || ["communicationStyle", "decisionMaking"]);
+        setTeaserFields(data.teaserFields || ["communicationStyle", "motivation"]);
         setPersonalityStep(false);
         // personalityTeaser view will show
       } else {

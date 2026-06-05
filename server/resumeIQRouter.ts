@@ -787,7 +787,7 @@ Return ONLY valid JSON — no preamble, no explanation, no markdown:
   "teaserFields": ["fieldKey1", "fieldKey2"]
 }
 
-teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make a hiring manager say "that's interesting — tell me more."`;
+teaserFields: always use ["communicationStyle", "motivation"] — these are the 2 revealed in the free preview`;
 
       console.log(`[ResumeIQ] Generating Working With Me from ${assessmentTexts.length} assessment(s)`);
 
@@ -818,7 +818,7 @@ teaserFields: exactly 2 keys from the 5 fields above. Pick the 2 that would make
       }
 
       console.log(`[ResumeIQ] Working With Me generated, teaser fields: ${teaserFields}`);
-      res.json({ workingWithMe, teaserFields: teaserFields || ["communicationStyle", "decisionMaking"] });
+      res.json({ workingWithMe, teaserFields: teaserFields || ["communicationStyle", "motivation"] });
     } catch (error: any) {
       console.error("[ResumeIQ] Personality error:", error);
       res.status(500).json({ error: error.message });
@@ -1506,7 +1506,7 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
       // communicationStyle and decisionMaking shown as teaser (free preview)
       // collaboration, underPressure, whatBringsMeBest require unlock
-      const teaserFields = ["communicationStyle", "decisionMaking"];
+      const teaserFields = ["communicationStyle", "motivation"];
 
       console.log(`[ResumeIQ] Personality generated for ${name} (${assessments.length} assessment(s))`);
       res.json({ workingWithMe, teaserFields });
