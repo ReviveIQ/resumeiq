@@ -245,6 +245,7 @@ export default function ResumeIQ() {
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
   const [isFree, setIsFree] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"starter" | "monthly">("monthly");
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
   const [guestPassword, setGuestPassword] = useState("");
@@ -709,10 +710,14 @@ export default function ResumeIQ() {
     let checkoutType: string;
     if (includeCareerLaunch) {
       checkoutType = "career";
-    } else if (includePersonality) {
-      checkoutType = isFree ? "bundle" : "personality";
+    } else if (isFree && includePersonality) {
+      checkoutType = "personality"; // free user adding WWM only
+    } else if (!isFree && includePersonality) {
+      checkoutType = selectedPlan === "monthly" ? "monthly_bundle" : "starter_bundle";
+    } else if (!isFree) {
+      checkoutType = selectedPlan === "monthly" ? "monthly" : "starter";
     } else {
-      checkoutType = "resume";
+      checkoutType = "free"; // shouldn't reach but safety net
     }
 
     try {
@@ -722,15 +727,21 @@ export default function ResumeIQ() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ resumeiqSession: sessionId }),
         });
-      } else if (checkoutType === "personality" || checkoutType === "bundle") {
+      } else if (checkoutType === "personality") {
         res = await fetch("/api/resumeiq/personality-checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeiqSession: sessionId, type: checkoutType }),
+          body: JSON.stringify({ resumeiqSession: sessionId, type: "personality" }),
+        });
+      } else if (checkoutType === "monthly" || checkoutType === "monthly_bundle") {
+        res = await fetch("/api/resumeiq/monthly-checkout", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resumeiqSession: sessionId, includePersonality: checkoutType === "monthly_bundle" }),
         });
       } else {
+        // starter or starter_bundle
         res = await fetch("/api/resumeiq/checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({ sessionId, includePersonality: checkoutType === "starter_bundle" }),
         });
       }
       const data = await res.json();
@@ -1686,22 +1697,47 @@ export default function ResumeIQ() {
             {/* What's included card */}
             <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
               <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "20px" }}>
-                What we've prepared for you
+                Choose your plan
               </p>
 
-              {/* Resume — always included */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(37,99,235,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>📄</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Resume Transformation</span>
-                    <span style={{ color: "#60a5fa", fontWeight: 700, fontSize: "15px" }}>{isFree ? "Free" : "$14.99"}</span>
+              {/* Plan selector — only shown for paid users */}
+              {!isFree && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  {/* Starter */}
+                  <div onClick={() => setSelectedPlan("starter")}
+                    style={{ border: `2px solid ${selectedPlan === "starter" ? "#2563eb" : "rgba(255,255,255,0.1)"}`, borderRadius: "12px", padding: "16px", cursor: "pointer", background: selectedPlan === "starter" ? "rgba(37,99,235,0.1)" : "transparent", transition: "all 0.2s" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <span style={{ color: "white", fontWeight: 700, fontSize: "14px" }}>Starter</span>
+                      <span style={{ color: selectedPlan === "starter" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$9.99</span>
+                    </div>
+                    <p style={{ color: "#64748b", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>3 transformations — use them anytime, no expiry</p>
                   </div>
-                  <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
-                    30 days of unlimited transformations — ATS-optimized Word documents, re-downloadable from your account forever.
-                  </p>
+                  {/* Monthly */}
+                  <div onClick={() => setSelectedPlan("monthly")}
+                    style={{ border: `2px solid ${selectedPlan === "monthly" ? "#2563eb" : "rgba(255,255,255,0.1)"}`, borderRadius: "12px", padding: "16px", cursor: "pointer", background: selectedPlan === "monthly" ? "rgba(37,99,235,0.1)" : "transparent", position: "relative", transition: "all 0.2s" }}>
+                    <div style={{ position: "absolute", top: "-9px", right: "10px", background: "#2563eb", color: "white", fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>MOST POPULAR</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <span style={{ color: "white", fontWeight: 700, fontSize: "14px" }}>Monthly</span>
+                      <span style={{ color: selectedPlan === "monthly" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$14.99</span>
+                    </div>
+                    <p style={{ color: "#64748b", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>Unlimited transformations for 30 days</p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Free plan indicator */}
+              {isFree && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(74,222,128,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "18px" }}>📄</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Resume Transformation</span>
+                      <span style={{ color: "#4ade80", fontWeight: 700, fontSize: "15px" }}>Free</span>
+                    </div>
+                    <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>ATS-optimized Word document — yours forever, re-downloadable anytime.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Working With Me — optional */}
               <div
@@ -1760,7 +1796,10 @@ export default function ResumeIQ() {
               <span style={{ color: "white", fontSize: "22px", fontWeight: 700 }}>
                 {isFree
                   ? (includeCareerLaunch ? "$79.99" : includePersonality ? "$7.99" : "Free")
-                  : (includeCareerLaunch ? "$79.99" : includePersonality ? "$19.99" : "$14.99")}
+                  : includeCareerLaunch ? "$79.99"
+                  : includePersonality
+                    ? (selectedPlan === "starter" ? "$17.98" : "$22.98")
+                    : (selectedPlan === "starter" ? "$9.99" : "$14.99")}
               </span>
             </div>
 

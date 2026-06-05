@@ -825,6 +825,21 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
     }
   });
 
+  // ── MONTHLY CHECKOUT ─────────────────────────────────────────────────
+  app.post("/api/resumeiq/monthly-checkout", async (req: Request, res: Response) => {
+    try {
+      const { resumeiqSession } = req.body;
+      const origin = req.headers.origin as string || "https://resumeiq.reviveiqi.com";
+      const successUrl = `${origin}/app?payment=success&`;
+      const cancelUrl = `${origin}/app`;
+      const result = await createMonthlySession(successUrl, cancelUrl, resumeiqSession);
+      res.json({ url: result.url });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Monthly checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ── PERSONALITY CHECKOUT ─────────────────────────────────────────────────
   // Career Launch Bundle checkout
   app.post("/api/resumeiq/career-checkout", async (req: Request, res: Response) => {

@@ -15,7 +15,7 @@ const STRIPE_SECRET = isTestMode
   ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
   : process.env.STRIPE_SECRET_KEY;
 
-const STRIPE_PRICE       = 1499;  // $14.99 — 1 transformation (starter)
+const STRIPE_PRICE       = 999;   // $9.99 — starter (3 transformations)
 const STRIPE_MONTHLY     = 1499;  // $14.99 — 30 days unlimited (monthly)
 const STRIPE_PERSONALITY = 799;   // $7.99 Working With Me add-on
 const STRIPE_BUNDLE      = 1999;  // $19.99 resume + Working With Me
@@ -50,8 +50,8 @@ export async function createCheckoutSession(
   const session = await stripePost({
     "payment_method_types[0]": "card",
     "line_items[0][price_data][currency]": CURRENCY,
-    "line_items[0][price_data][product_data][name]": "Resume Transformation",
-    "line_items[0][price_data][product_data][description]": "ATS-optimized, keyword-rich Word document — yours forever, re-downloadable anytime",
+    "line_items[0][price_data][product_data][name]": "ResumeIQ Starter",
+    "line_items[0][price_data][product_data][description]": "3 resume transformations — ATS-optimized Word documents, re-downloadable anytime",
     "line_items[0][price_data][unit_amount]": String(STRIPE_PRICE),
     "line_items[0][quantity]": "1",
     mode: "payment",
@@ -134,8 +134,8 @@ export async function createMonthlySession(
   const session = await stripePost({
     "payment_method_types[0]": "card",
     "line_items[0][price_data][currency]": CURRENCY,
-    "line_items[0][price_data][product_data][name]": "ResumeIQ Monthly",
-    "line_items[0][price_data][product_data][description]": "Unlimited resume transformations for 30 days — re-downloadable anytime",
+    "line_items[0][price_data][product_data][name]": "ResumeIQ Monthly — Unlimited",
+    "line_items[0][price_data][product_data][description]": "Unlimited resume transformations for 30 days — re-downloadable anytime. No auto-renewal.",
     "line_items[0][price_data][unit_amount]": String(STRIPE_MONTHLY),
     "line_items[0][quantity]": "1",
     mode: "payment",
