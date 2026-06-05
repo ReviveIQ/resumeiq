@@ -1590,8 +1590,13 @@ export default function ResumeIQ() {
               </div>
             )}
             {isFree && user && (
-              <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
-                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>🎉 Free resume — download now and it'll be saved to your account!</p>
+              <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px" }}>
+                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>🎉 Your first transformation is free — saved to your account forever.</p>
+                {workingWithMeTeaser && (
+                  <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0 }}>
+                    ⚠️ <strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.
+                  </p>
+                )}
               </div>
             )}
             {!isFree && (
@@ -1617,25 +1622,48 @@ export default function ResumeIQ() {
               </p>
             )}
             {/* Personality upsell — elevated */}
-            <div style={{ marginTop: "16px", background: "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "12px", padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "18px" }}>🧠</span>
-                    <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Stand out beyond your credentials</span>
+            <div style={{ marginTop: "16px", background: workingWithMeTeaser ? "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(37,99,235,0.1))" : "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))", border: `1px solid ${workingWithMeTeaser ? "rgba(124,58,237,0.4)" : "rgba(99,102,241,0.3)"}`, borderRadius: "12px", padding: "18px 20px" }}>
+              {workingWithMeTeaser ? (
+                // Already generated — show confirmation + clear upsell
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "18px" }}>✅</span>
+                    <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Your "Working With Me" section is ready</span>
                   </div>
-                  <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
-                    Every candidate has accomplishments. <strong style={{ color: "#c7d2fe" }}>Few can articulate how they think, decide, and collaborate.</strong> Upload your DISC, MBTI, Predictive Index, or TKI and we'll translate your personality data into a professional "Working With Me" section — the section hiring managers actually remember.
+                  <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "10px", lineHeight: 1.6 }}>
+                    We've synthesized your assessment results into professional behavioral language — how you think, decide, and collaborate. This is the section hiring managers actually remember.
                   </p>
-                  <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
-                    Unlocked forever · Auto-added to every future resume
-                  </p>
+                  <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px" }}>
+                    <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0, fontWeight: 600 }}>
+                      ⚠️ Not included in the free download — add it for $7.99 to include it in your resume.
+                    </p>
+                  </div>
+                  <button onClick={() => setPersonalityStep(true)}
+                    style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+                    Add Working With Me — $7.99 →
+                  </button>
                 </div>
-                <button onClick={() => setPersonalityStep(true)}
-                  style={{ background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                  Add It →
-                </button>
-              </div>
+              ) : (
+                // Not yet generated — show the value prop
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "18px" }}>🧠</span>
+                      <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Stand out beyond your credentials</span>
+                    </div>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
+                      Every candidate has accomplishments. <strong style={{ color: "#c7d2fe" }}>Few can articulate how they think, decide, and collaborate.</strong> Upload your DISC, MBTI, Predictive Index, or TKI and we'll translate your personality data into a professional "Working With Me" section — the section hiring managers actually remember.
+                    </p>
+                    <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
+                      Unlocked forever · Auto-added to every future resume
+                    </p>
+                  </div>
+                  <button onClick={() => setPersonalityStep(true)}
+                    style={{ background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    Add It →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
