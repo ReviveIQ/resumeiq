@@ -1603,7 +1603,7 @@ export default function ResumeIQ() {
             )}
             {!isFree && (
               <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
-                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>You've used your free transformation. Each additional resume is <strong>$14.99</strong> — one-time, no subscription, re-downloadable forever. Or bundle with Working With Me for <strong>$19.99</strong>.</p>
+                <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>You've used your free transformation. Choose a plan below — one-time purchase, no subscription required.</p>
               </div>
             )}
             {error && <p style={{ color: "#f87171", textAlign: "center", marginBottom: "10px", fontSize: "13px" }}>{error}</p>}
@@ -1698,7 +1698,7 @@ export default function ResumeIQ() {
                     <span style={{ color: "#60a5fa", fontWeight: 700, fontSize: "15px" }}>{isFree ? "Free" : "$14.99"}</span>
                   </div>
                   <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
-                    ATS-optimized Word document with measurable impact bullets. Re-downloadable from your account forever.
+                    30 days of unlimited transformations — ATS-optimized Word documents, re-downloadable from your account forever.
                   </p>
                 </div>
               </div>
@@ -1748,7 +1748,7 @@ export default function ResumeIQ() {
                     <span style={{ color: includeCareerLaunch ? "#10b981" : "#64748b", fontWeight: 700, fontSize: "15px" }}>$79.99 total</span>
                   </div>
                   <p style={{ color: "#64748b", fontSize: "13px", marginTop: "4px" }}>
-                    Everything above + 30 days of MyCareerIQ — AI-powered job search pipeline to put your new resume to work immediately.
+                    Everything above + 60 days of MyCareerIQ — AI-powered job search pipeline to put your new resume to work immediately.
                   </p>
                 </div>
               </div>

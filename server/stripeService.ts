@@ -15,10 +15,11 @@ const STRIPE_SECRET = isTestMode
   ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
   : process.env.STRIPE_SECRET_KEY;
 
-const STRIPE_PRICE       = 1499;  // $14.99 resume only
+const STRIPE_PRICE       = 1499;  // $14.99 — 1 transformation (starter)
+const STRIPE_MONTHLY     = 1499;  // $14.99 — 30 days unlimited (monthly)
 const STRIPE_PERSONALITY = 799;   // $7.99 Working With Me add-on
 const STRIPE_BUNDLE      = 1999;  // $19.99 resume + Working With Me
-const STRIPE_CAREER      = 7999;  // $79.99 Career Launch (resume + WM + 30 days MyCareerIQ)
+const STRIPE_CAREER      = 7999;  // $79.99 Career Launch (resume + WM + 60 days MyCareerIQ)
 const STRIPE_MYCAREERIQ  = 4999;  // $49.99 MyCareerIQ standalone (30 days)
 const STRIPE_MYCAREERIQ_ANNUAL = 29900; // $299/year MyCareerIQ annual
 const CURRENCY = "usd";
@@ -113,7 +114,7 @@ export async function createCareerLaunchSession(
     "payment_method_types[0]": "card",
     "line_items[0][price_data][currency]": CURRENCY,
     "line_items[0][price_data][product_data][name]": "Career Launch Bundle",
-    "line_items[0][price_data][product_data][description]": "ATS-optimized resume + Working With Me section + 30 days MyCareerIQ job search pipeline — $14.99 + $7.99 + $49.99 value for $79.99",
+    "line_items[0][price_data][product_data][description]": "ATS-optimized resume + Working With Me section + 60 days MyCareerIQ job search pipeline — $14.99 + $7.99 + $49.99 value for $79.99",
     "line_items[0][price_data][unit_amount]": String(STRIPE_CAREER),
     "line_items[0][quantity]": "1",
     mode: "payment",
@@ -121,6 +122,27 @@ export async function createCareerLaunchSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "career",
+  });
+  return { url: session.url, sessionId: session.id };
+}
+
+export async function createMonthlySession(
+  successUrl: string,
+  cancelUrl: string,
+  resumeiqSession: string
+): Promise<{ url: string; sessionId: string }> {
+  const session = await stripePost({
+    "payment_method_types[0]": "card",
+    "line_items[0][price_data][currency]": CURRENCY,
+    "line_items[0][price_data][product_data][name]": "ResumeIQ Monthly",
+    "line_items[0][price_data][product_data][description]": "Unlimited resume transformations for 30 days — re-downloadable anytime",
+    "line_items[0][price_data][unit_amount]": String(STRIPE_MONTHLY),
+    "line_items[0][quantity]": "1",
+    mode: "payment",
+    success_url: `${successUrl}session_id={CHECKOUT_SESSION_ID}&resumeiq_session=${resumeiqSession}&type=monthly`,
+    cancel_url: cancelUrl,
+    "metadata[resumeiq_session]": resumeiqSession,
+    "metadata[type]": "monthly",
   });
   return { url: session.url, sessionId: session.id };
 }

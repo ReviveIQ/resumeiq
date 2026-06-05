@@ -51,9 +51,12 @@ export async function initDb() {
         resumeCount INT DEFAULT 0,
         personalityUnlocked TINYINT DEFAULT 0,
         workingWithMeData JSON,
+        planExpiresAt TIMESTAMP NULL DEFAULT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Add planExpiresAt if upgrading existing DB
+    await conn.execute(`ALTER TABLE riq_users ADD COLUMN planExpiresAt TIMESTAMP NULL DEFAULT NULL`).catch(() => {});
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_resumes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -291,6 +294,21 @@ export async function upgradeToStarter(userId: number) {
       "UPDATE riq_users SET plan = 'starter' WHERE id = ? AND plan = 'free'",
       [userId]
     );
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function upgradeToMonthly(userId: number, daysAccess: number = 30) {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    const expiresAt = new Date(Date.now() + daysAccess * 24 * 60 * 60 * 1000);
+    await conn.execute(
+      "UPDATE riq_users SET plan = 'monthly', planExpiresAt = ? WHERE id = ?",
+      [expiresAt, userId]
+    );
+    console.log(`[ResumeIQ] User ${userId} upgraded to monthly plan, expires ${expiresAt.toISOString()}`);
   } finally {
     await conn.end();
   }

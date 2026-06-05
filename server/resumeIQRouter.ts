@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, createCareerLaunchSession, verifyPayment } from "./stripeService";
+import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, createCareerLaunchSession, createMonthlySession, verifyPayment } from "./stripeService";
 import { sendEmail, logEmailSend, alreadySent } from "./emailService";
 import crypto from "crypto";
 import JSZip from "jszip";
@@ -7,7 +7,7 @@ import JSZip from "jszip";
 import {
   initDb, migrateDb, createUser, loginUser, getUserById, saveResume,
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
-  generateToken, verifyToken, upgradeToStarter, incrementResumeCount,
+  generateToken, verifyToken, upgradeToStarter, upgradeToMonthly, incrementResumeCount,
   unlockPersonality, saveWorkingWithMe,
 } from "./authService";
 
@@ -1019,12 +1019,15 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         const dbUser = await getUserById(tokenUser.userId);
         const resumeCount = dbUser?.resumeCount || 0;
         const plan = dbUser?.plan || "free";
-        if (plan === "monthly" || plan === "agency") {
-          isFree = true;
+        const planExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
+        const planActive = !planExpiry || planExpiry > new Date();
+
+        if ((plan === "monthly" || plan === "agency") && planActive) {
+          isFree = true; // unlimited during active period
         } else if (plan === "starter") {
           isFree = resumeCount < 3;
         } else {
-          isFree = resumeCount < 1;
+          isFree = resumeCount < 1; // free tier: 1 transformation
         }
       } else {
         isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
@@ -1085,6 +1088,12 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
 
+      } else if (type === "monthly") {
+        // Monthly: unlimited transformations for 30 days
+        const session = await getSession(resumeiqSession);
+        if (session) await updateSessionPaid(resumeiqSession);
+        if (tokenUser) await upgradeToMonthly(tokenUser.userId, 30);
+
       } else if (type === "personality") {
         // Personality-only: mark session as paid for generate, unlock on account
         const session = await getSession(resumeiqSession);
@@ -1095,12 +1104,13 @@ flag = a specific GPT instruction to fix this dimension during transformation`
           else await unlockPersonality(tokenUser.userId, {});
         }
 
-      } else if (type === "bundle") {
-        // Bundle: mark session paid + unlock personality
+      } else if (type === "career") {
+        // Career Launch: resume + WWM + 60 days ResumeIQ monthly + 60 days MyCareerIQ
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
         if (tokenUser) {
+          await upgradeToMonthly(tokenUser.userId, 60); // 60 days ResumeIQ access
           const pendingWWM = req.body.workingWithMe;
           if (pendingWWM) await unlockPersonality(tokenUser.userId, pendingWWM);
           else await unlockPersonality(tokenUser.userId, {});
