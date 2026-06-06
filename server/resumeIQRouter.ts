@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, createCareerLaunchSession, createMonthlySession, verifyPayment } from "./stripeService";
-import { sendEmail, logEmailSend, alreadySent } from "./emailService";
+import { sendEmail, logEmailSend, alreadySent, notifyNewUser, notifyPurchase } from "./emailService";
 import crypto from "crypto";
 import JSZip from "jszip";
 // docx imported dynamically inside generateDocx to avoid ESM/CJS interop issues
@@ -640,8 +640,9 @@ export function registerResumeIQRoutes(app: Express) {
       if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
       const user = await createUser(email, password, name || "");
       const token = generateToken(user.id, user.email);
-      // Fire welcome email (non-blocking)
+      // Fire welcome email + owner notification (non-blocking)
       sendEmail(user.email, "welcome").catch(() => {});
+      notifyNewUser(user.email, user.name || "").catch(() => {});
       res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
@@ -1102,33 +1103,36 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
+        if (tokenUser) notifyPurchase(tokenUser.email, "", "Starter — 3 transformations", "$9.99").catch(() => {});
 
       } else if (type === "monthly") {
-        // Monthly: unlimited transformations for 30 days
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
-        if (tokenUser) await upgradeToMonthly(tokenUser.userId, 30);
+        if (tokenUser) {
+          await upgradeToMonthly(tokenUser.userId, 30);
+          notifyPurchase(tokenUser.email, "", "Monthly — 30 days unlimited", "$14.99").catch(() => {});
+        }
 
       } else if (type === "personality") {
-        // Personality-only: mark session as paid for generate, unlock on account
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
         if (tokenUser) {
           const pendingWWM = req.body.workingWithMe;
           if (pendingWWM) await unlockPersonality(tokenUser.userId, pendingWWM);
           else await unlockPersonality(tokenUser.userId, {});
+          notifyPurchase(tokenUser.email, "", "Working With Me unlock", "$7.99").catch(() => {});
         }
 
       } else if (type === "career") {
-        // Career Launch: resume + WWM + 60 days ResumeIQ monthly + 60 days MyCareerIQ
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
         if (tokenUser) {
-          await upgradeToMonthly(tokenUser.userId, 60); // 60 days ResumeIQ access
+          await upgradeToMonthly(tokenUser.userId, 60);
           const pendingWWM = req.body.workingWithMe;
           if (pendingWWM) await unlockPersonality(tokenUser.userId, pendingWWM);
           else await unlockPersonality(tokenUser.userId, {});
+          notifyPurchase(tokenUser.email, "", "Career Launch Bundle — 60 days + WWM + MyCareerIQ", "$79.99").catch(() => {});
         }
       }
 

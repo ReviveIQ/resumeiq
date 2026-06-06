@@ -42,6 +42,58 @@ export async function sendEmail(to: string, flowType: string): Promise<void> {
   }
 }
 
+// ── Owner notifications (to bryan@reviveiqi.com) ──────────────────────────
+const OWNER_EMAIL = "bryan@reviveiqi.com";
+const OWNER_FROM = "ResumeIQ Alerts <alerts@resumeiq.reviveiqi.com>";
+
+export async function notifyOwner(subject: string, html: string): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: OWNER_FROM, to: [OWNER_EMAIL], subject, html }),
+    });
+    console.log(`[Email] Owner notified: ${subject}`);
+  } catch (err: any) {
+    console.error("[Email] Owner notify failed:", err.message);
+  }
+}
+
+export function notifyNewUser(email: string, name: string): Promise<void> {
+  const time = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  return notifyOwner(
+    `🆕 New ResumeIQ signup — ${email}`,
+    `<div style="font-family:sans-serif;max-width:480px;padding:24px;color:#1a1a1a">
+      <h2 style="margin:0 0 16px;font-size:18px">New free account created</h2>
+      <table style="border-collapse:collapse;width:100%">
+        <tr><td style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b;width:100px">Name</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-size:14px">${name || "—"}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b">Email</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-size:14px">${email}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b">Time</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-size:14px">${time} ET</td></tr>
+        <tr><td style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#64748b">Plan</td><td style="padding:8px 12px;border:1px solid #e2e8f0;font-size:14px">Free</td></tr>
+      </table>
+    </div>`
+  );
+}
+
+export function notifyPurchase(email: string, name: string, plan: string, amount: string): Promise<void> {
+  const time = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  return notifyOwner(
+    `💰 ResumeIQ purchase — ${amount} — ${email}`,
+    `<div style="font-family:sans-serif;max-width:480px;padding:24px;color:#1a1a1a">
+      <h2 style="margin:0 0 16px;font-size:18px;color:#16a34a">New purchase 🎉</h2>
+      <table style="border-collapse:collapse;width:100%">
+        <tr><td style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#64748b;width:100px">Name</td><td style="padding:8px 12px;border:1px solid #bbf7d0;font-size:14px">${name || "—"}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#64748b">Email</td><td style="padding:8px 12px;border:1px solid #bbf7d0;font-size:14px">${email}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#64748b">Plan</td><td style="padding:8px 12px;border:1px solid #bbf7d0;font-size:14px;font-weight:600">${plan}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#64748b">Amount</td><td style="padding:8px 12px;border:1px solid #bbf7d0;font-size:14px;font-weight:700;color:#16a34a">${amount}</td></tr>
+        <tr><td style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#64748b">Time</td><td style="padding:8px 12px;border:1px solid #bbf7d0;font-size:14px">${time} ET</td></tr>
+      </table>
+    </div>`
+  );
+}
+
 // ── Log email send to TiDB ─────────────────────────────────────────────────
 export async function logEmailSend(conn: any, email: string, flowType: string): Promise<void> {
   try {
