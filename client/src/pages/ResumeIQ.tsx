@@ -239,6 +239,7 @@ export default function ResumeIQ() {
   const [view, setView] = useState<View>("upload");
   const [resumeScore, setResumeScore] = useState<any>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
+  const [preTransformScore, setPreTransformScore] = useState<any>(null);
   const [showPersonalityOnUpload, setShowPersonalityOnUpload] = useState(false);
   const [uploadAssessments, setUploadAssessments] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
   const [file, setFile] = useState<File | null>(null);
@@ -677,6 +678,8 @@ export default function ResumeIQ() {
 
   const handleDownloadWithData = async (data: any) => {
     setDownloading(true);
+    // Capture the pre-transform score before generating
+    if (resumeScore) setPreTransformScore(resumeScore);
     try {
       const res = await fetch("/api/resumeiq/generate", {
         method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -689,9 +692,18 @@ export default function ResumeIQ() {
       const a = document.createElement("a");
       a.href = url; a.download = `${parsedData?.name?.replace(/\s+/g, "_") || "Resume"}_ResumeIQ.docx`;
       a.click(); URL.revokeObjectURL(url);
-      // Only set cookie after confirmed successful download
       document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
       setView("done"); trackEvent('resume_generated', { sessionId });
+
+      // Run post-transform score in background to show improvement
+      fetch("/api/resumeiq/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ parsedData: data }),
+      }).then(r => r.ok ? r.json() : null)
+        .then(scores => { if (scores) setResumeScore(scores); })
+        .catch(() => {});
+
     } catch (err: any) { setError(err.message); }
     finally { setDownloading(false); }
   };
@@ -817,7 +829,7 @@ export default function ResumeIQ() {
   };
 
   const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
-  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); setWorkingWithMeTeaser(null); setTeaserFields([]); };
+  const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); setWorkingWithMeTeaser(null); setTeaserFields([]); setResumeScore(null); setPreTransformScore(null); };
 
   return (
     <div style={S}>
@@ -1836,7 +1848,67 @@ export default function ResumeIQ() {
               </p>
             </div>
 
-            {/* Guest: show account creation prompt */}
+            {/* Before / After score */}
+            {preTransformScore && (
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", padding: "20px 24px", marginBottom: "20px" }}>
+                <p style={{ fontSize: "11px", fontFamily: "DM Mono, monospace", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "16px" }}>ATS Score Improvement</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "12px", alignItems: "center" }}>
+                  {/* Before */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "6px" }}>Before</div>
+                    <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(100,116,139,0.15)", border: "2px solid rgba(100,116,139,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px" }}>
+                      <span style={{ fontSize: "22px", fontWeight: 800, color: "#94a3b8", fontFamily: "Montserrat, sans-serif" }}>{preTransformScore.overall}</span>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#475569" }}>/10</div>
+                  </div>
+                  {/* Arrow + delta */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", marginBottom: "4px" }}>→</div>
+                    {resumeScore && resumeScore.overall > preTransformScore.overall && (
+                      <div style={{ fontSize: "13px", fontWeight: 700, color: "#4ade80" }}>
+                        +{resumeScore.overall - preTransformScore.overall}
+                      </div>
+                    )}
+                  </div>
+                  {/* After */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "6px" }}>After</div>
+                    <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: resumeScore ? "rgba(74,222,128,0.15)" : "rgba(100,116,139,0.1)", border: `2px solid ${resumeScore ? "#4ade80" : "rgba(100,116,139,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px" }}>
+                      <span style={{ fontSize: "22px", fontWeight: 800, color: resumeScore ? "#4ade80" : "#64748b", fontFamily: "Montserrat, sans-serif" }}>
+                        {resumeScore ? resumeScore.overall : "…"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#475569" }}>/10</div>
+                  </div>
+                </div>
+                {/* Dimension bars */}
+                {resumeScore && (
+                  <div style={{ marginTop: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    {Object.entries({ atsFormat: "ATS Format", bulletQuality: "Bullets", keywords: "Keywords", completeness: "Completeness" }).map(([key, label]) => {
+                      const before = preTransformScore.dimensions?.[key]?.score || 0;
+                      const after = resumeScore.dimensions?.[key]?.score || 0;
+                      const delta = after - before;
+                      return (
+                        <div key={key}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "11px", color: "#64748b" }}>{label}</span>
+                            <span style={{ fontSize: "11px", color: delta > 0 ? "#4ade80" : delta < 0 ? "#f87171" : "#64748b", fontWeight: 600 }}>
+                              {delta > 0 ? `+${delta}` : delta < 0 ? delta : "—"}
+                            </span>
+                          </div>
+                          <div style={{ height: "4px", background: "rgba(255,255,255,0.06)", borderRadius: "99px", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${after * 10}%`, background: "#4ade80", borderRadius: "99px", transition: "width 1s ease" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {!resumeScore && (
+                  <p style={{ fontSize: "12px", color: "#475569", textAlign: "center", marginTop: "12px" }}>Calculating post-transform score…</p>
+                )}
+              </div>
+            )}
             {!user && (
               <div style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.35)", borderRadius: "14px", padding: "24px", marginBottom: "16px" }}>
                 <p style={{ color: "#93c5fd", fontSize: "13px", fontWeight: 700, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Save your resume for free</p>
