@@ -82,6 +82,49 @@ function stripJson(raw: string): string {
   return match ? match[0] : clean;
 }
 
+async function extractCareerNarrative(resumeText: string, apiKey: string): Promise<string> {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 500,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: `You are a career strategist. Read this resume and extract the career narrative in 4-6 sentences. Return ONLY the narrative — no preamble, no labels, no JSON.
+
+Cover:
+1. Professional identity — who is this person and what's their expertise?
+2. Career theme — what's the through-line across their roles? (e.g. "consistently moved into roles with greater territory complexity and revenue responsibility")
+3. Career progression — how have they grown? (SDR → AE → Manager, IC → Founder, etc.)
+4. Transition context — any pivots, gaps, or industry changes? Frame them as intentional moves.
+5. Top 2-3 accomplishments — their strongest proof points with context
+6. Value proposition — what do they bring to their next role?
+
+Be specific. Use actual companies and titles from the resume. Do not invent metrics.`,
+          },
+          {
+            role: "user",
+            content: `Extract the career narrative from this resume:\n\n${resumeText.slice(0, 8000)}`,
+          }
+        ],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return "";
+    const data = await res.json() as any;
+    const narrative = (data.choices?.[0]?.message?.content || "").trim();
+    console.log(`[ResumeIQ] Career narrative extracted: ${narrative.slice(0, 100)}...`);
+    return narrative;
+  } catch (err: any) {
+    console.warn("[ResumeIQ] Narrative extraction failed:", err.message);
+    return "";
+  }
+}
+
 async function parseResume(fileBase64: string, fileName: string): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
@@ -117,12 +160,22 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
 YOUR PHILOSOPHY:
 Most resumes are terrible not because the person has bad experience, but because they undersell it. "Responsible for managing accounts" and "Grew 28-account territory from $800K to $1.4M ARR" describe the same job. Your job is to find the version that gets callbacks.
 
+CAREER NARRATIVE CONTEXT (extracted before this step):
+{NARRATIVE_CONTEXT}
+
+USE THE NARRATIVE TO:
+- Write a summary that opens with the candidate's professional identity and career theme — not just their last job
+- Frame each role so the bullets ladder up to the overall narrative
+- Surface the progression arc (SDR → AE → Manager → VP) explicitly in the summary
+- Address any career transitions factually and confidently — pivots are strengths, not gaps
+- Make the first bullet of each role the one that best connects to the narrative theme
+
 WHAT YOU DO:
 1. EXTRACT every fact, company, date, title, and metric EXACTLY as written
 2. ELEVATE every bullet using the "So what?" test — if a bullet doesn't answer "so what did that achieve?", you rewrite it until it does
 3. INFER context — if someone says "managed accounts" at a SaaS company, that means ARR, churn, expansion revenue. Use industry knowledge to make bullets specific and credible
 4. SURFACE buried wins — find achievements hidden in descriptions, dates, or throwaway lines and turn them into bullets
-5. STRENGTHEN the summary — write it like a pitch, not a job description
+5. STRENGTHEN the summary — write it like a pitch for the whole person, not a description of their last role
 
 BULLET TRANSFORMATION RULES:
 - Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded — NOT "Responsible for", "Helped with", "Assisted in", "Participated in")
@@ -130,8 +183,6 @@ BULLET TRANSFORMATION RULES:
 - If the resume does NOT contain a number — do NOT invent one. Elevate the language, specificity, and framing instead. "Managed accounts" → "Managed enterprise accounts across the Northeast territory, serving as primary point of contact for C-suite stakeholders." Strong without fabricating a headcount.
 - Every bullet MUST answer: What did you do? What was the scope? What was the outcome or impact?
 - The scope can be specific without being numeric: "multi-million dollar", "50-person team", "Fortune 500 clients", "Series B startup" — but ONLY if that context is clear from the resume
-- Weak bullet: "Responsible for managing customer relationships" → Strong: "Managed enterprise customer relationships across a multi-state territory, focusing on executive-level engagement and long-term retention"
-- Weak bullet with a real number: "helped close deals, hit quota" → Strong: "Achieved 118% of $1.2M annual quota in FY2023 by shortening the average sales cycle from 90 to 47 days" — only if those numbers exist in the resume
 - NEVER write a specific dollar amount, percentage, headcount, or timeframe that does not appear somewhere in the resume
 
 WHAT YOU MUST NEVER DO:
@@ -142,11 +193,12 @@ WHAT YOU MUST NEVER DO:
 - If a role has ZERO bullets in the original, return [] — do not invent responsibilities for roles with no information
 
 THE SUMMARY RULES:
-- Write like a recruiter pitch, not an obituary
-- Lead with the most impressive thing about this person
-- Include their strongest metric or achievement
+- Open with the career narrative theme — who is this person professionally, and what's the through-line?
+- Lead with their most impressive achievement or credential
+- Name their strongest metric if one exists in the resume
 - End with what they bring to their next role
 - 2-3 sentences maximum, every word earns its place
+- If there's a career transition or pivot — address it in one confident sentence
 
 CRITICAL EXTRACTION RULES:
 - Extract the person's FULL legal name including middle name if present
@@ -203,13 +255,19 @@ Return ONLY the JSON object. Start with { and end with }.`;
 
   // DOCX path: use extracted text
   if (textContent && textContent.length > 200) {
+    const narrative = await extractCareerNarrative(textContent, apiKey);
+    const promptWithNarrative = systemPrompt.replace(
+      "{NARRATIVE_CONTEXT}",
+      narrative || "Not enough information to extract narrative — treat each role independently and write the strongest possible summary from what's available."
+    );
+
     const res = await fetch(OPENAI_API, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: promptWithNarrative },
           { role: "user", content: `Parse this resume:\n\n${textContent}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
@@ -233,13 +291,19 @@ Return ONLY the JSON object. Start with { and end with }.`;
   }
 
   if (extractedText.length > 200) {
+    const narrative = await extractCareerNarrative(extractedText, apiKey);
+    const promptWithNarrative = systemPrompt.replace(
+      "{NARRATIVE_CONTEXT}",
+      narrative || "Not enough information to extract narrative — treat each role independently and write the strongest possible summary from what's available."
+    );
+
     const res = await fetch(OPENAI_API, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: promptWithNarrative },
           { role: "user", content: `Parse this resume (extracted from PDF, some characters may be garbled):\n\n${extractedText}\n\nReturn JSON:\n${jsonSchema}` }
         ],
         max_tokens: 4000,
