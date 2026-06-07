@@ -254,14 +254,107 @@ Return ONLY the JSON object. Start with { and end with }.`;
   throw new Error("Could not extract text from this file. Please try a different format.");
 }
 
+async function applyScoreFlags(parsedData: any, scoreFlags: any): Promise<any> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return parsedData;
+
+  // Only run if there are dimensions scoring below 7
+  const weakDimensions = Object.entries(scoreFlags)
+    .filter(([, dim]: [string, any]) => dim.score < 7)
+    .map(([key, dim]: [string, any]) => ({
+      dimension: key,
+      score: (dim as any).score,
+      flag: (dim as any).flag,
+    }));
+
+  if (!weakDimensions.length) {
+    console.log("[ResumeIQ] All dimensions scored 7+ — no score-flag enhancement needed");
+    return parsedData;
+  }
+
+  const flagInstructions = weakDimensions
+    .map(d => `- ${d.dimension} (score ${d.score}/10): ${d.flag}`)
+    .join("\n");
+
+  console.log(`[ResumeIQ] Applying ${weakDimensions.length} score flags to enhancement pass`);
+
+  const experienceSummary = (parsedData.experience || []).map((e: any) => ({
+    title: e.title,
+    company: e.company,
+    bullets: e.bullets || [],
+  }));
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 2000,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: `You are a resume editor. You will receive a parsed resume and a list of specific improvement instructions from an ATS scorer. Apply ONLY the listed fixes — do not change anything not mentioned. Return ONLY the updated experience array as valid JSON. No preamble, no markdown.
+
+CRITICAL RULES:
+- Never invent metrics, companies, titles, or dates not in the original
+- Only rewrite bullets specifically flagged as weak
+- If a flag says to add action verbs, do so without adding fabricated numbers
+- Return the array in exactly the same structure received`,
+          },
+          {
+            role: "user",
+            content: `Apply these specific fixes to the experience bullets:
+
+FIXES REQUIRED:
+${flagInstructions}
+
+CURRENT EXPERIENCE:
+${JSON.stringify(experienceSummary, null, 2)}
+
+Return the updated experience array as JSON. Keep all fields (title, company, bullets) — only rewrite the bullets that need fixing per the instructions above.`,
+          }
+        ],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (!res.ok) {
+      console.warn("[ResumeIQ] Score flag enhancement failed:", await res.text());
+      return parsedData;
+    }
+
+    const data = await res.json() as any;
+    const raw = (data.choices?.[0]?.message?.content || "")
+      .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "").trim();
+
+    const updatedExperience = JSON.parse(raw);
+
+    if (Array.isArray(updatedExperience)) {
+      // Merge updated bullets back into parsedData, preserving all other fields
+      const merged = { ...parsedData };
+      merged.experience = parsedData.experience.map((orig: any, i: number) => ({
+        ...orig,
+        bullets: updatedExperience[i]?.bullets || orig.bullets,
+      }));
+      console.log("[ResumeIQ] Score flag enhancement applied successfully");
+      return merged;
+    }
+  } catch (err: any) {
+    console.warn("[ResumeIQ] Score flag enhancement error:", err.message);
+  }
+
+  return parsedData;
+}
+
 async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> {
   if (scoreFlags) {
-    // Log which flags are being applied so we can verify they're working
     const flags = Object.entries(scoreFlags)
       .filter(([, dim]: [string, any]) => dim.score < 7)
-      .map(([key, dim]: [string, any]) => `${key}: ${(dim as any).flag}`)
+      .map(([key, dim]: [string, any]) => `${key}(${(dim as any).score}/10): ${(dim as any).flag}`)
       .join(" | ");
-    if (flags) console.log(`[ResumeIQ] Applying score flags to transformation: ${flags}`);
+    if (flags) console.log(`[ResumeIQ] Score flags present: ${flags}`);
   }
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -1173,7 +1266,12 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
 
-      const buffer = await generateDocx(data, scoreFlags);
+      // Apply score flag enhancement pass if flags were provided
+      const enhancedData = scoreFlags
+        ? await applyScoreFlags(data, scoreFlags)
+        : data;
+
+      const buffer = await generateDocx(enhancedData, scoreFlags);
       const docxBase64 = buffer.toString("base64");
 
       // ── Save to DB if logged in ───────────────────────────────────
