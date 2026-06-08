@@ -1980,6 +1980,34 @@ export default function ResumeIQ() {
               </div>
             )}
 
+            {/* MyCareerIQ upsell */}
+            <div style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.12) 0%, rgba(139,92,246,0.08) 100%)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: "14px", padding: "22px 24px", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+                <div style={{ width: "40px", height: "40px", background: "rgba(37,99,235,0.2)", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: "20px" }}>🎯</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: "#93c5fd", fontSize: "12px", fontWeight: 700, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Next step
+                  </p>
+                  <p style={{ color: "white", fontSize: "15px", fontWeight: 700, marginBottom: "6px", lineHeight: 1.4 }}>
+                    Find{parsedData?.title ? ` ${parsedData.title}` : ""} roles this resume is built for
+                  </p>
+                  <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "16px", lineHeight: 1.5 }}>
+                    MyCareerIQ builds your job search pipeline — research companies, generate outreach, track applications, and send cover letters. Your resume is already optimized. Now put it to work.
+                  </p>
+                  <a
+                    href={`https://mycareeriq.reviveiqi.com?utm_source=resumeiq&utm_medium=done_screen&utm_campaign=upsell${parsedData?.title ? `&role=${encodeURIComponent(parsedData.title)}` : ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", borderRadius: "9px", padding: "10px 20px", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}
+                  >
+                    Start your job search →
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* Action buttons */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
               <button onClick={reset} style={{ background: user ? "#2563eb" : "rgba(255,255,255,0.08)", color: "white", border: "none", borderRadius: "10px", padding: "11px 24px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
