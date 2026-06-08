@@ -55,3 +55,49 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// ── Process-level error alerting ─────────────────────────────────────────────
+async function sendCrashAlert(type: string, err: any) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const msg = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? (err.stack || "").slice(0, 800) : "";
+  const time = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "ResumeIQ Alerts <alerts@resumeiq.reviveiqi.com>",
+        to: ["bryan@reviveiqi.com"],
+        subject: `🚨 ResumeIQ ${type} — ${msg.slice(0, 60)}`,
+        html: `<div style="font-family:sans-serif;max-width:560px;padding:24px">
+          <h2 style="color:#ef4444;margin:0 0 16px">🚨 ResumeIQ ${type}</h2>
+          <table style="border-collapse:collapse;width:100%">
+            <tr><td style="padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;font-size:13px;color:#64748b;width:80px">Time</td><td style="padding:8px 12px;border:1px solid #fecaca;font-size:14px">${time} ET</td></tr>
+            <tr><td style="padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;font-size:13px;color:#64748b">Error</td><td style="padding:8px 12px;border:1px solid #fecaca;font-size:14px;font-weight:600;color:#dc2626">${msg}</td></tr>
+            ${stack ? `<tr><td style="padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;font-size:13px;color:#64748b">Stack</td><td style="padding:8px 12px;border:1px solid #fecaca;font-size:12px;font-family:monospace;white-space:pre-wrap">${stack}</td></tr>` : ""}
+          </table>
+          <p style="font-size:12px;color:#94a3b8;margin-top:16px">Check Railway logs: resumeiq-production</p>
+        </div>`,
+      }),
+    });
+  } catch { /* never throw in crash handler */ }
+}
+
+process.on("uncaughtException", async (err) => {
+  console.error("[ResumeIQ] uncaughtException:", err);
+  await sendCrashAlert("uncaughtException", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason) => {
+  console.error("[ResumeIQ] unhandledRejection:", reason);
+  await sendCrashAlert("unhandledRejection", reason);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("[ResumeIQ] SIGTERM received — shutting down gracefully");
+  // Railway sends SIGTERM before killing — no need to alert, this is intentional
+  process.exit(0);
+});
