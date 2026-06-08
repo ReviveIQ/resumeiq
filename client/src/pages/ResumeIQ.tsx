@@ -1148,7 +1148,7 @@ export default function ResumeIQ() {
                 {showPersonalityOnUpload && (
                   <div style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.2)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: "16px" }}>
                     <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "14px", lineHeight: 1.6 }}>
-                      Upload your assessment results and we'll synthesize them into a <strong style={{ color: "white" }}>"Working With Me"</strong> section — professional behavioral language that shows hiring managers how you think, decide, and collaborate. The section that makes you memorable.
+                      Most resumes tell hiring managers <em>what</em> you did. A <strong style={{ color: "white" }}>"Working With Me"</strong> section tells them <em>how</em> you work — how you communicate, make decisions, handle pressure, and collaborate. It's the question every hiring manager has but never gets answered until the interview. Candidates who answer it on paper get the call first.
                     </p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
                       {ASSESSMENT_TYPES.map(a => {
@@ -1333,9 +1333,9 @@ export default function ResumeIQ() {
 
                 {/* Working With Me nudge — show for all scores */}
                 <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px", textAlign: "left" }}>
-                  <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>🧠 Want to go further?</p>
+                  <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>🧠 Stand out beyond the bullets</p>
                   <p style={{ color: "#c4b5fd", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
-                    After transformation, upload your DISC, MBTI, or Predictive Index results to add a "Working With Me" section. It's the part of your resume that tells hiring managers <em>how</em> you think — the thing they actually remember.
+                    Every resume in the pile shows work history. A <strong style={{ color: "white" }}>"Working With Me"</strong> section shows self-awareness — how you communicate, decide, and perform under pressure. Hiring managers remember it because no one else has it. Upload your DISC, MBTI, or Predictive Index results after transformation to add it.
                   </p>
                 </div>
 
@@ -1656,7 +1656,7 @@ export default function ResumeIQ() {
                     <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Your "Working With Me" section is ready</span>
                   </div>
                   <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "10px", lineHeight: 1.6 }}>
-                    We've synthesized your assessment results into professional behavioral language — how you think, decide, and collaborate. This is the section hiring managers actually remember.
+                    We've translated your assessment results into professional behavioral language — how you communicate, make decisions, collaborate, and perform under pressure. This is the section hiring managers don't expect and can't forget.
                   </p>
                   <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px" }}>
                     <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0, fontWeight: 600 }}>
@@ -1765,7 +1765,7 @@ export default function ResumeIQ() {
                     <span style={{ color: includePersonality ? "#60a5fa" : "#64748b", fontWeight: 700, fontSize: "15px" }}>+ $7.99</span>
                   </div>
                   <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px", lineHeight: 1.5 }}>
-                    Most resumes show what you've done. This shows <em>how you work</em> — synthesized from your DISC, MBTI, PI, or TKI results into professional language that speaks directly to hiring managers. Unlocked forever on every future resume.
+                    Every resume in the pile shows work history. This shows <em>how you work</em> — your communication style, decision-making, and how you perform under pressure. Synthesized from your DISC, MBTI, PI, or TKI results into professional language. Hiring managers don't expect it. That's why they remember it. Unlocked permanently on your account.
                   </p>
                   {!workingWithMeTeaser ? (
                     <p style={{ color: "#f59e0b", fontSize: "12px", marginTop: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
