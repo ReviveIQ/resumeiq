@@ -1,81 +1,49 @@
-![ReviveIQI](logo-mark.jpg)
-
 # ResumeIQ
 
-**Part of the [ReviveIQI AI Suite](https://reviveiqi.com) · Live at [resumeiq.reviveiqi.com](https://resumeiq.reviveiqi.com)**
+**Your resume, transformed in 60 seconds.**
 
-> *Stop getting filtered out before a human sees your name.*
+ResumeIQ is an AI-powered resume transformation tool that takes any resume — messy, outdated, or underselling — and produces a polished, ATS-optimized Word document built to pass automated screeners and land in front of humans. Part of the [ReviveIQI](https://reviveiqi.com) suite.
 
-ResumeIQ transforms any resume into a fully optimized, ATS-formatted Word document using AI — with keyword gap analysis built in. Built for revenue professionals and job seekers who move fast.
-
----
-
-## What It Does
-
-- **ATS Optimization** — Reformats your resume to pass applicant tracking systems
-- **AI Keyword Gap Analysis** — Identifies missing keywords and weaves them in naturally
-- **Instant Word Download** — Professional `.docx` file ready to attach to any application
-- **60-Second Turnaround** — Paste or upload, get your optimized resume back in under a minute
-- **Role Targeting** — Customize for specific roles and industries
-- **Private & Secure** — No data stored or shared between sessions
+**Live at:** [resumeiq.reviveiqi.com](https://resumeiq.reviveiqi.com)
 
 ---
 
-## Unified Auth Layer
+## What it does
 
-ResumeIQ is built on the same OAuth architecture as the rest of the ReviveIQI suite — designed from day one to connect with:
+- Parses PDF and DOCX resumes using GPT-4o
+- Runs a career narrative pre-pass — extracts professional identity, career arc, and transition context before rewriting bullets
+- Scores resumes on 4 ATS dimensions: Format, Bullet Quality, Keywords, Completeness
+- Injects score flags into a targeted GPT enhancement pass — fixes weak bullets specifically
+- Elevates every bullet using the "So what?" test — strong verbs, real scope, credible outcomes
+- Never fabricates metrics, companies, dates, or titles
+- Generates a polished Word document (Calibri, ATS-safe, single column)
+- Shows before/after ATS score on the done screen
+- Optional: synthesizes DISC, MBTI, Predictive Index, or TKI results into a "Working With Me" section
+- Upsells to MyCareerIQ for job search after download
 
-| Platform | Connection Type | Usage |
-|----------|----------------|-------|
-| LinkedIn | OAuth 2.0 | Pull profile data to pre-fill resume |
-| Google Workspace | OAuth 2.0 | Import existing docs |
-| MyCareerIQ | Internal | Pass optimized resume directly to applications |
+## Working With Me
 
----
+The only resume section that tells hiring managers *how* you work — not just what you've done. Synthesized from personality assessment PDFs into five professional behavioral fields: Communication Style, Decision Making, Collaboration, Under Pressure, and What Brings Out My Best. Unlocked permanently on your account.
 
 ## Pricing
 
-| Plan | Price | Details |
-|------|-------|---------|
-| One-Time | $9.99 | Single resume, no subscription |
-| Unlimited | $29/mo | Unlimited resumes, cancel anytime |
+| Plan | Price | What's included |
+|---|---|---|
+| Free | $0 | 1 transformation |
+| Starter | $9.99 one-time | 3 transformations |
+| Monthly | $14.99/month | 30 days unlimited |
+| Working With Me | $7.99 add-on | Permanent unlock on account |
+| Bundle | $19.99 | Resume + WWM |
+| Career Launch | $79.99 | 60 days ResumeIQ + 60 days MyCareerIQ + WWM |
+
+## Stack
+
+React · TypeScript · Vite · Tailwind · Node.js · Express · TiDB Cloud · GPT-4o · Stripe · Resend · Railway
+
+## Repo
+
+`github.com/ReviveIQ/resumeiq` — main branch = production. Auto-deploys on push.
 
 ---
 
-## Tech Stack
-
-- **TypeScript** · React · Vite · Tailwind CSS
-- **Auth:** OAuth aggregation layer (LinkedIn, Google)
-- **AI:** Anthropic Claude API
-- **Deployed on Railway**
-
----
-
-## Roadmap
-
-- [x] Core ATS optimization
-- [x] Keyword gap analysis
-- [x] Word document download
-- [ ] LinkedIn OAuth — pull profile to pre-fill
-- [ ] Direct integration with MyCareerIQ
-- [ ] Role-specific optimization templates
-- [ ] Cover letter generator
-
----
-
-## Part of the ReviveIQI AI Suite
-
-| Product | Status | Description |
-|---------|--------|-------------|
-| [ResumeIQ](https://resumeiq.reviveiqi.com) | ✅ Live | ATS-optimized resume in 60 seconds |
-| MyCareerIQ | ⚡ In Dev | AI-powered career pipeline management |
-| DealForge IQI | ⚡ In Dev | Diagnostic output + revenue recovery assets |
-| SalesAE Workflow Hub | 🔬 In Dev | Secure intake + AI analysis engine |
-| ClearIQ | 🔬 In Dev | Results-driven revenue pipeline tool |
-
----
-
-## Contact
-
-**Bryan Michael Greer** · Founder, ReviveIQI
-🌐 [reviveiqi.com](https://reviveiqi.com) · ✉️ bryan@reviveiqi.com · 📍 Fort Lauderdale, FL
+*Part of the ReviveIQI suite · [reviveiqi.com](https://reviveiqi.com)*
