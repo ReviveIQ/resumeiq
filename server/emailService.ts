@@ -10,7 +10,7 @@
 
 const SITE    = "https://resumeiq.reviveiqi.com";
 const PIPELINE = "https://mycareeriq.reviveiqi.com";
-const FROM    = "Bryan @ ResumeIQ <bryan@resumeiq.reviveiqi.com>";
+const FROM    = "Bryan @ ResumeIQ <bryan@reviveiqi.com>";
 
 // ── Send via Resend ────────────────────────────────────────────────────────
 export async function sendEmail(to: string, flowType: string): Promise<void> {
@@ -44,7 +44,7 @@ export async function sendEmail(to: string, flowType: string): Promise<void> {
 
 // ── Owner notifications (to bryan@reviveiqi.com) ──────────────────────────
 const OWNER_EMAIL = "bryan@reviveiqi.com";
-const OWNER_FROM = "ResumeIQ Alerts <alerts@resumeiq.reviveiqi.com>";
+const OWNER_FROM = "ResumeIQ Alerts <alerts@reviveiqi.com>";
 
 export async function notifyOwner(subject: string, html: string): Promise<void> {
   const key = process.env.RESEND_API_KEY;
