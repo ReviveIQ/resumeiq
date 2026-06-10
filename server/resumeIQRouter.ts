@@ -752,6 +752,38 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+async function scoreResume(parsedData: any): Promise<any> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const resumeSummary = JSON.stringify({
+      name: parsedData.name, title: parsedData.title,
+      summary: parsedData.summary?.slice(0, 300),
+      experience: (parsedData.experience || []).slice(0, 3).map((e: any) => ({
+        title: e.title, company: e.company,
+        bullets: (e.bullets || []).slice(0, 3),
+      })),
+      skills: (parsedData.skills || []).slice(0, 10),
+    });
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini", max_tokens: 500, temperature: 0,
+        messages: [
+          { role: "system", content: `You are an ATS resume scorer. Score on 4 dimensions and return JSON only. No preamble, no markdown.\n{\n  "overall": 1-10,\n  "dimensions": {\n    "atsFormat": { "score": 1-10 },\n    "bulletQuality": { "score": 1-10 },\n    "keywords": { "score": 1-10 },\n    "completeness": { "score": 1-10 }\n  }\n}` },
+          { role: "user", content: `Score this resume:\n${resumeSummary}` }
+        ],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    const raw = (data.choices?.[0]?.message?.content || "").trim().replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
 export function registerResumeIQRoutes(app: Express) {
 
   // ── ADMIN AUTH MIDDLEWARE ────────────────────────────────────────────────
@@ -1342,18 +1374,42 @@ flag = a specific GPT instruction to fix this dimension during transformation`
       // ── Save to DB if logged in ───────────────────────────────────
       if (tokenUser) {
         try {
-          await saveResume(
+          // Extract pre-transform overall score from scoreFlags
+          const preScore = scoreFlags
+            ? Math.round(Object.values(scoreFlags).reduce((sum: number, d: any) => sum + (d.score || 0), 0) / Object.keys(scoreFlags).length)
+            : null;
+
+          const resumeId = await saveResume(
             tokenUser.userId,
             data.name ? `${data.name}_ResumeIQ.docx` : "ResumeIQ.docx",
             data.name || "Resume",
             data,
             docxBase64,
             session.paid,
+            undefined,
+            preScore || undefined,
+            undefined,
+            scoreFlags || undefined,
           );
           await incrementResumeCount(tokenUser.userId);
-          console.log(`[ResumeIQ] Saved resume for user ${tokenUser.userId}`);
+          console.log(`[ResumeIQ] Saved resume ${resumeId} for user ${tokenUser.userId} (preScore: ${preScore})`);
+
+          // Fire post-transform score in background and update record
+          scoreResume(enhancedData).then(async (postScoreData: any) => {
+            if (postScoreData?.overall) {
+              try {
+                const conn = await getDb();
+                if (conn) {
+                  await conn.execute(
+                    `UPDATE riq_resumes SET postScore = ? WHERE id = ?`,
+                    [postScoreData.overall, resumeId]
+                  );
+                  await conn.end();
+                }
+              } catch { /* non-fatal */ }
+            }
+          }).catch(() => {});
         } catch (saveErr) {
-          // Don't fail the download if save fails — just log it
           console.error("[ResumeIQ] Failed to save resume to DB:", saveErr);
         }
       }

@@ -241,15 +241,18 @@ export async function saveResume(
   parsedData: any,
   docxBase64: string,
   paid: boolean,
-  stripeSessionId?: string
+  stripeSessionId?: string,
+  preScore?: number,
+  postScore?: number,
+  scoreDimensions?: any
 ): Promise<number> {
   const conn = await getDb();
   if (!conn) throw new Error("Database not available");
   try {
     const [result] = await conn.execute(
-      `INSERT INTO riq_resumes (userId, originalFileName, candidateName, parsedData, docxBase64, paid, stripeSessionId)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [userId, fileName, candidateName, JSON.stringify(parsedData), docxBase64, paid ? 1 : 0, stripeSessionId || null]
+      `INSERT INTO riq_resumes (userId, originalFileName, candidateName, parsedData, docxBase64, paid, stripeSessionId, preScore, postScore, scoreDimensions)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, fileName, candidateName, JSON.stringify(parsedData), docxBase64, paid ? 1 : 0, stripeSessionId || null, preScore || null, postScore || null, scoreDimensions ? JSON.stringify(scoreDimensions) : null]
     ) as any;
     return result.insertId;
   } finally {
