@@ -141,6 +141,16 @@ export async function initDb() {
         createdAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_nurture_sent (
+        id       INT AUTO_INCREMENT PRIMARY KEY,
+        userId   INT NOT NULL,
+        emailKey VARCHAR(16) NOT NULL,
+        sentAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_email (userId, emailKey),
+        INDEX idx_userId (userId)
+      )
+    `);
     console.log("[ResumeIQ] Database initialized ✓");
   } catch (err) {
     console.warn("[ResumeIQ] DB init warning:", err);
@@ -148,6 +158,7 @@ export async function initDb() {
     await conn.end();
   }
 }
+
 
 // Add new columns to existing tables if they don't exist yet (safe to run on every startup)
 export async function migrateDb() {
