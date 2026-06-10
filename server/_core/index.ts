@@ -53,10 +53,10 @@ async function startServer() {
     console.log(`[ResumeIQ] Running on port ${port}`);
   });
 
-  // ── Nurture email cron — 9:00 AM EST (14:00 UTC) ─────────────────────────
+  // ── Nurture email cron — 9:00 AM EDT (13:00 UTC) ─────────────────────────
   try {
     const cron = await import("node-cron");
-    cron.default.schedule("0 14 * * *", async () => {
+    cron.default.schedule("0 13 * * *", async () => {
       console.log("[Nurture] Starting daily nurture cron");
       try {
         const { runNurtureCron } = await import("../nurtureEmail");
@@ -65,7 +65,7 @@ async function startServer() {
         console.error("[Nurture] Cron failed:", err);
       }
     }, { timezone: "UTC" });
-    console.log("[ResumeIQ] Nurture email cron scheduled at 9:00 AM EST");
+    console.log("[ResumeIQ] Nurture email cron scheduled at 9:00 AM EDT");
   } catch (err: any) {
     console.warn("[ResumeIQ] node-cron not available:", err.message);
   }
