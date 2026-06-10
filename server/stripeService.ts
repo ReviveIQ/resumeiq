@@ -45,7 +45,8 @@ async function stripePost(body: Record<string, string>): Promise<any> {
 export async function createCheckoutSession(
   successUrl: string,
   cancelUrl: string,
-  sessionId: string
+  sessionId: string,
+  utmData: Record<string, string> = {}
 ): Promise<{ url: string; sessionId: string }> {
   const session = await stripePost({
     "payment_method_types[0]": "card",
@@ -59,6 +60,10 @@ export async function createCheckoutSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": sessionId,
     "metadata[type]": "resume",
+    ...(utmData.utm_source ? { "metadata[utm_source]": utmData.utm_source } : {}),
+    ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
+    ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
+    ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -66,7 +71,8 @@ export async function createCheckoutSession(
 export async function createPersonalityCheckoutSession(
   successUrl: string,
   cancelUrl: string,
-  resumeiqSession: string
+  resumeiqSession: string,
+  utmData: Record<string, string> = {}
 ): Promise<{ url: string; sessionId: string }> {
   const session = await stripePost({
     "payment_method_types[0]": "card",
@@ -80,6 +86,10 @@ export async function createPersonalityCheckoutSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "personality",
+    ...(utmData.utm_source ? { "metadata[utm_source]": utmData.utm_source } : {}),
+    ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
+    ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
+    ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -101,6 +111,10 @@ export async function createBundleCheckoutSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "bundle",
+    ...(utmData.utm_source ? { "metadata[utm_source]": utmData.utm_source } : {}),
+    ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
+    ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
+    ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -122,6 +136,10 @@ export async function createCareerLaunchSession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "career",
+    ...(utmData.utm_source ? { "metadata[utm_source]": utmData.utm_source } : {}),
+    ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
+    ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
+    ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -143,6 +161,10 @@ export async function createMonthlySession(
     cancel_url: cancelUrl,
     "metadata[resumeiq_session]": resumeiqSession,
     "metadata[type]": "monthly",
+    ...(utmData.utm_source ? { "metadata[utm_source]": utmData.utm_source } : {}),
+    ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
+    ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
+    ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }

@@ -270,7 +270,12 @@ export default function ResumeIQ() {
 
   // Handle LinkedIn OAuth redirect and cross-app SSO handoff
   useEffect(() => {
+    // Persist UTM params to sessionStorage so they survive navigation to Stripe and back
     const params = new URLSearchParams(window.location.search);
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach(k => {
+      if (params.get(k)) sessionStorage.setItem(k, params.get(k)!);
+    });
+
     const linkedinToken = params.get("linkedin_token");
     const authError = params.get("auth_error");
     const handoffToken = params.get("handoff");
@@ -733,27 +738,36 @@ export default function ResumeIQ() {
     }
 
     try {
+      // Capture UTM params from URL or sessionStorage (persist across page navigation)
+      const urlParams = new URLSearchParams(window.location.search);
+      const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+      const utmData: Record<string, string> = {};
+      utmKeys.forEach(k => {
+        const val = urlParams.get(k) || sessionStorage.getItem(k) || "";
+        if (val) utmData[k] = val;
+      });
+
       let res: Response;
       if (checkoutType === "career") {
         res = await fetch("/api/resumeiq/career-checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeiqSession: sessionId }),
+          body: JSON.stringify({ resumeiqSession: sessionId, utmData }),
         });
       } else if (checkoutType === "personality") {
         res = await fetch("/api/resumeiq/personality-checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeiqSession: sessionId, type: "personality" }),
+          body: JSON.stringify({ resumeiqSession: sessionId, type: "personality", utmData }),
         });
       } else if (checkoutType === "monthly" || checkoutType === "monthly_bundle") {
         res = await fetch("/api/resumeiq/monthly-checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resumeiqSession: sessionId, includePersonality: checkoutType === "monthly_bundle" }),
+          body: JSON.stringify({ resumeiqSession: sessionId, includePersonality: checkoutType === "monthly_bundle", utmData }),
         });
       } else {
         // starter or starter_bundle
         res = await fetch("/api/resumeiq/checkout", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, includePersonality: checkoutType === "starter_bundle" }),
+          body: JSON.stringify({ sessionId, includePersonality: checkoutType === "starter_bundle", utmData }),
         });
       }
       const data = await res.json();

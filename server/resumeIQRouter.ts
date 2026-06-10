@@ -990,7 +990,8 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       const origin = req.headers.origin as string || "https://resumeiq.reviveiqi.com";
       const successUrl = `${origin}/app?payment=success&`;
       const cancelUrl = `${origin}/app`;
-      const result = await createMonthlySession(successUrl, cancelUrl, resumeiqSession);
+      const utmData = req.body?.utmData || {};
+      const result = await createMonthlySession(successUrl, cancelUrl, resumeiqSession, false, utmData);
       res.json({ url: result.url });
     } catch (error: any) {
       console.error("[ResumeIQ] Monthly checkout error:", error);
