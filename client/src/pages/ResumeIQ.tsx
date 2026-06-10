@@ -275,6 +275,17 @@ export default function ResumeIQ() {
     ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach(k => {
       if (params.get(k)) sessionStorage.setItem(k, params.get(k)!);
     });
+    // Capture referrer on first load — don't overwrite with internal navigation
+    if (document.referrer && !sessionStorage.getItem("referrer")) {
+      try {
+        const ref = new URL(document.referrer);
+        sessionStorage.setItem("referrer", ref.hostname); // e.g. "linkedin.com", "google.com"
+      } catch {}
+    }
+    // Capture landing page on first visit
+    if (!sessionStorage.getItem("landing_url")) {
+      sessionStorage.setItem("landing_url", window.location.pathname);
+    }
 
     const linkedinToken = params.get("linkedin_token");
     const authError = params.get("auth_error");
@@ -746,6 +757,18 @@ export default function ResumeIQ() {
         const val = urlParams.get(k) || sessionStorage.getItem(k) || "";
         if (val) utmData[k] = val;
       });
+      // Add referrer and landing page
+      const referrer = sessionStorage.getItem("referrer") || "";
+      const landingUrl = sessionStorage.getItem("landing_url") || "";
+      if (referrer) utmData["referrer"] = referrer;
+      if (landingUrl) utmData["landing_url"] = landingUrl;
+      // If no utm_source but has referrer, infer source
+      if (!utmData["utm_source"] && referrer) {
+        if (referrer.includes("linkedin")) utmData["utm_source"] = "linkedin_organic";
+        else if (referrer.includes("google")) utmData["utm_source"] = "google_organic";
+        else if (referrer.includes("twitter") || referrer.includes("x.com")) utmData["utm_source"] = "twitter_organic";
+        else utmData["utm_source"] = referrer;
+      }
 
       let res: Response;
       if (checkoutType === "career") {

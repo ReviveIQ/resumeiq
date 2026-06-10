@@ -64,6 +64,8 @@ export async function createCheckoutSession(
     ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
     ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
     ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
+    ...(utmData.referrer ? { "metadata[referrer]": utmData.referrer } : {}),
+    ...(utmData.landing_url ? { "metadata[landing_url]": utmData.landing_url } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -90,6 +92,8 @@ export async function createPersonalityCheckoutSession(
     ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
     ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
     ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
+    ...(utmData.referrer ? { "metadata[referrer]": utmData.referrer } : {}),
+    ...(utmData.landing_url ? { "metadata[landing_url]": utmData.landing_url } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -115,6 +119,8 @@ export async function createBundleCheckoutSession(
     ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
     ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
     ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
+    ...(utmData.referrer ? { "metadata[referrer]": utmData.referrer } : {}),
+    ...(utmData.landing_url ? { "metadata[landing_url]": utmData.landing_url } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -140,6 +146,8 @@ export async function createCareerLaunchSession(
     ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
     ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
     ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
+    ...(utmData.referrer ? { "metadata[referrer]": utmData.referrer } : {}),
+    ...(utmData.landing_url ? { "metadata[landing_url]": utmData.landing_url } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
@@ -165,6 +173,8 @@ export async function createMonthlySession(
     ...(utmData.utm_medium ? { "metadata[utm_medium]": utmData.utm_medium } : {}),
     ...(utmData.utm_campaign ? { "metadata[utm_campaign]": utmData.utm_campaign } : {}),
     ...(utmData.utm_content ? { "metadata[utm_content]": utmData.utm_content } : {}),
+    ...(utmData.referrer ? { "metadata[referrer]": utmData.referrer } : {}),
+    ...(utmData.landing_url ? { "metadata[landing_url]": utmData.landing_url } : {}),
   });
   return { url: session.url, sessionId: session.id };
 }
