@@ -1293,7 +1293,10 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         const session = await getSession(resumeiqSession);
         if (session) await updateSessionPaid(resumeiqSession);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
-        if (tokenUser) notifyPurchase(tokenUser.email, "", "Starter — 3 transformations", "$9.99").catch(() => {});
+        if (tokenUser) {
+          await upgradeToStarter(tokenUser.userId);
+          notifyPurchase(tokenUser.email, "", "Starter — 3 transformations", "$9.99").catch(() => {});
+        }
 
       } else if (type === "monthly") {
         const session = await getSession(resumeiqSession);
