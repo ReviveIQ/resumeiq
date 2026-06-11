@@ -1388,72 +1388,256 @@ export default function ResumeIQ() {
           </div>
         )}
         {view === "interview" && currentInterviewQ && (
-          <div style={{ maxWidth: "520px", margin: "0 auto" }}>
+          <div style={{ maxWidth: "560px", margin: "0 auto" }}>
 
-            {/* Key insight banner — shown on first question only */}
+            {/* Why we ask — first question only */}
             {interviewStep === 0 && (
               <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: "12px", padding: "16px 20px", marginBottom: "28px" }}>
-                <p style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>💡 Why we ask</p>
+                <p style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>💡 A few quick questions</p>
                 <p style={{ color: "#93c5fd", fontSize: "13px", margin: 0, lineHeight: 1.6 }}>
-                  The more context you provide, the stronger your transformation. Our AI elevates your experience into compelling, ATS-optimized bullets — but it can only work with what it knows about you. Every answer you give makes your resume more competitive.
+                  We couldn't find everything we need in your resume. Answer these and we'll build the strongest version possible. Most take under 10 seconds.
                 </p>
               </div>
             )}
 
-            {/* Field-specific context for experience questions */}
-            {(currentInterviewQ.field === "experience_dates" || currentInterviewQ.field === "experience_bullets" || currentInterviewQ.field === "experience") && (
-              <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px" }}>
-                <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>
-                  {currentInterviewQ.field === "experience_dates" ? "📅 Dates matter to recruiters" :
-                   currentInterviewQ.field === "experience_bullets" ? "🎯 Accomplishments get callbacks" :
-                   "📋 Your experience is your proof"}
-                </p>
-                <p style={{ color: "#fde68a", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>
-                  {currentInterviewQ.field === "experience_dates"
-                    ? "ATS systems and recruiters use dates to calculate tenure and spot gaps. Missing dates can trigger automatic rejection before a human ever reads your resume."
-                    : currentInterviewQ.field === "experience_bullets"
-                    ? "Recruiters spend 8 seconds scanning. Bullet points with specific outcomes stop the scroll. Without them, even strong experience looks passive on paper."
-                    : "Work experience is the #1 thing recruiters look for. Even a brief description helps us build a stronger resume for you."}
-                </p>
-              </div>
-            )}
-
-            <div style={{ textAlign: "center", marginBottom: "32px" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "999px", padding: "6px 16px", marginBottom: "20px" }}>
-                <span style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600 }}>Question {interviewStep + 1} of {interviewFields.length}</span>
-              </div>
-              <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "24px" }}>
+            {/* Progress */}
+            <div style={{ textAlign: "center", marginBottom: "28px" }}>
+              <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginBottom: "12px" }}>
                 {interviewFields.map((_, i) => (
                   <div key={i} style={{ height: "3px", width: "32px", borderRadius: "2px", background: i <= interviewStep ? "#3b82f6" : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
                 ))}
               </div>
-              <h2 style={{ color: "white", fontSize: "22px", fontWeight: "bold", marginBottom: "8px" }}>{currentInterviewQ.question}</h2>
-              <p style={{ color: "#64748b", fontSize: "13px" }}>
-                {currentInterviewQ.required ? "Required" : "Optional — press Skip if not applicable"}
-              </p>
+              <span style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600 }}>
+                {interviewStep + 1} of {interviewFields.length}
+              </span>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: "14px", padding: "24px" }}>
-              {currentInterviewQ.multiline ? (
-                <textarea rows={4} value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
-                  placeholder={currentInterviewQ.placeholder}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "Arial,sans-serif" }} />
-              ) : (
-                <input type="text" value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleInterviewNext()}
-                  placeholder={currentInterviewQ.placeholder}
-                  style={{ width: "100%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+
+            {/* Question card */}
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "28px 24px" }}>
+              <h2 style={{ color: "white", fontSize: "20px", fontWeight: 700, marginBottom: "6px", lineHeight: 1.3 }}>
+                {currentInterviewQ.question}
+              </h2>
+              <p style={{ color: "#64748b", fontSize: "13px", marginBottom: "20px" }}>
+                {currentInterviewQ.required ? "Required" : "Optional — tap Skip if not applicable"}
+              </p>
+
+              {/* ── SKILLS — chip selector ── */}
+              {currentInterviewQ.field === "skills" && (() => {
+                const SKILL_CHIPS = [
+                  { cat: "CRM & Sales Tools", items: ["Salesforce","HubSpot","Outreach","Salesloft","Gong","Clari","ZoomInfo","Apollo","LinkedIn Sales Nav","Groove"] },
+                  { cat: "Software & Productivity", items: ["Excel","PowerPoint","Google Sheets","Slack","Notion","Asana","Jira","Tableau","Power BI","Zoom"] },
+                  { cat: "Marketing & Growth", items: ["Marketo","Pardot","Google Analytics","SEMrush","Mailchimp","Klaviyo","Meta Ads","Google Ads","HubSpot Marketing","Drift"] },
+                  { cat: "Tech & Engineering", items: ["Python","JavaScript","SQL","React","Node.js","AWS","GCP","Azure","Docker","Git"] },
+                  { cat: "Soft Skills", items: ["Team Leadership","Cross-functional collaboration","Strategic planning","Executive communication","Change management","Coaching & mentoring"] },
+                ];
+                const selected = interviewAnswer ? interviewAnswer.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
+                const toggle = (skill: string) => {
+                  const current = interviewAnswer ? interviewAnswer.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
+                  const next = current.includes(skill) ? current.filter((s: string) => s !== skill) : [...current, skill];
+                  setInterviewAnswer(next.join(", "));
+                };
+                return (
+                  <div>
+                    {SKILL_CHIPS.map(cat => (
+                      <div key={cat.cat} style={{ marginBottom: "14px" }}>
+                        <p style={{ fontSize: "11px", color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>{cat.cat}</p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {cat.items.map(skill => {
+                            const isSelected = selected.includes(skill);
+                            return (
+                              <button key={skill} onClick={() => toggle(skill)} style={{
+                                padding: "6px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: 500, cursor: "pointer",
+                                border: isSelected ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.12)",
+                                background: isSelected ? "rgba(37,99,235,0.2)" : "rgba(255,255,255,0.05)",
+                                color: isSelected ? "#60a5fa" : "#94a3b8", transition: "all 0.15s",
+                              }}>{isSelected ? "✓ " : ""}{skill}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: "12px" }}>
+                      <input type="text" placeholder="Add your own (comma separated)..."
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", boxSizing: "border-box" }}
+                        onBlur={e => {
+                          const custom = e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean);
+                          if (custom.length) {
+                            const current = interviewAnswer ? interviewAnswer.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
+                            const merged = Array.from(new Set([...current, ...custom]));
+                            setInterviewAnswer(merged.join(", "));
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </div>
+                    {selected.length > 0 && (
+                      <p style={{ marginTop: "10px", fontSize: "12px", color: "#64748b" }}>
+                        {selected.length} skill{selected.length !== 1 ? "s" : ""} selected
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── TITLE — quick pick chips + custom ── */}
+              {currentInterviewQ.field === "title" && (() => {
+                const TITLES = [
+                  "Account Executive", "Senior Account Executive", "Enterprise AE",
+                  "Sales Manager", "Director of Sales", "VP of Sales",
+                  "Customer Success Manager", "Sales Development Rep",
+                  "Software Engineer", "Senior Software Engineer", "Product Manager",
+                  "Marketing Manager", "Operations Manager", "Account Manager",
+                ];
+                return (
+                  <div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                      {TITLES.map(title => (
+                        <button key={title} onClick={() => setInterviewAnswer(title)} style={{
+                          padding: "8px 14px", borderRadius: "99px", fontSize: "13px", fontWeight: 500, cursor: "pointer",
+                          border: interviewAnswer === title ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.12)",
+                          background: interviewAnswer === title ? "rgba(37,99,235,0.2)" : "rgba(255,255,255,0.05)",
+                          color: interviewAnswer === title ? "#60a5fa" : "#94a3b8", transition: "all 0.15s",
+                        }}>{interviewAnswer === title ? "✓ " : ""}{title}</button>
+                      ))}
+                    </div>
+                    <input type="text" value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleInterviewNext()}
+                      placeholder="Or type your title..."
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+                );
+              })()}
+
+              {/* ── EDUCATION — structured 3-field form ── */}
+              {currentInterviewQ.field === "education" && (() => {
+                const parts = interviewAnswer.split(" | ");
+                const school = parts[0] || "";
+                const degree = parts[1] || "";
+                const year = parts[2] || "";
+                const update = (s: string, d: string, y: string) => setInterviewAnswer([s, d, y].filter(Boolean).join(" | "));
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <input type="text" defaultValue={school} placeholder="School name (e.g. Florida Atlantic University)"
+                      onBlur={e => update(e.target.value, degree, year)}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                    <input type="text" defaultValue={degree} placeholder="Degree & major (e.g. B.S. Marketing)"
+                      onBlur={e => update(school, e.target.value, year)}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                    <input type="text" defaultValue={year} placeholder="Graduation year (e.g. 2015)"
+                      onBlur={e => update(school, degree, e.target.value)}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+                );
+              })()}
+
+              {/* ── EXPERIENCE BULLETS — guided bullet builder ── */}
+              {(currentInterviewQ.field === "experience_bullets" || currentInterviewQ.field === "experience") && (() => {
+                const [action, setAction] = useState("");
+                const [result, setResult] = useState("");
+                useEffect(() => {
+                  if (action && result) setInterviewAnswer(`${action} — ${result}`);
+                  else if (action) setInterviewAnswer(action);
+                }, [action, result]);
+                return (
+                  <div>
+                    <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
+                      <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 600, marginBottom: "3px" }}>🎯 Strong bullets = strong callbacks</p>
+                      <p style={{ color: "#fde68a", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>Tell us what you did and what happened as a result. We'll turn it into a polished bullet.</p>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div>
+                        <label style={{ fontSize: "12px", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>What did you do?</label>
+                        <input type="text" value={action} onChange={e => setAction(e.target.value)}
+                          placeholder="e.g. Led a team of 8 sales reps across 3 states"
+                          style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: "12px", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>What was the result or impact?</label>
+                        <input type="text" value={result} onChange={e => setResult(e.target.value)}
+                          placeholder="e.g. Exceeded quota 3 years running, grew territory 40%"
+                          style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                      </div>
+                      {action && result && (
+                        <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "8px", padding: "10px 14px" }}>
+                          <p style={{ fontSize: "11px", color: "#34d399", fontWeight: 600, marginBottom: "4px" }}>Preview</p>
+                          <p style={{ fontSize: "13px", color: "#e2e8f0", margin: 0 }}>▸ {action} — {result}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── EXPERIENCE DATES — structured date helper ── */}
+              {currentInterviewQ.field === "experience_dates" && (
+                <div>
+                  <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px" }}>
+                    <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 600, marginBottom: "3px" }}>📅 Why dates matter</p>
+                    <p style={{ color: "#fde68a", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>ATS systems calculate tenure and spot gaps. Missing dates can trigger automatic rejection before anyone reads your resume.</p>
+                  </div>
+                  <textarea rows={4} value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
+                    placeholder={"Current role: Jan 2022 – Present\nPrevious role: Mar 2019 – Dec 2021\nRole before that: Jun 2016 – Feb 2019"}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "DM Mono, monospace" }} />
+                </div>
               )}
-              <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+
+              {/* ── SUMMARY — guided prompts ── */}
+              {currentInterviewQ.field === "summary" && (() => {
+                const STARTERS = [
+                  "Results-driven sales professional with",
+                  "Customer success leader with",
+                  "Experienced software engineer with",
+                  "Marketing strategist with",
+                  "Operations professional with",
+                  "Finance and accounting professional with",
+                ];
+                return (
+                  <div>
+                    <p style={{ fontSize: "12px", color: "#64748b", marginBottom: "10px" }}>Pick a starter or write your own:</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
+                      {STARTERS.map(s => (
+                        <button key={s} onClick={() => setInterviewAnswer(prev => s + (prev.replace(/^.*?with\s*/i, "") || " "))} style={{
+                          padding: "6px 12px", borderRadius: "99px", fontSize: "12px", cursor: "pointer",
+                          border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#94a3b8",
+                        }}>{s.slice(0, 28)}…</button>
+                      ))}
+                    </div>
+                    <textarea rows={4} value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
+                      placeholder="e.g. Results-driven sales professional with 10+ years building enterprise pipelines and consistently exceeding quota across SaaS markets."
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
+                    <p style={{ fontSize: "11px", color: "#64748b", marginTop: "6px" }}>
+                      {interviewAnswer.length < 40 ? `${40 - interviewAnswer.length} more characters recommended` : "✓ Looks good"}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* ── DEFAULT — simple text/textarea ── */}
+              {!["skills","title","education","experience_bullets","experience","experience_dates","summary"].includes(currentInterviewQ.field) && (
+                currentInterviewQ.multiline ? (
+                  <textarea rows={4} value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
+                    placeholder={currentInterviewQ.placeholder}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
+                ) : (
+                  <input type="text" value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleInterviewNext()}
+                    placeholder={currentInterviewQ.placeholder}
+                    style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }} />
+                )
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
                 {!currentInterviewQ.required && (
                   <button onClick={handleInterviewSkip}
-                    style={{ flex: 1, background: "rgba(255,255,255,0.08)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                    style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                     Skip
                   </button>
                 )}
                 <button onClick={handleInterviewNext}
                   disabled={currentInterviewQ.required && !interviewAnswer.trim()}
-                  style={{ flex: 2, background: interviewAnswer.trim() ? "#2563eb" : "rgba(37,99,235,0.4)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: interviewAnswer.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {interviewStep + 1 === interviewFields.length ? "See My Resume →" : "Next →"}
+                  style={{ flex: 2, background: interviewAnswer.trim() ? "#2563eb" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: interviewAnswer.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", transition: "background 0.2s" }}>
+                  {interviewStep + 1 === interviewFields.length ? "Build My Resume →" : "Next →"}
                 </button>
               </div>
             </div>
