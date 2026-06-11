@@ -30,6 +30,39 @@ async function startServer() {
     next();
   });
 
+  // ── Stripe webhook — must be before express.json() to get raw body ──────────
+  app.post("/api/resumeiq/webhook", express.raw({ type: "application/json" }), async (req: any, res: any) => {
+    const sig = req.headers["stripe-signature"];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) { res.json({ received: true }); return; }
+    try {
+      const crypto = await import("crypto");
+      const payload = req.body;
+      const parts = String(sig).split(",");
+      const timestamp = parts.find((p: string) => p.startsWith("t="))?.replace("t=", "");
+      const signature = parts.find((p: string) => p.startsWith("v1="))?.replace("v1=", "");
+      if (!timestamp || !signature) { res.status(400).json({ error: "Invalid signature" }); return; }
+      const expected = crypto.createHmac("sha256", webhookSecret)
+        .update(`${timestamp}.${payload}`)
+        .digest("hex");
+      if (expected !== signature) { res.status(400).json({ error: "Signature mismatch" }); return; }
+      const event = JSON.parse(payload.toString());
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object;
+        const type = session.metadata?.type || "resume";
+        const customerEmail = session.customer_details?.email || session.customer_email || "";
+        console.log(`[Webhook] checkout.session.completed — type=${type} email=${customerEmail}`);
+        // Delegate to router handler
+        const { handleWebhookUpgrade } = await import("../resumeIQRouter");
+        await handleWebhookUpgrade(type, customerEmail);
+      }
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error("[Webhook] Error:", err.message);
+      res.json({ received: true }); // always 200 so Stripe doesn't retry
+    }
+  });
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerResumeIQRoutes(app);

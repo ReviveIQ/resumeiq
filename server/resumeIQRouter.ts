@@ -1368,112 +1368,8 @@ flag = a specific GPT instruction to fix this dimension during transformation`
     }
   });
 
-  // ── STRIPE WEBHOOK ───────────────────────────────────────────────
-  // Handles checkout.session.completed server-side — catches payments
-  // where the user closes the browser before being redirected back.
-  // Requires raw body for signature verification — must come before express.json()
-  app.post("/api/resumeiq/webhook",
-    express.raw({ type: "application/json" }),
-    async (req: Request, res: Response) => {
-      const sig = req.headers["stripe-signature"];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-      if (!webhookSecret) {
-        console.warn("[Webhook] STRIPE_WEBHOOK_SECRET not set — skipping verification");
-        res.json({ received: true });
-        return;
-      }
-
-      // Verify Stripe signature
-      let event: any;
-      try {
-        const crypto = await import("crypto");
-        const payload = (req as any).body;
-        const [timestampPart, ...sigParts] = String(sig).split(",");
-        const timestamp = timestampPart.replace("t=", "");
-        const signature = sigParts.find(s => s.startsWith("v1="))?.replace("v1=", "");
-        if (!timestamp || !signature) { res.status(400).json({ error: "Invalid signature" }); return; }
-        const signedPayload = `${timestamp}.${payload}`;
-        const expectedSig = crypto.createHmac("sha256", webhookSecret).update(signedPayload).digest("hex");
-        if (expectedSig !== signature) { res.status(400).json({ error: "Signature mismatch" }); return; }
-        event = JSON.parse(payload.toString());
-      } catch (err: any) {
-        console.error("[Webhook] Signature verification failed:", err.message);
-        res.status(400).json({ error: "Webhook verification failed" });
-        return;
-      }
-
-      // Only handle checkout.session.completed
-      if (event.type !== "checkout.session.completed") {
-        res.json({ received: true });
-        return;
-      }
-
-      const session = event.data.object;
-      const metadata = session.metadata || {};
-      const type = metadata.type || "resume";
-      const customerEmail = session.customer_details?.email || session.customer_email || "";
-
-      console.log(`[Webhook] checkout.session.completed — type=${type} email=${customerEmail}`);
-
-      try {
-        // Find the user by email
-        const { getUserByEmail, upgradeToStarter, upgradeToMonthly, unlockPersonality } = await import("./authService");
-        const user = customerEmail ? await getUserByEmail(customerEmail) : null;
-
-        if (!user) {
-          console.warn(`[Webhook] No user found for email: ${customerEmail} — plan upgrade skipped`);
-          res.json({ received: true });
-          return;
-        }
-
-        // Check if already processed (idempotency)
-        const { getDb } = await import("./authService");
-        const conn = await getDb();
-        if (conn) {
-          const [existing] = await conn.execute(
-            "SELECT id FROM riq_users WHERE id = ? AND plan != 'free'",
-            [user.id]
-          ) as any;
-          await conn.end();
-          const rows = Array.isArray(existing[0]) ? existing[0] : existing;
-          if (type === "resume" && rows.length > 0) {
-            console.log(`[Webhook] User ${user.id} already upgraded — skipping`);
-            res.json({ received: true });
-            return;
-          }
-        }
-
-        if (type === "resume") {
-          await upgradeToStarter(user.id);
-          notifyPurchase(customerEmail, user.name || "", "Starter — 3 transformations", "$9.99").catch(() => {});
-          console.log(`[Webhook] ✅ User ${user.id} upgraded to starter`);
-
-        } else if (type === "monthly") {
-          await upgradeToMonthly(user.id, 30);
-          notifyPurchase(customerEmail, user.name || "", "Monthly — 30 days unlimited", "$14.99").catch(() => {});
-          console.log(`[Webhook] ✅ User ${user.id} upgraded to monthly`);
-
-        } else if (type === "career") {
-          await upgradeToMonthly(user.id, 60);
-          await unlockPersonality(user.id, {});
-          notifyPurchase(customerEmail, user.name || "", "Career Launch Bundle", "$79.99").catch(() => {});
-          console.log(`[Webhook] ✅ User ${user.id} upgraded to career launch`);
-
-        } else if (type === "personality") {
-          await unlockPersonality(user.id, {});
-          notifyPurchase(customerEmail, user.name || "", "Working With Me unlock", "$7.99").catch(() => {});
-          console.log(`[Webhook] ✅ User ${user.id} personality unlocked`);
-        }
-
-      } catch (err: any) {
-        console.error("[Webhook] Failed to process event:", err.message);
-        // Return 200 anyway — Stripe retries on non-2xx
-      }
-
-      res.json({ received: true });
-    }
-  );
+  // Webhook upgrade logic exported for use by index.ts webhook handler
+  // (webhook route must be before express.json() to get raw body)
 
 
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
@@ -2200,3 +2096,28 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 }
 
 
+
+// ── Stripe webhook upgrade handler (called from index.ts before express.json) ─
+export async function handleWebhookUpgrade(type: string, customerEmail: string): Promise<void> {
+  if (!customerEmail) return;
+  const { getUserByEmail, upgradeToStarter, upgradeToMonthly, unlockPersonality } = await import("./authService");
+  const user = await getUserByEmail(customerEmail);
+  if (!user) {
+    console.warn(`[Webhook] No user found for email: ${customerEmail}`);
+    return;
+  }
+  if (type === "resume") {
+    await upgradeToStarter(user.id);
+    console.log(`[Webhook] ✅ ${customerEmail} upgraded to starter`);
+  } else if (type === "monthly") {
+    await upgradeToMonthly(user.id, 30);
+    console.log(`[Webhook] ✅ ${customerEmail} upgraded to monthly`);
+  } else if (type === "career") {
+    await upgradeToMonthly(user.id, 60);
+    await unlockPersonality(user.id, {});
+    console.log(`[Webhook] ✅ ${customerEmail} upgraded to career launch`);
+  } else if (type === "personality") {
+    await unlockPersonality(user.id, {});
+    console.log(`[Webhook] ✅ ${customerEmail} personality unlocked`);
+  }
+}
