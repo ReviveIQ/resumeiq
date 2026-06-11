@@ -206,6 +206,21 @@ export async function loginUser(email: string, password: string) {
   }
 }
 
+export async function getUserByEmail(email: string) {
+  const conn = await getDb();
+  if (!conn) return null;
+  try {
+    const [rows] = await conn.execute(
+      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData FROM riq_users WHERE email = ? LIMIT 1",
+      [email]
+    ) as any;
+    const data = Array.isArray(rows[0]) ? rows[0] : rows;
+    return data[0] || null;
+  } finally {
+    await conn.end();
+  }
+}
+
 export async function getUserById(id: number) {
   const conn = await getDb();
   if (!conn) return null;
