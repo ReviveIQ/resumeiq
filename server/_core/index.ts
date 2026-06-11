@@ -43,6 +43,10 @@ async function startServer() {
       res.sendFile(path.join(distPath, "ats-checker.html"));
     });
 
+    app.get("/faq", (_req, res) => {
+      res.sendFile(path.join(distPath, "faq.html"));
+    });
+
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
