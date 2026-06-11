@@ -921,6 +921,7 @@ export default function ResumeIQ() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <a href="/faq" style={{ background: "transparent", color: "#64748b", border: "none", cursor: "pointer", fontSize: "12px", textDecoration: "none" }}>FAQ</a>
             {user ? (
               <>
                 <button onClick={() => { loadHistory(); setView("history"); }} style={{ background: "transparent", color: "#94a3b8", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", fontSize: "12px" }}>
