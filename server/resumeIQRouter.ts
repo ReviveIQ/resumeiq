@@ -125,37 +125,8 @@ Be specific. Use actual companies and titles from the resume. Do not invent metr
   }
 }
 
-async function extractCareerNarrativePdf(pdfBase64: string, apiKey: string): Promise<string> {
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        max_tokens: 500,
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content: `You are a career strategist. Read this resume and extract the career narrative in 4-6 sentences. Return ONLY the narrative — no preamble, no labels, no JSON. Cover: professional identity, career theme, progression, transition context, top 2-3 accomplishments, value proposition. Be specific. Use actual companies and titles. Do not invent metrics.`,
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Extract the career narrative from this resume:" },
-              { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } } as any,
-            ],
-          }
-        ],
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-    if (!res.ok) return "";
-    const data = await res.json() as any;
-    return (data.choices?.[0]?.message?.content || "").trim();
-  } catch {
-    return "";
-  }
+async function extractCareerNarrativePdf(pdfText: string, apiKey: string): Promise<string> {
+  return extractCareerNarrative(pdfText, apiKey);
 }
 
 async function parseResume(fileBase64: string, fileName: string): Promise<any> {
@@ -312,36 +283,59 @@ Return ONLY the JSON object. Start with { and end with }.`;
     return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
   }
 
-  // PDF path: send directly to GPT-4o as a document (native PDF understanding)
+  // PDF path: extract text with pdf-parse then send to GPT-4o as text
   if (isPdf) {
-    console.log(`[ResumeIQ] PDF detected — sending directly to GPT-4o as document`);
-    const narrative = await extractCareerNarrativePdf(fileBase64, apiKey);
-    const promptWithNarrative = systemPrompt.replace(
-      "{NARRATIVE_CONTEXT}",
-      narrative || "Not enough information to extract narrative — treat each role independently."
-    );
+    console.log(`[ResumeIQ] PDF detected — extracting text with pdf-parse`);
+    let pdfText = "";
+    try {
+      const pdfParse = await import("pdf-parse");
+      const buffer = Buffer.from(fileBase64, "base64");
+      const parsed = await pdfParse.default(buffer);
+      pdfText = parsed.text.replace(/\s+/g, " ").trim().slice(0, 15000);
+      console.log(`[ResumeIQ] PDF text extracted: ${pdfText.length} chars`);
+    } catch (pdfErr: any) {
+      console.warn(`[ResumeIQ] pdf-parse failed: ${pdfErr.message} — falling back to vision`);
+    }
+
+    if (pdfText.length > 200) {
+      // Good extraction — send as text
+      const narrative = await extractCareerNarrative(pdfText, apiKey);
+      const promptWithNarrative = systemPrompt.replace(
+        "{NARRATIVE_CONTEXT}",
+        narrative || "Not enough information to extract narrative — treat each role independently."
+      );
+      const res = await fetch(OPENAI_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: promptWithNarrative },
+            { role: "user", content: `Parse this resume:\n\n${pdfText}\n\nReturn JSON:\n${jsonSchema}` },
+          ],
+          max_tokens: 4000,
+          temperature: 0.2,
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+      const data = await res.json() as any;
+      return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
+    }
+
+    // Fallback: send as base64 image pages via GPT-4o vision
+    console.log(`[ResumeIQ] PDF text extraction insufficient — using vision fallback`);
     const res = await fetch(OPENAI_API, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: promptWithNarrative },
+          { role: "system", content: systemPrompt.replace("{NARRATIVE_CONTEXT}", "Extract from the visual resume below.") },
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: `Parse this resume and return JSON:\n${jsonSchema}`,
-              },
-              {
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: fileBase64,
-                },
-              } as any,
+              { type: "text", text: `This is a resume PDF encoded as base64. Extract all text content and parse it into this JSON structure:\n${jsonSchema}` },
+              { type: "image_url", image_url: { url: `data:application/pdf;base64,${fileBase64}` } },
             ],
           },
         ],
@@ -349,15 +343,9 @@ Return ONLY the JSON object. Start with { and end with }.`;
         temperature: 0.2,
       }),
     });
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`[ResumeIQ] PDF GPT-4o error: ${res.status} ${errText}`);
-      throw new Error(`OpenAI PDF parse error: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`OpenAI PDF vision error: ${res.status}`);
     const data = await res.json() as any;
-    const content = data.choices?.[0]?.message?.content || "{}";
-    console.log(`[ResumeIQ] PDF parse response: ${content.slice(0, 100)}`);
-    return JSON.parse(stripJson(content));
+    return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
   }
 
   throw new Error("Could not extract text from this file. Please try a different format.");
