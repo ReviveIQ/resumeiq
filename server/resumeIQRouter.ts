@@ -82,6 +82,64 @@ function stripJson(raw: string): string {
   return match ? match[0] : clean;
 }
 
+// ── Reparse from existing parsedData using improved prompt ───────────────────
+async function parseResumeFromParsed(existingData: any): Promise<any> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+
+  const textSummary = [
+    existingData.name, existingData.title, existingData.summary,
+    ...(existingData.experience || []).flatMap((e: any) => [e.title, e.company, ...(e.bullets || [])]),
+    ...(existingData.skills?.categories || []).flatMap((c: any) => c.skills || []),
+  ].filter(Boolean).join(" ").slice(0, 8000);
+
+  const narrative = await extractCareerNarrative(textSummary, apiKey);
+
+  const systemP = `You are an elite resume writer. Improve the parsed resume data provided. Keep all facts accurate — never invent metrics, titles, or dates not in the source.
+
+CAREER NARRATIVE: ${narrative}
+
+BULLET RULES:
+- Strong past-tense action verbs only (Led, Built, Reduced, Standardized, Supervised, Optimized, Implemented)
+- NEVER: "Responsible for", "Developed a deep understanding of", "Fostered a culture of", "Demonstrated commitment to"
+- Every bullet must answer: what you did + scope + outcome
+- No soft-attribute bullets whatsoever
+
+SUMMARY: Professional identity + tenure + domain. Never fabricate a target role title.
+
+EDUCATION: If degree field contains concatenated school/location/year info, parse into separate fields.
+Example: "BS Biology South Dakota State University Brookings South Dakota" →
+  degree: "B.S. Biology", school: "South Dakota State University", location: "Brookings, SD", year: ""
+
+SKILLS: Keep existing skills. Add likely industry-standard skills as "Industry Standard" category.
+For food/cheese manufacturing add: HACCP, GMP, SQF, FSMA, Food Safety Compliance, SOP Development,
+Batch Records, Lean Manufacturing, Quality Control, 5S, Sanitation Programs, Shift Supervision.
+
+MISSING DATES: List any role with empty startDate in missingDates array.
+
+Return ONLY valid JSON starting with {`;
+
+  const schema = `{"name":"string","email":"string","phone":"string","location":"string","title":"string","industry":"food_beverage","summary":"2-3 sentence professional identity pitch — no fabricated target role","missingDates":["Role Title at Company for any role missing dates"],"experience":[{"title":"string","company":"string","location":"string","startDate":"MM/YYYY or empty","endDate":"MM/YYYY or Present or empty","description":"string","bullets":["Improved bullet — strong verb + scope + outcome"],"achievements":[]}],"skills":{"categories":[{"name":"Cheese Manufacturing","skills":["existing"]},{"name":"Industry Standard","skills":["HACCP","GMP","etc"]}]},"education":[{"degree":"B.S. Biology","school":"South Dakota State University","location":"Brookings, SD","year":""}],"certifications":[],"yearsOfExperience":20,"languages":[],"topMetrics":["best 3 achievements"]}`;
+
+  const res = await fetch(OPENAI_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      temperature: 0.2,
+      max_tokens: 3000,
+      messages: [
+        { role: "system", content: systemP },
+        { role: "user", content: `Existing parsed resume data:\n\n${JSON.stringify(existingData, null, 2)}\n\nImprove and return JSON schema:\n${schema}` }
+      ]
+    })
+  });
+
+  if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+  const resp = await res.json() as any;
+  return JSON.parse(stripJson(resp.choices?.[0]?.message?.content || "{}"));
+}
+
 async function extractCareerNarrative(resumeText: string, apiKey: string): Promise<string> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -1191,6 +1249,19 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       await conn.execute("UPDATE riq_testimonials SET approved = 1 WHERE id = ?", [id]);
       res.json({ ok: true });
     } finally { await conn.end(); }
+  });
+
+  // ── TEMP DEBUG: reparse from existing parsedData ─────────────────────────
+  // Remove after QC complete
+  app.post("/api/resumeiq/debug-reparse", async (req: Request, res: Response) => {
+    const { secret, parsedData: inputData } = req.body;
+    if (secret !== process.env.JWT_SECRET) { res.status(403).json({ error: "Forbidden" }); return; }
+    try {
+      const improved = await parseResumeFromParsed(inputData);
+      res.json(improved);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
