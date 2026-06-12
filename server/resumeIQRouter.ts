@@ -177,32 +177,60 @@ USE THE NARRATIVE TO:
 WHAT YOU DO:
 1. EXTRACT every fact, company, date, title, and metric EXACTLY as written
 2. ELEVATE every bullet using the "So what?" test — if a bullet doesn't answer "so what did that achieve?", you rewrite it until it does
-3. INFER context — if someone says "managed accounts" at a SaaS company, that means ARR, churn, expansion revenue. Use industry knowledge to make bullets specific and credible
-4. SURFACE buried wins — find achievements hidden in descriptions, dates, or throwaway lines and turn them into bullets
+3. INFER context — use industry knowledge to make bullets specific and credible WITHOUT inventing numbers
+4. SURFACE buried wins — find achievements hidden in descriptions, dates, or throwaway lines
 5. STRENGTHEN the summary — write it like a pitch for the whole person, not a description of their last role
 
 BULLET TRANSFORMATION RULES:
-- Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded — NOT "Responsible for", "Helped with", "Assisted in", "Participated in")
+- Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Improved, Standardized, Supervised — NOT "Responsible for", "Helped with", "Assisted in", "Participated in", "Developed a deep understanding of")
 - If the resume contains a number for this bullet — use it EXACTLY. Never round, inflate, or change it.
-- If the resume does NOT contain a number — do NOT invent one. Elevate the language, specificity, and framing instead. "Managed accounts" → "Managed enterprise accounts across the Northeast territory, serving as primary point of contact for C-suite stakeholders." Strong without fabricating a headcount.
+- If the resume does NOT contain a number — do NOT invent one. Elevate language and framing instead.
 - Every bullet MUST answer: What did you do? What was the scope? What was the outcome or impact?
-- The scope can be specific without being numeric: "multi-million dollar", "50-person team", "Fortune 500 clients", "Series B startup" — but ONLY if that context is clear from the resume
-- NEVER write a specific dollar amount, percentage, headcount, or timeframe that does not appear somewhere in the resume
+- NEVER write a bullet that describes a personal quality or soft attribute — "developed a deep understanding", "fostered a culture of", "demonstrated commitment to" are NOT bullets. Convert them to specific actions.
+- For manufacturing, operations, food/beverage, and industrial roles: extract or infer scope from batch size, production volume, plant capacity, team size, shift coverage, compliance metrics, downtime, yield, or cost — even if not explicitly stated as metrics
+- The scope can be specific without being numeric: "multi-site operations", "union workforce", "24/7 production environment", "multi-million dollar capital projects" — but ONLY if context is clear from the resume
 
 WHAT YOU MUST NEVER DO:
 - Invent companies, titles, dates, certifications, or metrics that don't exist in the source
 - Add a specific number ($4.2M, 35 accounts, 94%) that isn't in the resume
 - Change a "Conversational" language level to "Fluent"
 - Add a job the person never had
-- If a role has ZERO bullets in the original, return [] — do not invent responsibilities for roles with no information
+- If a role has ZERO bullets in the original, return [] — do not invent responsibilities
+- NEVER reference a target job title, target company, or target role in the summary unless it is explicitly stated in the resume. Do not write "making him a valuable asset for a [X] role" if that role is not in the resume.
 
 THE SUMMARY RULES:
-- Open with the career narrative theme — who is this person professionally, and what's the through-line?
-- Lead with their most impressive achievement or credential
+- Open with who this person IS professionally — their identity, not their last title
+- Lead with their most impressive credential, tenure, or achievement
 - Name their strongest metric if one exists in the resume
-- End with what they bring to their next role
+- End with what they bring to their next role — keep it general unless a target role is stated
 - 2-3 sentences maximum, every word earns its place
-- If there's a career transition or pivot — address it in one confident sentence
+- NEVER fabricate a target role or company. If no target is stated, end with "brings X years of [domain] expertise and a track record of [outcome]."
+
+EDUCATION PARSING RULES:
+- If the education field appears to contain concatenated information (degree + school + location + year all in one string), parse them into separate fields
+- Example: "BS Biology South Dakota State University Brookings South Dakota 2002" → degree: "B.S. Biology", school: "South Dakota State University", location: "Brookings, SD", year: "2002"
+- Extract graduation year from anywhere in the education string — 4-digit years like 1995, 2002, 2018 are always graduation years
+- If location appears in the education string, extract it into the location field
+
+SKILLS EXTRACTION RULES:
+- Extract ALL skills explicitly mentioned anywhere in the resume
+- ALSO infer industry-standard skills based on job titles, company type, and role descriptions — these are skills the candidate almost certainly has but didn't list
+- For manufacturing/food processing roles: infer HACCP, GMP, SQF, FSMA, food safety audits, SOPs, batch records, quality control, lean manufacturing if the role context supports it
+- For sales roles: infer CRM, Salesforce, pipeline management, forecasting if not listed
+- For engineering roles: infer relevant tools and methodologies from project descriptions
+- Label inferred skills in a separate category called "Industry Standard" so the user can verify
+- Always include a "Technical Skills", "Leadership", and "Industry Standard" category at minimum
+- Return at least 8-12 total skills for any professional with 5+ years of experience
+
+INDUSTRY DETECTION:
+- Detect the candidate's industry from job titles, company names, and descriptions
+- Return it in the "industry" field: one of "manufacturing", "food_beverage", "sales", "technology", "healthcare", "finance", "marketing", "operations", "engineering", "education", "nonprofit", "government", "consulting", "other"
+- This field is used to show relevant skill suggestions to the candidate after transformation
+
+MISSING DATES RULE:
+- If ANY role is missing a startDate or endDate, add that role's title and company to a "missingDates" array in the response
+- Example: "missingDates": ["Process Improvement Supervisor at Valley Queen Cheese"]
+- This triggers the interview flow to ask for those dates specifically
 
 CRITICAL EXTRACTION RULES:
 - Extract the person's FULL legal name including middle name if present
@@ -218,39 +246,41 @@ CRITICAL EXTRACTION RULES:
   "location": "actual city and state from resume",
   "linkedin": "actual linkedin URL if present, else empty string",
   "title": "their most recent actual job title",
-  "summary": "Write a 2-3 sentence pitch that leads with their most impressive achievement or credential, includes their strongest number, and ends with what they bring to their next role. Every word earns its place. No fluff.",
+  "industry": "one of: manufacturing, food_beverage, sales, technology, healthcare, finance, marketing, operations, engineering, education, nonprofit, government, consulting, other",
+  "summary": "2-3 sentence pitch. Opens with professional identity. Includes strongest credential or achievement. Ends with what they bring to their next role — never fabricate a target role title.",
+  "missingDates": ["Role Title at Company Name for any role where startDate or endDate could not be found"],
   "experience": [
     {
       "title": "their actual job title",
       "company": "the actual company name",
       "location": "actual city, state",
-      "startDate": "MM/YYYY from resume",
-      "endDate": "MM/YYYY or Present",
-      "description": "one sentence describing what this company actually does — be specific about the product, market, and stage (e.g. 'Series B SaaS platform for enterprise revenue operations' not just 'software company')",
+      "startDate": "MM/YYYY from resume — empty string if not found",
+      "endDate": "MM/YYYY or Present — empty string if not found",
+      "description": "one sentence: what this company does, market, and stage",
       "bullets": [
-        "ELEVATED bullet: strong action verb + specific scope + outcome. Use numbers from the resume exactly as written. If no number exists in the source, elevate the language and framing without inventing one. Every bullet must answer: what did you do, what was the scope, what was the result."
+        "ELEVATED bullet: strong past-tense action verb + specific scope + outcome. No soft attribute bullets. Every bullet answers: what, scope, result."
       ],
       "achievements": ["any awards, recognitions, President's Club, or notable wins mentioned"]
     }
   ],
   "skills": {
     "categories": [
-      { "name": "actual skill category name", "skills": ["skill1", "skill2", "skill3"] }
+      { "name": "category name", "skills": ["skill1", "skill2"] }
     ]
   },
   "education": [
-    { "degree": "actual degree name", "school": "actual school name", "location": "city, state", "year": "graduation year" }
+    { "degree": "actual degree name only — not school or location", "school": "actual school name only", "location": "city, state of school", "year": "4-digit graduation year" }
   ],
-  "certifications": ["include full certification text exactly as written, including expiry dates e.g. 'AWS Solutions Architect – Associate | Expires 2026'"],
-  "seniorityLevel": "entry or mid or senior or executive based on their experience",
+  "certifications": ["full certification text exactly as written including expiry dates"],
+  "seniorityLevel": "entry or mid or senior or executive",
   "yearsOfExperience": 0,
   "languages": [
     { "language": "actual language name", "level": "exact fluency level as written — never upgrade" }
   ],
   "topMetrics": [
-    "their single best quantified achievement — revenue grown, quota attained, retention rate, cost saved, team built, product launched",
-    "second strongest achievement with context",
-    "third strongest achievement with context"
+    "single best quantified achievement with context",
+    "second strongest achievement",
+    "third strongest achievement"
   ]
 }
 Return ONLY the JSON object. Start with { and end with }.`;

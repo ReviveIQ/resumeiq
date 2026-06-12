@@ -7,7 +7,58 @@ import {
 
 import { trackEvent, captureEmail as captureMarketingEmail } from "../tracking";
 
-type View = "upload" | "analyzing" | "scoring" | "interview" | "preview" | "checkout" | "done" | "history" | "login" | "register";
+const INDUSTRY_SKILLS: Record<string, { cat: string; skills: string[] }[]> = {
+  manufacturing: [
+    { cat: "Quality & Compliance", skills: ["HACCP", "GMP", "SQF", "FSMA", "FDA Compliance", "ISO 9001", "Food Safety Audits", "OSHA"] },
+    { cat: "Operations", skills: ["Lean Manufacturing", "Six Sigma", "Kaizen", "5S", "Root Cause Analysis", "SOP Development", "Batch Records"] },
+    { cat: "Systems & Tools", skills: ["ERP Systems", "SAP", "Production Scheduling", "Yield Optimization", "Quality Control", "Preventive Maintenance"] },
+  ],
+  food_beverage: [
+    { cat: "Food Safety", skills: ["HACCP", "GMP", "SQF Level 2", "FSMA", "PCQI Certified", "FDA Compliance", "Sanitation Programs"] },
+    { cat: "Operations", skills: ["Production Planning", "Batch Manufacturing", "Process Improvement", "Cost Reduction", "Yield Analysis", "CIP Procedures"] },
+    { cat: "Leadership", skills: ["Union Workforce Management", "Shift Supervision", "Employee Training", "Performance Management"] },
+  ],
+  sales: [
+    { cat: "CRM & Tools", skills: ["Salesforce", "HubSpot", "Outreach", "Salesloft", "Gong", "ZoomInfo", "LinkedIn Sales Navigator"] },
+    { cat: "Sales Skills", skills: ["Enterprise Sales", "Consultative Selling", "Pipeline Management", "Territory Planning", "Forecasting", "Contract Negotiation"] },
+    { cat: "Business", skills: ["SaaS", "B2B Sales", "Channel Partnerships", "Account Management", "Renewals & Expansion", "Executive Presentations"] },
+  ],
+  technology: [
+    { cat: "Cloud & Infrastructure", skills: ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD", "Terraform"] },
+    { cat: "Development", skills: ["Python", "JavaScript", "TypeScript", "React", "Node.js", "SQL", "REST APIs", "Git"] },
+    { cat: "Practices", skills: ["Agile", "Scrum", "Code Review", "Unit Testing", "System Design", "Microservices"] },
+  ],
+  healthcare: [
+    { cat: "Clinical", skills: ["HIPAA Compliance", "EHR Systems", "Epic", "Cerner", "Patient Care", "Clinical Documentation"] },
+    { cat: "Operations", skills: ["Care Coordination", "Quality Improvement", "Joint Commission Standards", "Revenue Cycle", "Utilization Review"] },
+  ],
+  operations: [
+    { cat: "Process", skills: ["Process Improvement", "Lean", "Six Sigma", "Root Cause Analysis", "KPI Development", "SOP Creation", "Workflow Automation"] },
+    { cat: "Systems", skills: ["ERP", "SAP", "NetSuite", "Salesforce Operations", "Data Analysis", "Excel", "Power BI", "Tableau"] },
+    { cat: "Leadership", skills: ["Cross-functional Collaboration", "Vendor Management", "Budget Management", "Project Management", "Change Management"] },
+  ],
+  marketing: [
+    { cat: "Digital", skills: ["Google Analytics", "SEO/SEM", "HubSpot", "Marketo", "Pardot", "Meta Ads", "Google Ads", "Email Marketing"] },
+    { cat: "Content & Brand", skills: ["Content Strategy", "Copywriting", "Brand Development", "Social Media", "Campaign Management", "A/B Testing"] },
+  ],
+  finance: [
+    { cat: "Financial", skills: ["Financial Modeling", "Excel", "FP&A", "Budgeting", "Forecasting", "Variance Analysis", "GAAP"] },
+    { cat: "Tools", skills: ["QuickBooks", "SAP", "NetSuite", "Tableau", "Power BI", "Bloomberg", "SQL"] },
+  ],
+};
+
+const INDUSTRY_LABELS: Record<string, string> = {
+  manufacturing: "Manufacturing & Industrial",
+  food_beverage: "Food & Beverage",
+  sales: "Sales & Business Development",
+  technology: "Technology & Engineering",
+  healthcare: "Healthcare",
+  operations: "Operations",
+  marketing: "Marketing",
+  finance: "Finance & Accounting",
+};
+
+type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",               question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -39,9 +90,10 @@ function getMissingFields(data: any): string[] {
   if (exp.length === 0) {
     missing.push("experience");
   } else {
-    // Check if most roles are missing dates
-    const missingDates = exp.filter((e: any) => !e.startDate || e.startDate === "MM/YYYY").length;
-    if (missingDates >= Math.ceil(exp.length / 2)) missing.push("experience_dates");
+    // Use GPT-returned missingDates array OR fall back to manual check
+    const hasMissingDates = (data.missingDates && data.missingDates.length > 0) ||
+      exp.filter((e: any) => !e.startDate || e.startDate === "MM/YYYY" || e.startDate === "").length >= Math.ceil(exp.length / 2);
+    if (hasMissingDates) missing.push("experience_dates");
 
     // Check if most roles have no bullets
     const noBullets = exp.filter((e: any) => !e.bullets || e.bullets.length === 0).length;
@@ -259,6 +311,7 @@ export default function ResumeIQ() {
   const [testimonialQuote, setTestimonialQuote] = useState("");
   const [testimonialName, setTestimonialName] = useState("");
   const [testimonialSubmitted, setTestimonialSubmitted] = useState(false);
+  const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
@@ -497,8 +550,23 @@ export default function ResumeIQ() {
       setIsFree(data.isFree);
 
       const missing = getMissingFields(data);
+      const industry = data.industry || "other";
+      const hasIndustrySuggestions = !!INDUSTRY_SKILLS[industry];
+
       if (missing.length > 0) {
         setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
+      } else if (hasIndustrySuggestions) {
+        setView("skill_suggestions");
+        // Score in background
+        setScoreLoading(true);
+        fetch("/api/resumeiq/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
+          body: JSON.stringify({ parsedData: data }),
+        }).then(r => r.ok ? r.json() : null)
+          .then(scores => { if (scores) setResumeScore(scores); })
+          .catch(() => {})
+          .finally(() => setScoreLoading(false));
       } else {
         // Show scoring view immediately — score loads in background
         setView("scoring");
@@ -587,8 +655,13 @@ export default function ResumeIQ() {
       setInterviewStep(interviewStep + 1);
       setInterviewAnswer("");
     } else {
-      // Always go to scoring after interview — never skip it
-      setView("scoring");
+      // Check for industry skill suggestions
+      const industry = updated.industry || parsedData.industry || "other";
+      if (INDUSTRY_SKILLS[industry]) {
+        setView("skill_suggestions");
+      } else {
+        setView("scoring");
+      }
       setScoreLoading(true);
       fetch("/api/resumeiq/score", {
         method: "POST",
@@ -1353,6 +1426,88 @@ export default function ResumeIQ() {
         )}
 
         {/* ── SCORE VIEW ─────────────────────────────────────────────── */}
+        {/* ── SKILL SUGGESTIONS ── */}
+        {view === "skill_suggestions" && (() => {
+          const industry = parsedData.industry || "other";
+          const suggestions = INDUSTRY_SKILLS[industry] || [];
+          const existingSkills = (parsedData.skills?.categories || []).flatMap((c: any) => c.skills || []).map((s: string) => s.toLowerCase());
+          const industryLabel = INDUSTRY_LABELS[industry] || "your industry";
+
+          const toggleSkill = (skill: string) => {
+            setSuggestedSkills(prev =>
+              prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+            );
+          };
+
+          const handleAddSkills = () => {
+            if (suggestedSkills.length > 0) {
+              const updated = { ...parsedData };
+              const existing = updated.skills?.categories || [];
+              const suggestionCategory = { name: "Industry Standard", skills: suggestedSkills };
+              updated.skills = { categories: [...existing.filter((c: any) => c.name !== "Industry Standard"), suggestionCategory] };
+              setParsedData(updated);
+            }
+            setView("scoring");
+          };
+
+          return (
+            <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>🎯</div>
+                <h2 style={{ color: "white", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>One more thing</h2>
+                <p style={{ color: "#64748b", fontSize: "14px", lineHeight: 1.6 }}>
+                  Based on your {industryLabel} background, you likely have these skills — but they weren't on your resume. Tap any that apply.
+                </p>
+              </div>
+
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "24px" }}>
+                {suggestions.map(cat => {
+                  const newSkills = cat.skills.filter(s => !existingSkills.includes(s.toLowerCase()));
+                  if (!newSkills.length) return null;
+                  return (
+                    <div key={cat.cat} style={{ marginBottom: "20px" }}>
+                      <p style={{ fontSize: "11px", color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>{cat.cat}</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {newSkills.map(skill => {
+                          const selected = suggestedSkills.includes(skill);
+                          return (
+                            <button key={skill} onClick={() => toggleSkill(skill)} style={{
+                              padding: "7px 14px", borderRadius: "99px", fontSize: "13px", fontWeight: 500, cursor: "pointer",
+                              border: selected ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.12)",
+                              background: selected ? "rgba(37,99,235,0.2)" : "rgba(255,255,255,0.05)",
+                              color: selected ? "#60a5fa" : "#94a3b8", transition: "all 0.15s",
+                            }}>{selected ? "✓ " : ""}{skill}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {suggestedSkills.length > 0 && (
+                  <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "16px" }}>
+                    <p style={{ color: "#34d399", fontSize: "12px", margin: 0 }}>
+                      {suggestedSkills.length} skill{suggestedSkills.length !== 1 ? "s" : ""} will be added to your resume
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                  <button onClick={() => setView("scoring")}
+                    style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                    Skip
+                  </button>
+                  <button onClick={handleAddSkills}
+                    style={{ flex: 2, background: "#2563eb", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                    {suggestedSkills.length > 0 ? `Add ${suggestedSkills.length} skill${suggestedSkills.length !== 1 ? "s" : ""} →` : "Continue →"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── SCORING ── */}
         {view === "scoring" && (
           <div style={{ maxWidth: "560px", margin: "0 auto", padding: "48px 16px" }}>
             {scoreLoading || !resumeScore ? (
