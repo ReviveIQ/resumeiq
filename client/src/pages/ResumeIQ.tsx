@@ -255,6 +255,18 @@ export default function ResumeIQ() {
   const [showPaidGuestModal, setShowPaidGuestModal] = useState(false);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [testimonialRating, setTestimonialRating] = useState(0);
+  const [testimonialQuote, setTestimonialQuote] = useState("");
+  const [testimonialName, setTestimonialName] = useState("");
+  const [testimonialSubmitted, setTestimonialSubmitted] = useState(false);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/resumeiq/testimonials")
+      .then(r => r.json())
+      .then(data => setTestimonials(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
   const [personalityStep, setPersonalityStep] = useState(false);
   const [includePersonality, setIncludePersonality] = useState(false);
   const [includeCareerLaunch, setIncludeCareerLaunch] = useState(false);
@@ -1279,6 +1291,57 @@ export default function ResumeIQ() {
                 </div>
               ))}
             </div>
+
+            {/* Founder testimonial — always shown */}
+            <div style={{ marginTop: "36px" }}>
+              <p style={{ fontSize: "11px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, textAlign: "center", marginBottom: "16px" }}>What people are saying</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                {/* Founder card — always shown */}
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "18px 20px" }}>
+                  <div style={{ display: "flex", gap: "3px", marginBottom: "10px" }}>
+                    {"★★★★★".split("").map((s,i) => <span key={i} style={{ color: "#fbbf24", fontSize: "14px" }}>{s}</span>)}
+                  </div>
+                  <p style={{ color: "#e2e8f0", fontSize: "13px", lineHeight: 1.7, marginBottom: "12px" }}>
+                    "I built ResumeIQ after watching my own resume fail to communicate 18 years of enterprise sales experience. When I ran it through, the bullets that felt obvious to me finally read the way they should have the whole time. The score went from 3 to 8. The language became specific and defensible. It was the resume I should have had the whole time."
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ width: "32px", height: "32px", background: "rgba(37,99,235,0.3)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: "#60a5fa" }}>B</div>
+                    <div>
+                      <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0 }}>Bryan Greer</p>
+                      <p style={{ color: "#64748b", fontSize: "11px", margin: 0 }}>Founder, ReviveIQI · 18 years enterprise sales</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic testimonials from DB */}
+                {testimonials.slice(0, 3).map((t: any) => (
+                  <div key={t.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "18px 20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                      <div style={{ display: "flex", gap: "3px" }}>
+                        {Array.from({ length: t.rating }).map((_,i) => <span key={i} style={{ color: "#fbbf24", fontSize: "14px" }}>★</span>)}
+                      </div>
+                      {t.preScore && t.postScore && (
+                        <span style={{ fontSize: "11px", color: "#34d399", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "99px", padding: "2px 8px", fontFamily: "DM Mono, monospace" }}>
+                          {t.preScore} → {t.postScore}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ color: "#e2e8f0", fontSize: "13px", lineHeight: 1.7, marginBottom: "12px" }}>"{t.quote}"</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "32px", height: "32px", background: "rgba(37,99,235,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: "#60a5fa" }}>
+                        {(t.name || "U")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0 }}>{t.name}</p>
+                        {t.title && <p style={{ color: "#64748b", fontSize: "11px", margin: 0 }}>{t.title}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         )}
         {view === "analyzing" && (
@@ -2235,6 +2298,58 @@ export default function ResumeIQ() {
                 </div>
               </div>
             </div>
+
+            {/* Action buttons */}
+            {/* Testimonial capture */}
+            {!testimonialSubmitted ? (
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", padding: "22px 24px", marginBottom: "16px" }}>
+                <p style={{ color: "#e2e8f0", fontSize: "14px", fontWeight: 700, marginBottom: "4px" }}>How did it go?</p>
+                <p style={{ color: "#64748b", fontSize: "12px", marginBottom: "16px" }}>Your feedback helps other job seekers find ResumeIQ.</p>
+                <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star} onClick={() => setTestimonialRating(star)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "28px", padding: "2px", opacity: star <= testimonialRating ? 1 : 0.25, transition: "opacity 0.15s" }}>★</button>
+                  ))}
+                </div>
+                {testimonialRating >= 4 && (
+                  <>
+                    <textarea rows={3} value={testimonialQuote} onChange={e => setTestimonialQuote(e.target.value)}
+                      placeholder="What changed? What did you notice? (Optional but really helpful)"
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: "10px", fontFamily: "inherit" }} />
+                    <input type="text" value={testimonialName} onChange={e => setTestimonialName(e.target.value)}
+                      placeholder="Your name and title (e.g. Sarah M., Senior AE) — optional"
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", boxSizing: "border-box", marginBottom: "12px" }} />
+                    <button onClick={async () => {
+                      const nameParts = testimonialName.split(",");
+                      await fetch("/api/resumeiq/testimonial", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", ...(localStorage.getItem("riq_token") ? { Authorization: `Bearer ${localStorage.getItem("riq_token")}` } : {}) },
+                        body: JSON.stringify({ rating: testimonialRating, quote: testimonialQuote || `${testimonialRating} stars`, name: nameParts[0]?.trim() || (user?.name || "ResumeIQ User"), title: nameParts[1]?.trim() || null, preScore: preTransformScore?.overall || null, postScore: resumeScore?.overall || null }),
+                      });
+                      setTestimonialSubmitted(true);
+                    }} style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "8px", padding: "10px 20px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                      Submit feedback →
+                    </button>
+                  </>
+                )}
+                {testimonialRating > 0 && testimonialRating < 4 && (
+                  <div>
+                    <textarea rows={2} value={testimonialQuote} onChange={e => setTestimonialQuote(e.target.value)}
+                      placeholder="What could we improve? (Optional)"
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: "10px", fontFamily: "inherit" }} />
+                    <button onClick={async () => {
+                      await fetch("/api/resumeiq/testimonial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: testimonialRating, quote: testimonialQuote || `${testimonialRating} stars`, name: "Anonymous" }) });
+                      setTestimonialSubmitted(true);
+                    }} style={{ background: "rgba(255,255,255,0.08)", color: "#94a3b8", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "13px", cursor: "pointer" }}>Submit</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "14px", padding: "18px 24px", marginBottom: "16px", textAlign: "center" }}>
+                <p style={{ color: "#34d399", fontSize: "14px", fontWeight: 700, margin: "0 0 4px" }}>Thanks for the feedback ✓</p>
+                <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>It means a lot — and helps other job seekers find this tool.</p>
+              </div>
+            )}
 
             {/* Action buttons */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>

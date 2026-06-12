@@ -1102,6 +1102,67 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
   });
 
     // ── EMAIL CAPTURE ────────────────────────────────────────────────
+  // ── TESTIMONIALS ──────────────────────────────────────────────────────────
+  // Submit a testimonial (from done screen)
+  app.post("/api/resumeiq/testimonial", async (req: Request, res: Response) => {
+    try {
+      const { rating, quote, name, title, preScore, postScore } = req.body;
+      if (!quote || !rating) { res.status(400).json({ error: "Rating and quote required" }); return; }
+      if (quote.trim().length < 10) { res.status(400).json({ error: "Quote too short" }); return; }
+
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      let userId = null;
+      if (token) {
+        try { const u = verifyToken(token); userId = u?.userId || null; } catch {}
+      }
+
+      const conn = await getDb();
+      if (!conn) { res.status(500).json({ error: "DB unavailable" }); return; }
+      try {
+        await conn.execute(
+          `INSERT INTO riq_testimonials (userId, name, title, rating, quote, preScore, postScore, approved)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+          [userId, name || "ResumeIQ User", title || null, Math.min(5, Math.max(1, parseInt(rating))), quote.trim(), preScore || null, postScore || null]
+        );
+        // Notify Bryan
+        notifyPurchase("", "", `New testimonial (${rating}★): "${quote.trim().slice(0, 80)}..."`, "").catch(() => {});
+        res.json({ ok: true });
+      } finally { await conn.end(); }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Fetch approved testimonials (public)
+  app.get("/api/resumeiq/testimonials", async (_req: Request, res: Response) => {
+    try {
+      const conn = await getDb();
+      if (!conn) { res.json([]); return; }
+      try {
+        const [rows] = await conn.execute(
+          `SELECT id, name, title, rating, quote, preScore, postScore, createdAt
+           FROM riq_testimonials WHERE approved = 1 ORDER BY createdAt DESC LIMIT 20`
+        ) as any;
+        const data = Array.isArray(rows[0]) ? rows[0] : rows;
+        res.json(data);
+      } finally { await conn.end(); }
+    } catch {
+      res.json([]);
+    }
+  });
+
+  // Approve/seed testimonials (owner only — simple secret check)
+  app.post("/api/resumeiq/testimonials/approve", async (req: Request, res: Response) => {
+    const { id, secret } = req.body;
+    if (secret !== process.env.JWT_SECRET) { res.status(403).json({ error: "Forbidden" }); return; }
+    const conn = await getDb();
+    if (!conn) { res.status(500).json({ error: "DB unavailable" }); return; }
+    try {
+      await conn.execute("UPDATE riq_testimonials SET approved = 1 WHERE id = ?", [id]);
+      res.json({ ok: true });
+    } finally { await conn.end(); }
+  });
+
   app.post("/api/resumeiq/capture-email", async (req: Request, res: Response) => {
     try {
       const { email, name } = req.body;

@@ -142,6 +142,21 @@ export async function initDb() {
       )
     `);
     await conn.execute(`
+      CREATE TABLE IF NOT EXISTS riq_testimonials (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        userId      INT NULL,
+        name        VARCHAR(100),
+        title       VARCHAR(150),
+        rating      INT NOT NULL DEFAULT 5,
+        quote       TEXT NOT NULL,
+        preScore    INT NULL,
+        postScore   INT NULL,
+        approved    TINYINT DEFAULT 0,
+        createdAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_approved (approved)
+      )
+    `);
+    await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_nurture_sent (
         id       INT AUTO_INCREMENT PRIMARY KEY,
         userId   INT NOT NULL,
