@@ -187,6 +187,14 @@ export default function LandingPage() {
   const [, navigate] = useLocation();
   const [activeResume, setActiveResume] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/resumeiq/testimonials")
+      .then(r => r.json())
+      .then(data => setTestimonials(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
   const intervalRef = useRef<any>(null);
 
   useEffect(() => {
@@ -468,6 +476,62 @@ export default function LandingPage() {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section style={{ padding: "80px 40px", background: "rgba(0,0,0,0.2)" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+          <p style={{ fontSize: "11px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, textAlign: "center", marginBottom: "12px" }}>What people are saying</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 30px)", fontWeight: 800, textAlign: "center", marginBottom: "48px", lineHeight: 1.2 }}>
+            The resume that communicates<br/><span style={{ color: "#60a5fa" }}>what you've actually built.</span>
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+
+            {/* Founder testimonial — always shown */}
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "28px 24px" }}>
+              <div style={{ display: "flex", gap: "3px", marginBottom: "16px" }}>
+                {"★★★★★".split("").map((s,i) => <span key={i} style={{ color: "#fbbf24", fontSize: "16px" }}>{s}</span>)}
+              </div>
+              <p style={{ color: "#e2e8f0", fontSize: "14px", lineHeight: 1.75, marginBottom: "20px" }}>
+                "I built ResumeIQ after watching my own resume fail to communicate 18 years of enterprise sales experience. When I ran it through, the bullets that felt obvious to me finally read the way they should have the whole time. The score went from 3 to 8. It was the resume I should have had all along."
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "40px", height: "40px", background: "rgba(37,99,235,0.3)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>B</div>
+                <div>
+                  <p style={{ color: "white", fontSize: "13px", fontWeight: 700, margin: 0 }}>Bryan Greer</p>
+                  <p style={{ color: "#64748b", fontSize: "12px", margin: 0 }}>Founder, ReviveIQI · 18 years enterprise sales</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic testimonials */}
+            {testimonials.slice(0, 2).map((t: any) => (
+              <div key={t.id} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "28px 24px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", gap: "3px" }}>
+                    {Array.from({ length: t.rating }).map((_: any, i: number) => <span key={i} style={{ color: "#fbbf24", fontSize: "16px" }}>★</span>)}
+                  </div>
+                  {t.preScore && t.postScore && (
+                    <span style={{ fontSize: "11px", color: "#34d399", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "99px", padding: "2px 10px", fontFamily: "DM Mono, monospace" }}>
+                      {t.preScore} → {t.postScore}
+                    </span>
+                  )}
+                </div>
+                <p style={{ color: "#e2e8f0", fontSize: "14px", lineHeight: 1.75, marginBottom: "20px" }}>"{t.quote}"</p>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ width: "40px", height: "40px", background: "rgba(37,99,235,0.2)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>
+                    {(t.name || "U")[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p style={{ color: "white", fontSize: "13px", fontWeight: 700, margin: 0, filter: "blur(4px)", userSelect: "none" }}>{t.name}</p>
+                    {t.title && <p style={{ color: "#64748b", fontSize: "12px", margin: 0, filter: "blur(4px)", userSelect: "none" }}>{t.title}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+
           </div>
         </div>
       </section>
