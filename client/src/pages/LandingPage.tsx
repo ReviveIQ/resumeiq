@@ -137,7 +137,7 @@ const HOW_IT_WORKS = [
 
 const PRICING = [
   {
-    name: "Single Resume",
+    name: "Starter",
     price: "$9.99",
     description: "One-time, no subscription",
     features: [
@@ -153,22 +153,22 @@ const PRICING = [
   },
   {
     name: "Resume + Working With Me",
-    price: "$13.98",
+    price: "$19.99",
     description: "Best value — one-time",
     features: [
-      "Everything in Single Resume",
+      "Everything in Starter",
       "Upload your personality assessments (DISC, MBTI, PI, TKI, 360, or any)",
       "AI synthesizes them into a professional 'Working With Me' section",
       "Auto-added to all future resumes",
       "Free re-synthesis forever",
     ],
     note: "📋 Requires at least one personality assessment PDF or results you can paste in.",
-    cta: "Get Both →",
+    cta: "Get Bundle →",
     highlighted: true,
   },
   {
     name: "Working With Me Add-On",
-    price: "$3.99",
+    price: "$7.99",
     description: "Already have a resume? Add this.",
     features: [
       "Upload DISC, MBTI, PI, TKI, 360, or any assessment",
