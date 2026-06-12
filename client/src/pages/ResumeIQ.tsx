@@ -1333,8 +1333,8 @@ export default function ResumeIQ() {
                         {(t.name || "U")[0].toUpperCase()}
                       </div>
                       <div>
-                        <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0 }}>{t.name}</p>
-                        {t.title && <p style={{ color: "#64748b", fontSize: "11px", margin: 0 }}>{t.title}</p>}
+                        <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0, filter: "blur(4px)", userSelect: "none" }}>{t.name}</p>
+                        {t.title && <p style={{ color: "#64748b", fontSize: "11px", margin: 0, filter: "blur(4px)", userSelect: "none" }}>{t.title}</p>}
                       </div>
                     </div>
                   </div>
