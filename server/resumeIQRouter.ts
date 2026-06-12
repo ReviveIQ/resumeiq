@@ -951,8 +951,8 @@ export function registerResumeIQRoutes(app: Express) {
       const user = await createUser(email, password, name || "");
       const token = generateToken(user.id, user.email);
       // Fire welcome email + owner notification (non-blocking)
-      sendEmail(user.email, "welcome").catch(() => {});
-      notifyNewUser(user.email, user.name || "").catch(() => {});
+      import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(user.email, user.name || "")).catch(() => {});
+      notifyNewUser(user.email, user.name || "").catch(() => {})
       res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
@@ -2061,6 +2061,8 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
         console.log(`[CrossApp] Created ResumeIQ account for ${email} via SSO`);
+        import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(email, name || "")).catch(() => {});
+        notifyNewUser(email, name || "").catch(() => {});
       } else {
         console.log(`[CrossApp] SSO login for existing user ${email}`);
       }

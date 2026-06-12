@@ -106,6 +106,27 @@ async function startServer() {
   } catch (err: any) {
     console.warn("[ResumeIQ] node-cron not available:", err.message);
   }
+
+  // ── Run catch-up if server started after 9am EDT window ───────────────────
+  try {
+    const { runCronIfMissedToday } = await import("../nurtureEmail");
+    await runCronIfMissedToday();
+  } catch (err: any) {
+    console.warn("[Nurture] Startup catch-up failed:", err.message);
+  }
+
+  // ── Manual nurture trigger (owner only) ────────────────────────────────────
+  app.post("/api/resumeiq/trigger-nurture", async (req: any, res: any) => {
+    const { secret } = req.body || {};
+    if (secret !== process.env.JWT_SECRET) { res.status(403).json({ error: "Forbidden" }); return; }
+    try {
+      const { runNurtureCron } = await import("../nurtureEmail");
+      res.json({ ok: true, message: "Nurture cron started" });
+      await runNurtureCron();
+    } catch (err: any) {
+      console.error("[Nurture] Manual trigger failed:", err.message);
+    }
+  });
 }
 
 startServer().catch(console.error);

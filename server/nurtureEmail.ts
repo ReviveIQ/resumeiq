@@ -413,3 +413,53 @@ export async function runNurtureCron(): Promise<void> {
 
   console.log("[Nurture] Cron complete");
 }
+
+// ── Welcome email — sent immediately on registration ──────────────────────────
+export async function sendWelcomeEmail(email: string, name: string): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const firstName = (name || "").split(" ")[0] || "there";
+  const subject = "Welcome to ResumeIQ";
+  const html = WRAP(`
+    ${P(`Hey ${firstName},`)}
+    ${P("Welcome to ResumeIQ. Really glad you're here.")}
+    ${P("Here's what happens next:")}
+    <ol style="color:#111827;line-height:1.9;padding-left:20px;margin:0 0 16px;font-size:15px;font-family:sans-serif">
+      <li>Upload your resume — PDF or Word, either works</li>
+      <li>We score it on 4 ATS dimensions before we touch it</li>
+      <li>AI rewrites every bullet, fixes the format, and elevates the language</li>
+      <li>You see your new score and download the Word document</li>
+    </ol>
+    ${P("The whole thing takes about 60 seconds.")}
+    ${P("If anything looks off in the output — every field is editable before you download. And if you have questions, just reply to this email. I read every one.")}
+    ${CTA("Transform my resume →", `https://resumeiq.reviveiqi.com?utm_source=email&utm_medium=welcome&utm_campaign=registration`)}
+    <p style="margin:0 0 4px;font-size:15px;color:#111827;font-family:sans-serif">Good luck out there,</p>
+    <p style="margin:0;font-size:15px;font-weight:700;color:#111827;font-family:sans-serif">Bryan</p>
+    <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;font-family:sans-serif">Founder, ResumeIQ · ReviveIQI</p>
+  `, email);
+
+  try {
+    await fetch(RESEND_API, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: FROM, to: [email], bcc: ["bryan.greer1@gmail.com"], subject, html }),
+    });
+    console.log(`[Welcome] Sent → ${email}`);
+  } catch (err) {
+    console.error(`[Welcome] Failed → ${email}:`, err);
+  }
+}
+
+// ── Startup catch-up — run cron if 9am window was missed today ────────────────
+export async function runCronIfMissedToday(): Promise<void> {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcMin = now.getUTCMinutes();
+  // Window: if it's between 13:05 UTC and 22:00 UTC, cron was already due today
+  if (utcHour >= 13 && utcHour < 22) {
+    console.log(`[Nurture] Server started after 9am EDT window — running catch-up now`);
+    await runNurtureCron();
+  } else {
+    console.log(`[Nurture] Server started before or after today's window — cron will fire at next scheduled time`);
+  }
+}
