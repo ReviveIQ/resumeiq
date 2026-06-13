@@ -952,6 +952,17 @@ export default function ResumeIQ() {
 
   const handleAuth = async (mode: "login" | "register") => {
     setAuthLoading(true); setError("");
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((authEmail || "").trim())) {
+      setError("Please enter a valid email address");
+      setAuthLoading(false);
+      return;
+    }
+    if (mode === "register" && (!authPassword || authPassword.length < 6)) {
+      setError("Password must be at least 6 characters");
+      setAuthLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`/api/resumeiq/auth/${mode}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -2257,7 +2268,7 @@ export default function ResumeIQ() {
                   {guestAccountError && <p style={{ color: "#f87171", fontSize: "12px", margin: 0 }}>{guestAccountError}</p>}
                   <button onClick={async () => {
                     setGuestAccountError("");
-                    if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setGuestAccountError("Please enter a valid email address."); return; }
                     if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
                     if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
                     try {
@@ -2621,7 +2632,7 @@ export default function ResumeIQ() {
                   <button
                     onClick={async () => {
                       setGuestAccountError("");
-                      if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setGuestAccountError("Please enter a valid email address."); return; }
                       if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
                       if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
                       try {
@@ -3027,7 +3038,7 @@ export default function ResumeIQ() {
                 {guestAccountError && <p style={{ color: "#f87171", fontSize: "12px", margin: 0 }}>{guestAccountError}</p>}
                 <button onClick={async () => {
                   setGuestAccountError("");
-                  if (!email || !email.includes("@")) { setGuestAccountError("Enter a valid email."); return; }
+                  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setGuestAccountError("Please enter a valid email address."); return; }
                   if (!guestPassword || guestPassword.length < 6) { setGuestAccountError("Password must be at least 6 characters."); return; }
                   if (guestPassword !== guestPasswordConfirm) { setGuestAccountError("Passwords don't match."); return; }
                   try {

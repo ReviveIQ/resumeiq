@@ -1032,6 +1032,10 @@ export function registerResumeIQRoutes(app: Express) {
     try {
       const { email, password, name } = req.body;
       if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) { res.status(400).json({ error: "Please enter a valid email address" }); return; }
+      if (password.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
       const user = await createUser(email, password, name || "");
       const token = generateToken(user.id, user.email);
 
