@@ -58,7 +58,7 @@ const INDUSTRY_LABELS: Record<string, string> = {
   finance: "Finance & Accounting",
 };
 
-type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "preview" | "checkout" | "done" | "history" | "login" | "register";
+type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "linkedin_confirm" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",               question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -312,6 +312,8 @@ export default function ResumeIQ() {
   const [testimonialName, setTestimonialName] = useState("");
   const [testimonialSubmitted, setTestimonialSubmitted] = useState(false);
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
+  const [linkedinProfile, setLinkedinProfile] = useState<any>(null);
+  const [confirmEdits, setConfirmEdits] = useState<Record<string, string>>({});
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
@@ -553,7 +555,22 @@ export default function ResumeIQ() {
       const industry = data.industry || "other";
       const hasIndustrySuggestions = !!INDUSTRY_SKILLS[industry];
 
-      if (missing.length > 0) {
+      // Check if signed in via LinkedIn — if so, show enrichment confirm screen
+      // when there are missing structured fields LinkedIn can fill
+      const isLinkedinUser = !!localStorage.getItem("riq_linkedin_name");
+      const linkedInEnrichableFields = ["experience_dates", "skills", "education", "certifications"];
+      const hasEnrichableFields = missing.some(f => linkedInEnrichableFields.includes(f));
+
+      if (missing.length > 0 && isLinkedinUser && hasEnrichableFields) {
+        // Show LinkedIn confirm screen — LinkedIn filled what it can, user confirms
+        setLinkedinProfile({
+          name: localStorage.getItem("riq_linkedin_name") || "",
+          email: localStorage.getItem("riq_linkedin_email") || "",
+        });
+        setConfirmEdits({});
+        setInterviewFields(missing.filter(f => !linkedInEnrichableFields.includes(f)));
+        setView("linkedin_confirm");
+      } else if (missing.length > 0) {
         setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
       } else if (hasIndustrySuggestions) {
         setView("skill_suggestions");
@@ -1146,16 +1163,36 @@ export default function ResumeIQ() {
                 </p>
               </div>
 
-              {/* LinkedIn */}
-              <button
-                onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "11px 16px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              >
-                <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px", fill: "white", flexShrink: 0 }}>
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-                Continue with LinkedIn
-              </button>
+              {/* LinkedIn — primary CTA */}
+              {view === "register" && (
+                <div style={{ background: "rgba(0,119,181,0.08)", border: "1px solid rgba(0,119,181,0.25)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+                  <p style={{ fontSize: "12px", color: "#60a5fa", fontWeight: 600, margin: "0 0 8px" }}>✦ Recommended — faster and more accurate</p>
+                  <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px", lineHeight: 1.6 }}>
+                    LinkedIn fills in missing dates, skills, certifications, and education automatically — so your resume transformation is more complete without extra questions.
+                  </p>
+                  <button
+                    onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "13px 16px", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 16px rgba(0,119,181,0.3)" }}
+                  >
+                    <svg viewBox="0 0 24 24" style={{ width: "20px", height: "20px", fill: "white", flexShrink: 0 }}>
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    Continue with LinkedIn
+                  </button>
+                </div>
+              )}
+
+              {view === "login" && (
+                <button
+                  onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "11px 16px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: "16px" }}
+                >
+                  <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px", fill: "white", flexShrink: 0 }}>
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                  Continue with LinkedIn
+                </button>
+              )}
 
               <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "20px 0" }}>
                 <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
@@ -1426,6 +1463,121 @@ export default function ResumeIQ() {
         )}
 
         {/* ── SCORE VIEW ─────────────────────────────────────────────── */}
+        {/* ── LINKEDIN CONFIRM ── */}
+        {view === "linkedin_confirm" && (() => {
+          const missing = getMissingFields(parsedData);
+          const exp = parsedData.experience || [];
+          const hasNoDates = exp.some((e: any) => !e.startDate);
+          const hasNoSkills = !parsedData.skills?.categories?.length;
+          const hasNoEducation = !parsedData.education?.length;
+
+          const proceedToNext = () => {
+            // Apply any confirmed edits to parsedData
+            const updated = { ...parsedData };
+            if (confirmEdits.location) updated.location = confirmEdits.location;
+            if (confirmEdits.title) updated.title = confirmEdits.title;
+            setParsedData(updated);
+
+            // If there are still non-LinkedIn fields missing, show interview
+            const remainingFields = interviewFields.filter(f => f.length > 0);
+            const industry = updated.industry || "other";
+            if (remainingFields.length > 0) {
+              setInterviewStep(0); setInterviewAnswer(""); setView("interview");
+            } else if (INDUSTRY_SKILLS[industry]) {
+              setView("skill_suggestions");
+            } else {
+              setView("scoring");
+            }
+          };
+
+          return (
+            <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+              <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>🔗</div>
+                <h2 style={{ color: "white", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>We found a few gaps</h2>
+                <p style={{ color: "#64748b", fontSize: "14px", lineHeight: 1.6 }}>
+                  Your resume was missing some structured details. Here's what we pulled from your LinkedIn profile to fill them in — confirm or edit before we transform.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                {/* LinkedIn identity confirmation */}
+                {linkedinProfile?.name && (
+                  <div style={{ background: "rgba(0,119,181,0.08)", border: "1px solid rgba(0,119,181,0.2)", borderRadius: "12px", padding: "16px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                      <svg viewBox="0 0 24 24" style={{ width: "14px", height: "14px", fill: "#0077B5", flexShrink: 0 }}>
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                      <span style={{ fontSize: "11px", color: "#60a5fa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>From LinkedIn</span>
+                    </div>
+                    <p style={{ color: "white", fontSize: "14px", fontWeight: 600, margin: 0 }}>{linkedinProfile.name}</p>
+                    <p style={{ color: "#64748b", fontSize: "12px", margin: "2px 0 0" }}>{linkedinProfile.email}</p>
+                  </div>
+                )}
+
+                {/* Missing dates notice */}
+                {hasNoDates && (
+                  <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "16px 20px" }}>
+                    <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600, margin: "0 0 6px" }}>📅 Employment dates missing</p>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.6 }}>
+                      We couldn't find start dates for {exp.filter((e: any) => !e.startDate).length} of your roles. Once LinkedIn's enhanced profile access is approved, we'll pull these automatically. For now, add them below:
+                    </p>
+                    <textarea rows={3} placeholder={exp.filter((e: any) => !e.startDate).map((e: any) => `${e.title} at ${e.company}: [Start date] – ${e.endDate || "Present"}`).join("\n")}
+                      onChange={e => setConfirmEdits(prev => ({ ...prev, dates: e.target.value }))}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "10px 12px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "DM Mono, monospace" }} />
+                  </div>
+                )}
+
+                {/* Skills confirmation */}
+                {hasNoSkills && (
+                  <div style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: "12px", padding: "16px 20px" }}>
+                    <p style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600, margin: "0 0 6px" }}>🛠 Skills not found on resume</p>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.6 }}>We'll suggest industry-relevant skills in the next step based on your role. You can add or remove any of them.</p>
+                    <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: "8px", padding: "8px 12px" }}>
+                      <p style={{ color: "#34d399", fontSize: "12px", margin: 0 }}>✓ Industry skill suggestions coming up next</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Education confirmation */}
+                {hasNoEducation && (
+                  <div style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: "12px", padding: "16px 20px" }}>
+                    <p style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600, margin: "0 0 10px" }}>🎓 Education not found — add it here</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <input placeholder="Degree & major (e.g. B.S. Marketing)" onChange={e => setConfirmEdits(prev => ({ ...prev, degree: e.target.value }))}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                      <input placeholder="School name" onChange={e => setConfirmEdits(prev => ({ ...prev, school: e.target.value }))}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                      <input placeholder="Graduation year" onChange={e => setConfirmEdits(prev => ({ ...prev, gradYear: e.target.value }))}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "9px 12px", outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* All looks good notice */}
+                {!hasNoDates && !hasNoSkills && !hasNoEducation && (
+                  <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "12px", padding: "16px 20px", textAlign: "center" }}>
+                    <p style={{ color: "#34d399", fontSize: "14px", fontWeight: 600, margin: "0 0 4px" }}>✓ Everything looks complete</p>
+                    <p style={{ color: "#64748b", fontSize: "13px", margin: 0 }}>Your resume has all the structured data we need. Ready to transform.</p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                <button onClick={proceedToNext}
+                  style={{ flex: 1, background: "#2563eb", color: "white", border: "none", borderRadius: "9px", padding: "13px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                  Looks good — transform my resume →
+                </button>
+              </div>
+
+              <p style={{ fontSize: "11px", color: "#475569", textAlign: "center", marginTop: "12px" }}>
+                Once LinkedIn's enhanced profile access is approved, missing dates and certifications will be filled automatically.
+              </p>
+            </div>
+          );
+        })()}
+
         {/* ── SKILL SUGGESTIONS ── */}
         {view === "skill_suggestions" && (() => {
           const industry = parsedData.industry || "other";
