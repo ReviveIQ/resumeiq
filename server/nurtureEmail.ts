@@ -300,6 +300,27 @@ async function markSent(userId: number, emailKey: string): Promise<void> {
   }
 }
 
+// Segment C — high scorers (postScore >= 8), WWM pitch
+function emailC3(firstName: string, email: string, postScore: number): { subject: string; html: string } {
+  return {
+    subject: `Your resume scored ${postScore}/10. Here's the one thing it's still missing.`,
+    html: WRAP(`
+      ${P(`Hey ${firstName},`)}
+      ${P(`Your resume scored <strong style="color:#4ade80">${postScore}/10</strong> after transformation. That puts you in the top tier of applicants for almost any role you apply to.`)}
+      ${P("Here's the honest reality:")}
+      ${P("The candidates you're competing with have the same score. Same ATS-optimized format. Same strong bullets. Same credentials.")}
+      ${P("The ones who get the offer answer a question yours still doesn't:")}
+      <p style="margin:0 0 16px;font-size:17px;color:white;font-weight:700;font-family:sans-serif;line-height:1.6;font-style:italic">"How do you actually work?"</p>
+      ${P("How do you communicate under pressure? How do you make decisions when the data is incomplete? What does a good working relationship look like with you?")}
+      ${P('The "Working With Me" section answers all of it — synthesized from your DISC, MBTI, Predictive Index, or TKI assessment results. Written in professional behavioral language, not assessment jargon. Permanently attached to every resume you generate.')}
+      ${P("No other resume tool offers this section. No other candidate in the pile has it.")}
+      ${CTA('Add "Working With Me" — $7.99 →', `https://resumeiq.reviveiqi.com?utm_source=email&utm_medium=nurture&utm_campaign=c3_wwm_highscore`)}
+      ${P("Upload your assessment results after logging in. Takes about 2 minutes.")}
+      ${SIGN}
+    `, email),
+  };
+}
+
 // ── Main cron function ────────────────────────────────────────────────────────
 export async function runNurtureCron(): Promise<void> {
   const conn = await getDb();
@@ -336,8 +357,20 @@ export async function runNurtureCron(): Promise<void> {
     const daysSince = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24));
     const hasScores = user.preScore != null && user.postScore != null;
 
+    // Segment C — high scorers (postScore >= 8), WWM pitch on Day 3
+    const isHighScorer = user.postScore != null && user.postScore >= 8;
+
     // Segment A — used free transform
     if (resumeCount >= 1) {
+      // Day 3 high scorer WWM intercept
+      if (isHighScorer && daysSince >= 3 && daysSince < 7) {
+        const key = "c3";
+        if (!(await hasAlreadySent(user.id, key))) {
+          const tpl = emailC3(firstName, email, user.postScore);
+          const ok = await sendNurtureEmail(email, tpl.subject, tpl.html);
+          if (ok) { await markSent(user.id, key); console.log(`[Nurture] Sent ${key} → ${email}`); }
+        }
+      }
       if (daysSince >= 1 && daysSince < 3) {
         const key = "a1";
         if (!(await hasAlreadySent(user.id, key))) {

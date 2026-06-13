@@ -1731,28 +1731,72 @@ export default function ResumeIQ() {
                   );
                 })()}
 
-                {/* CTA */}
-                <button
-                  onClick={() => setView("preview")}
-                  style={{ width: "100%", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: "10px", padding: "16px", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", marginBottom: "10px" }}
-                >
-                  Transform My Resume → Fix These Issues
-                </button>
+                {/* CTA — different for high scorers */}
+                {resumeScore.overall >= 8 ? (
+                  <>
+                    {/* High score WWM intercept */}
+                    <div style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(37,99,235,0.08))", border: "1px solid rgba(124,58,237,0.3)", borderRadius: "14px", padding: "24px", marginBottom: "16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                        <span style={{ fontSize: "24px" }}>🧠</span>
+                        <div>
+                          <p style={{ color: "white", fontSize: "15px", fontWeight: 700, margin: 0 }}>Your resume is already strong.</p>
+                          <p style={{ color: "#a78bfa", fontSize: "12px", margin: "2px 0 0" }}>Here's what separates the candidates who get the offer.</p>
+                        </div>
+                      </div>
+                      <p style={{ color: "#c4b5fd", fontSize: "13px", lineHeight: 1.75, marginBottom: "16px" }}>
+                        The candidates you're competing with have the same credentials, same bullet format, same ATS score. The ones who get the offer answer a question yours doesn't — <strong style={{ color: "white" }}>how do you actually work?</strong>
+                      </p>
+                      <p style={{ color: "#c4b5fd", fontSize: "13px", lineHeight: 1.75, marginBottom: "20px" }}>
+                        A "Working With Me" section — synthesized from your DISC, MBTI, or Predictive Index results — tells hiring managers your communication style, decision-making approach, how you perform under pressure, and what brings out your best work. In plain language. Before the interview.
+                      </p>
+                      <p style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "16px" }}>
+                        No other resume tool offers this section. No other candidate in the pile has it.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setView("preview");
+                          setTimeout(() => {
+                            setPersonalityStep(true);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }, 300);
+                        }}
+                        style={{ width: "100%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "pointer", marginBottom: "10px", boxShadow: "0 4px 20px rgba(124,58,237,0.3)" }}
+                      >
+                        Add "Working With Me" — $7.99 →
+                      </button>
+                      <button
+                        onClick={() => setView("preview")}
+                        style={{ width: "100%", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+                      >
+                        See my transformed resume first →
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setView("preview")}
+                      style={{ width: "100%", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: "10px", padding: "16px", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "DM Sans, sans-serif", marginBottom: "10px" }}
+                    >
+                      Transform My Resume → Fix These Issues
+                    </button>
 
-                {/* Working With Me nudge — show for all scores */}
-                <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px", textAlign: "left" }}>
-                  <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>🧠 Stand out beyond the bullets</p>
-                  <p style={{ color: "#c4b5fd", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
-                    Every resume in the pile shows work history. A <strong style={{ color: "white" }}>"Working With Me"</strong> section shows self-awareness — how you communicate, decide, and perform under pressure. Hiring managers remember it because no one else has it. Upload your DISC, MBTI, or Predictive Index results after transformation to add it.
-                  </p>
-                </div>
+                    {/* Working With Me nudge — lower scores */}
+                    <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px", textAlign: "left" }}>
+                      <p style={{ color: "#a78bfa", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>🧠 Stand out beyond the bullets</p>
+                      <p style={{ color: "#c4b5fd", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
+                        Every resume in the pile shows work history. A <strong style={{ color: "white" }}>"Working With Me"</strong> section shows self-awareness — how you communicate, decide, and perform under pressure. Hiring managers remember it because no one else has it. Upload your DISC, MBTI, or Predictive Index results after transformation to add it.
+                      </p>
+                    </div>
 
-                <button
-                  onClick={() => setView("preview")}
-                  style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", fontSize: "13px", cursor: "pointer", padding: "8px" }}
-                >
-                  Skip — review resume first
-                </button>
+                    <button
+                      onClick={() => setView("preview")}
+                      style={{ width: "100%", background: "transparent", color: "#64748b", border: "none", fontSize: "13px", cursor: "pointer", padding: "8px" }}
+                    >
+                      Skip — review resume first
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -2605,6 +2649,28 @@ export default function ResumeIQ() {
                 </div>
               </div>
             </div>
+
+            {/* Working With Me upsell — high scorers who don't have it */}
+            {resumeScore && resumeScore.overall >= 8 && !user?.personalityUnlocked && (
+              <div style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.12), rgba(109,40,217,0.08))", border: "1px solid rgba(124,58,237,0.3)", borderRadius: "14px", padding: "22px 24px", marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "22px" }}>🧠</span>
+                  <div>
+                    <p style={{ color: "#a78bfa", fontSize: "11px", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>One more edge</p>
+                    <p style={{ color: "white", fontSize: "15px", fontWeight: 700, margin: "2px 0 0" }}>Your resume scored {resumeScore.overall}/10.</p>
+                  </div>
+                </div>
+                <p style={{ color: "#c4b5fd", fontSize: "13px", lineHeight: 1.75, marginBottom: "16px" }}>
+                  The candidates you're competing with have the same score. The ones who get the offer answer a question yours still doesn't — <strong style={{ color: "white" }}>how do you actually work?</strong> A "Working With Me" section synthesized from your personality assessments tells hiring managers before the interview. No other candidate has it.
+                </p>
+                <button
+                  onClick={() => setPersonalityStep(true)}
+                  style={{ width: "100%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", padding: "13px", fontSize: "14px", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(124,58,237,0.3)" }}
+                >
+                  Add "Working With Me" — $7.99 →
+                </button>
+              </div>
+            )}
 
             {/* Action buttons */}
             {/* Testimonial capture */}
