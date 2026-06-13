@@ -52,11 +52,15 @@ export async function initDb() {
         personalityUnlocked TINYINT DEFAULT 0,
         workingWithMeData JSON,
         planExpiresAt TIMESTAMP NULL DEFAULT NULL,
+        emailVerified TINYINT DEFAULT 0,
+        verifyToken VARCHAR(64) NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     // Add planExpiresAt if upgrading existing DB
     await conn.execute(`ALTER TABLE riq_users ADD COLUMN planExpiresAt TIMESTAMP NULL DEFAULT NULL`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS emailVerified TINYINT DEFAULT 0`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS verifyToken VARCHAR(64) NULL`).catch(() => {});
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_resumes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -233,6 +237,32 @@ export async function loginUser(email: string, password: string) {
   } finally {
     await conn.end();
   }
+}
+
+export async function setVerifyToken(userId: number, token: string): Promise<void> {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    await conn.execute("UPDATE riq_users SET verifyToken = ? WHERE id = ?", [token, userId]);
+  } finally { await conn.end(); }
+}
+
+export async function verifyEmail(token: string): Promise<{ id: number; email: string; name: string } | null> {
+  const conn = await getDb();
+  if (!conn) return null;
+  try {
+    const [rows] = await conn.execute(
+      "SELECT id, email, name FROM riq_users WHERE verifyToken = ? AND emailVerified = 0 LIMIT 1",
+      [token]
+    ) as any;
+    const data = Array.isArray(rows[0]) ? rows[0] : rows;
+    if (!data[0]) return null;
+    await conn.execute(
+      "UPDATE riq_users SET emailVerified = 1, verifyToken = NULL WHERE id = ?",
+      [data[0].id]
+    );
+    return data[0];
+  } finally { await conn.end(); }
 }
 
 export async function getUserByEmail(email: string) {

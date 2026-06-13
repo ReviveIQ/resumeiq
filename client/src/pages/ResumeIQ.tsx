@@ -314,6 +314,21 @@ export default function ResumeIQ() {
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
   const [linkedinProfile, setLinkedinProfile] = useState<any>(null);
   const [confirmEdits, setConfirmEdits] = useState<Record<string, string>>({});
+  const [verifyBanner, setVerifyBanner] = useState<"success"|"pending"|null>(null);
+  const [resendSent, setResendSent] = useState(false);
+
+  // Handle ?verified= query param on page load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") === "success") {
+      setVerifyBanner("success");
+      window.history.replaceState({}, "", "/app");
+      // Refresh user to get emailVerified=true
+      const t = localStorage.getItem("riq_token");
+      if (t) fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${t}` } })
+        .then(r => r.json()).then(d => { if (d.id) setUser(d); }).catch(() => {});
+    }
+  }, []);
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
@@ -982,6 +997,35 @@ export default function ResumeIQ() {
           .riq-header { padding: 0 12px !important; }
         }
       `}</style>
+
+      {/* Email verified success banner */}
+      {verifyBanner === "success" && (
+        <div style={{ background: "rgba(16,185,129,0.12)", borderBottom: "1px solid rgba(16,185,129,0.25)", padding: "10px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ color: "#34d399", fontSize: "13px", fontWeight: 600, margin: 0 }}>✓ Email verified — your account is fully set up.</p>
+          <button onClick={() => setVerifyBanner(null)} style={{ background: "none", border: "none", color: "#34d399", cursor: "pointer", fontSize: "16px" }}>×</button>
+        </div>
+      )}
+
+      {/* Unverified email banner — shown to logged-in users who haven't verified */}
+      {user && !user.emailVerified && verifyBanner !== "success" && (
+        <div style={{ background: "rgba(251,191,36,0.08)", borderBottom: "1px solid rgba(251,191,36,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+          <p style={{ color: "#fbbf24", fontSize: "13px", margin: 0 }}>
+            📧 Check your inbox — verify your email to make sure you receive your results.
+          </p>
+          <button
+            onClick={async () => {
+              if (resendSent) return;
+              const t = localStorage.getItem("riq_token");
+              await fetch("/api/resumeiq/auth/resend-verification", { method: "POST", headers: { Authorization: `Bearer ${t}` } });
+              setResendSent(true);
+            }}
+            style={{ background: "none", border: "1px solid rgba(251,191,36,0.4)", borderRadius: "6px", color: "#fbbf24", fontSize: "12px", fontWeight: 600, cursor: resendSent ? "default" : "pointer", padding: "4px 12px" }}
+          >
+            {resendSent ? "Email sent ✓" : "Resend verification"}
+          </button>
+        </div>
+      )}
+
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "6px 24px" }}>
         <div style={{ maxWidth: "960px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }} onClick={reset}>

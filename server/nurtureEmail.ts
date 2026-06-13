@@ -334,6 +334,7 @@ export async function runNurtureCron(): Promise<void> {
     const [rows] = await conn.execute(`
       SELECT 
         u.id, u.email, u.name, u.plan, u.resumeCount, u.createdAt,
+        u.emailVerified,
         r.preScore, r.postScore
       FROM riq_users u
       LEFT JOIN riq_resumes r ON r.userId = u.id AND r.id = (
@@ -342,6 +343,7 @@ export async function runNurtureCron(): Promise<void> {
       WHERE (u.plan = 'free' OR u.plan IS NULL)
         AND u.email IS NOT NULL
         AND u.email != ''
+        AND u.emailVerified = 1
     `) as any;
     users = Array.isArray(rows[0]) ? rows[0] : rows;
   } finally {

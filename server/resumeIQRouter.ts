@@ -8,10 +8,51 @@ import {
   initDb, migrateDb, createUser, loginUser, getUserById, saveResume,
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
   generateToken, verifyToken, upgradeToStarter, upgradeToMonthly, incrementResumeCount,
-  unlockPersonality, saveWorkingWithMe,
+  unlockPersonality, saveWorkingWithMe, getUserByEmail, setVerifyToken, verifyEmail,
 } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
+
+// ── Email verification ────────────────────────────────────────────────────────
+async function sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const firstName = (name || "").split(" ")[0] || "there";
+  const verifyUrl = `https://resumeiq.reviveiqi.com/api/resumeiq/auth/verify-email?token=${token}`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+      <div style="background:#080f1e;padding:22px 32px;display:flex;align-items:center;gap:14px">
+        <svg width="28" height="28" viewBox="0 0 72 72" fill="none"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#2563eb"/></linearGradient><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#93c5fd"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient><linearGradient id="g3" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#1e3a5f"/></linearGradient></defs><polygon points="36,4 68,36 36,68 4,36" fill="url(#g3)" opacity="0.35"/><polygon points="36,4 20,20 36,36 52,20" fill="url(#g2)" opacity="0.9"/><polygon points="36,4 52,20 68,36 36,36" fill="url(#g1)" opacity="0.65"/><polygon points="4,36 20,20 36,36 20,52" fill="url(#g1)" opacity="0.5"/><polygon points="68,36 52,20 36,36 52,52" fill="url(#g2)" opacity="0.75"/><polygon points="36,68 20,52 36,36 52,52" fill="url(#g3)" opacity="0.95"/><circle cx="36" cy="36" r="6" fill="white" opacity="0.95"/><circle cx="36" cy="36" r="3" fill="#93c5fd"/></svg>
+        <div>
+          <p style="margin:0;font-size:16px;font-weight:700;color:white;font-family:sans-serif">Resume<span style="color:#60a5fa">IQ</span></p>
+          <p style="margin:0;font-size:11px;color:#64748b;font-family:sans-serif">by ReviveIQI</p>
+        </div>
+      </div>
+      <div style="padding:32px">
+        <p style="margin:0 0 16px;font-size:15px;color:#111827;font-family:sans-serif">Hey ${firstName},</p>
+        <p style="margin:0 0 16px;font-size:15px;color:#111827;font-family:sans-serif;line-height:1.7">Thanks for creating your ResumeIQ account. One quick step — verify your email address so we know where to send your results.</p>
+        <div style="margin:24px 0">
+          <a href="${verifyUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:14px;font-weight:500;font-family:sans-serif">Verify my email →</a>
+        </div>
+        <p style="margin:0 0 16px;font-size:13px;color:#6b7280;font-family:sans-serif;line-height:1.7">If you didn't create this account, you can safely ignore this email.</p>
+        <p style="margin:0 0 4px;font-size:15px;color:#111827;font-family:sans-serif">Bryan</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;font-family:sans-serif">Founder, ResumeIQ · ReviveIQI</p>
+      </div>
+      <div style="padding:16px 32px;border-top:1px solid #e5e7eb;background:#f9fafb">
+        <p style="margin:0;font-size:12px;color:#9ca3af;font-family:sans-serif">ResumeIQ by ReviveIQI · Fort Lauderdale, FL</p>
+      </div>
+    </div>`;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "Bryan <bryan@reviveiqi.com>", to: [email], subject: "Verify your ResumeIQ email", html }),
+    });
+    console.log(`[ResumeIQ] Verification email sent → ${email}`);
+  } catch (err: any) {
+    console.error(`[ResumeIQ] Verification email failed: ${err.message}`);
+  }
+}
 
 // ── Cloudflare R2 upload ──────────────────────────────────────────────────────
 async function uploadToR2(fileBase64: string, key: string, contentType: string): Promise<string | null> {
@@ -993,13 +1034,54 @@ export function registerResumeIQRoutes(app: Express) {
       if (!email || !password) { res.status(400).json({ error: "Email and password required" }); return; }
       const user = await createUser(email, password, name || "");
       const token = generateToken(user.id, user.email);
+
+      // Generate and store verify token
+      const verifyTok = crypto.randomBytes(32).toString("hex");
+      await setVerifyToken(user.id, verifyTok);
+
+      // Send verification email (non-blocking)
+      sendVerificationEmail(user.email, user.name || "", verifyTok).catch(() => {});
       // Fire welcome email + owner notification (non-blocking)
       import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(user.email, user.name || "")).catch(() => {});
-      notifyNewUser(user.email, user.name || "").catch(() => {})
-      res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+      notifyNewUser(user.email, user.name || "").catch(() => {});
+      res.json({ token, user: { id: user.id, email: user.email, name: user.name, emailVerified: false } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
       else res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── VERIFY EMAIL ──────────────────────────────────────────────────────────
+  app.get("/api/resumeiq/auth/verify-email", async (req: Request, res: Response) => {
+    const { token } = req.query;
+    if (!token) { res.redirect("/app?verified=invalid"); return; }
+    try {
+      const user = await verifyEmail(String(token));
+      if (!user) {
+        res.redirect("/app?verified=invalid");
+        return;
+      }
+      console.log(`[ResumeIQ] Email verified: ${user.email}`);
+      res.redirect("/app?verified=success");
+    } catch (err: any) {
+      res.redirect("/app?verified=error");
+    }
+  });
+
+  // Resend verification email
+  app.post("/api/resumeiq/auth/resend-verification", async (req: Request, res: Response) => {
+    try {
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const user = await getUserById(tokenUser.userId);
+      if (!user) { res.status(404).json({ error: "User not found" }); return; }
+      if (user.emailVerified) { res.json({ ok: true, message: "Already verified" }); return; }
+      const verifyTok = crypto.randomBytes(32).toString("hex");
+      await setVerifyToken(user.id, verifyTok);
+      await sendVerificationEmail(user.email, user.name || "", verifyTok);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -2120,7 +2202,11 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
         // Create account — no password needed (SSO user)
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
-        console.log(`[CrossApp] Created ResumeIQ account for ${email} via SSO`);
+        // LinkedIn-verified email — mark as verified immediately
+        await authService.setVerifyToken(user.id, "");
+        const conn = await authService.getDb();
+        if (conn) { await conn.execute("UPDATE riq_users SET emailVerified = 1, verifyToken = NULL WHERE id = ?", [user.id]); await conn.end(); }
+        console.log(`[CrossApp] Created ResumeIQ account for ${email} via SSO (auto-verified)`);
         import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(email, name || "")).catch(() => {});
         notifyNewUser(email, name || "").catch(() => {});
       } else {
