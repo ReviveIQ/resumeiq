@@ -2410,7 +2410,7 @@ export default function ResumeIQ() {
                     <div style={{ position: "absolute", top: "-9px", right: "10px", background: "#2563eb", color: "white", fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>MOST POPULAR</div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                       <span style={{ color: "white", fontWeight: 700, fontSize: "14px" }}>Monthly</span>
-                      <span style={{ color: selectedPlan === "monthly" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$14.99</span>
+                      <span style={{ color: selectedPlan === "monthly" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$14.99<span style={{ fontSize: "11px", fontWeight: 400, color: "#64748b" }}>/mo</span></span>
                     </div>
                     <p style={{ color: "#64748b", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>Unlimited transformations for 30 days</p>
                   </div>
