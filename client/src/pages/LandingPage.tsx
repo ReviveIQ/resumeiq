@@ -417,6 +417,35 @@ export default function LandingPage() {
           <p style={{ color: "#475569", fontSize: "12px", marginTop: "16px" }}>
             First resume free · $14.99 after that · No credit card required
           </p>
+
+          {/* ATS trust strip */}
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", marginTop: "28px" }}>
+            {[
+              { icon: "✓", text: "100% ATS-safe format", sub: "single column, no tables, no graphics" },
+              { icon: "✓", text: "Zero hallucinated facts", sub: "only elevates what's on your resume" },
+              { icon: "✓", text: "Before & after ATS score", sub: "see exactly what improved" },
+            ].map(item => (
+              <div key={item.text} style={{ display: "flex", alignItems: "flex-start", gap: "8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "10px 14px", textAlign: "left" }}>
+                <span style={{ color: "#4ade80", fontWeight: 700, fontSize: "13px", flexShrink: 0, marginTop: "1px" }}>{item.icon}</span>
+                <div>
+                  <p style={{ color: "white", fontSize: "12px", fontWeight: 600, margin: 0 }}>{item.text}</p>
+                  <p style={{ color: "#475569", fontSize: "11px", margin: "2px 0 0" }}>{item.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Working With Me teaser */}
+          <div
+            onClick={() => document.getElementById("wwm-section")?.scrollIntoView({ behavior: "smooth" })}
+            style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginTop: "18px", cursor: "pointer", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "999px", padding: "7px 16px" }}
+          >
+            <span style={{ fontSize: "14px" }}>🧠</span>
+            <span style={{ fontSize: "12px", color: "#c4b5fd", fontWeight: 500 }}>
+              Also includes a "Working With Me" section — the behavioral profile no other resume tool offers
+            </span>
+            <span style={{ color: "#a78bfa", fontSize: "12px" }}>↓</span>
+          </div>
           {/* Scroll nudge */}
           <div style={{ marginTop: "48px", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", opacity: 0.4 }}>
             <span style={{ color: "#94a3b8", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase" }}>Scroll to explore</span>
@@ -516,7 +545,7 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section style={{ padding: "80px 40px 100px", background: "rgba(0,0,0,0.2)" }}>
+      <section id="wwm-section" style={{ padding: "80px 40px 100px", background: "rgba(0,0,0,0.2)" }}>
         <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>Pricing</p>
