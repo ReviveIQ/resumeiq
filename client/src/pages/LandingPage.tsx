@@ -345,6 +345,7 @@ export default function LandingPage() {
           .section-pad { padding: 60px 20px !important; }
           .step-card { padding: 20px !important; }
           .pricing-card { padding: 24px !important; }
+          .pricing-grid-top { grid-template-columns: 1fr !important; }
           .grid-responsive { grid-template-columns: 1fr !important; }
           .grid-responsive-2 { grid-template-columns: 1fr 1fr !important; }
           .hide-mobile { display: none !important; }
@@ -572,8 +573,9 @@ export default function LandingPage() {
               💡 The "Working With Me" add-on requires a personality assessment (DISC, Myers-Briggs, Predictive Index, TKI, 360 Feedback, or similar). Don't have one? The resume-only option is all you need.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
-            {PRICING.map((plan, i) => (
+          {/* Top 3 plans — Starter, Bundle, WWM */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "20px" }}>
+            {PRICING.slice(0, 3).map((plan, i) => (
               <div key={i} className={`pricing-card${plan.highlighted ? " featured" : ""}`} style={{ position: "relative" }}>
                 {plan.highlighted && (
                   <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #2563eb, #7c3aed)", borderRadius: "999px", padding: "4px 16px", fontSize: "11px", fontWeight: 600, color: "white", whiteSpace: "nowrap" }}>
@@ -603,6 +605,29 @@ export default function LandingPage() {
                 </button>
               </div>
             ))}
+          </div>
+
+          {/* Monthly — full-width horizontal banner */}
+          <div style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "16px", padding: "28px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "32px", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: "200px" }}>
+              <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Monthly Unlimited</p>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "4px" }}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "32px", fontWeight: 800 }}>$19.99</span>
+                <span style={{ color: "#64748b", fontSize: "14px" }}>/month</span>
+              </div>
+              <p style={{ color: "#475569", fontSize: "13px", margin: 0 }}>Unlimited transforms for 30 days · no auto-renew</p>
+            </div>
+            <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", flex: 2 }}>
+              {["Unlimited resume transformations for 30 days", "Target multiple roles simultaneously", "Every application gets a fresh tailored resume", "Working With Me add-on available", "Cancel anytime — no auto-renew"].map((f, i) => (
+                <div key={i} className="check-item" style={{ minWidth: "200px", flex: "1 1 200px" }}>
+                  <span style={{ color: "#4ade80", fontSize: "14px", flexShrink: 0 }}>✓</span>
+                  <span style={{ fontSize: "13px" }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <button className="cta-btn-outline" onClick={() => navigate("/app")} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+              Get Monthly →
+            </button>
           </div>
         </div>
       </section>
