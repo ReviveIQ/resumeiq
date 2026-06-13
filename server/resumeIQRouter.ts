@@ -13,6 +13,49 @@ import {
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
+// ── Cloudflare R2 upload ──────────────────────────────────────────────────────
+async function uploadToR2(fileBase64: string, key: string, contentType: string): Promise<string | null> {
+  const accessKey = process.env.AWS_ACCESS_KEY_ID;
+  const secretKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const endpoint = process.env.AWS_S3_ENDPOINT; // https://<accountid>.r2.cloudflarestorage.com
+  const bucket = process.env.AWS_S3_BUCKET || "mycareeriq";
+
+  if (!accessKey || !secretKey || !endpoint) return null;
+
+  try {
+    const buffer = Buffer.from(fileBase64, "base64");
+    const date = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, "").substring(0, 15) + "Z";
+    const dateShort = date.substring(0, 8);
+    const host = endpoint.replace("https://", "");
+
+    const payloadHash = crypto.createHash("sha256").update(buffer).digest("hex");
+    const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${date}\n`;
+    const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+    const canonicalRequest = `PUT\n/${bucket}/${key}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+    const credentialScope = `${dateShort}/auto/s3/aws4_request`;
+    const stringToSign = `AWS4-HMAC-SHA256\n${date}\n${credentialScope}\n${crypto.createHash("sha256").update(canonicalRequest).digest("hex")}`;
+
+    const hmac = (k: Buffer, data: string) => crypto.createHmac("sha256", k).update(data).digest();
+    const signingKey = hmac(hmac(hmac(hmac(Buffer.from(`AWS4${secretKey}`), dateShort), "auto"), "s3"), "aws4_request");
+    const signature = hmac(signingKey, stringToSign).toString("hex");
+    const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const res = await fetch(`${endpoint}/${bucket}/${key}`, {
+      method: "PUT",
+      headers: { "Content-Type": contentType, "x-amz-date": date, "x-amz-content-sha256": payloadHash, Authorization: authorization },
+      body: buffer,
+    });
+
+    if (!res.ok) { console.warn(`[R2] Upload failed: ${res.status}`); return null; }
+
+    const publicUrl = process.env.R2_PUBLIC_URL;
+    return `${publicUrl || `${endpoint}/${bucket}`}/${key}`;
+  } catch (err: any) {
+    console.warn(`[R2] Upload error: ${err.message}`);
+    return null;
+  }
+}
+
 // ── DB-BACKED SESSION STORE ──────────────────────────────────────────────
 // Sessions stored in TiDB so they survive server restarts and scale across instances
 
@@ -1434,7 +1477,22 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
       }
 
-      await createSession(sessionId, parsed, isFree, isFree);
+      await createSession(sessionId, { ...parsed, _originalKey: tokenUser ? `resumeiq/${tokenUser.userId}/${sessionId}/${fileName || "resume.pdf"}` : null }, isFree, isFree);
+
+      // Save original file to R2 (non-blocking) — for QC and re-processing
+      if (tokenUser && fileBase64) {
+        const ext = (fileName || "resume.pdf").split(".").pop()?.toLowerCase() || "pdf";
+        const contentType = ext === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const r2Key = `resumeiq/${tokenUser.userId}/${sessionId}/original.${ext}`;
+        uploadToR2(fileBase64, r2Key, contentType)
+          .then(url => {
+            if (url) console.log(`[R2] Original saved: ${r2Key}`);
+            else console.log(`[R2] Upload skipped — R2 not configured`);
+          })
+          .catch(() => {});
+        parsed._originalKey = r2Key;
+      }
+
       console.log(`[ResumeIQ] Session created for ${parsed.name} (free: ${isFree})`);
       res.json({ ...parsed, sessionId, isFree });
     } catch (error: any) {
@@ -1591,6 +1649,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
             preScore || undefined,
             undefined,
             scoreFlags || undefined,
+            data._originalKey || undefined,
           );
           await incrementResumeCount(tokenUser.userId);
           console.log(`[ResumeIQ] Saved resume ${resumeId} for user ${tokenUser.userId} (preScore: ${preScore})`);

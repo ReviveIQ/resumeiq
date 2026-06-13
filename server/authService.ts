@@ -67,10 +67,24 @@ export async function initDb() {
         docxBase64 MEDIUMTEXT,
         stripeSessionId VARCHAR(255),
         paid TINYINT DEFAULT 0,
+        preScore INT NULL,
+        postScore INT NULL,
+        scoreDimensions LONGTEXT NULL,
+        originalFileUrl VARCHAR(500) NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_userId (userId)
       )
     `);
+    // Add columns to existing tables if they don't exist
+    const alterStatements = [
+      "ALTER TABLE riq_resumes ADD COLUMN IF NOT EXISTS preScore INT NULL",
+      "ALTER TABLE riq_resumes ADD COLUMN IF NOT EXISTS postScore INT NULL",
+      "ALTER TABLE riq_resumes ADD COLUMN IF NOT EXISTS scoreDimensions LONGTEXT NULL",
+      "ALTER TABLE riq_resumes ADD COLUMN IF NOT EXISTS originalFileUrl VARCHAR(500) NULL",
+    ];
+    for (const sql of alterStatements) {
+      try { await conn.execute(sql); } catch { /* column may already exist */ }
+    }
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_sessions (
         sessionId VARCHAR(64) PRIMARY KEY,
@@ -285,15 +299,16 @@ export async function saveResume(
   stripeSessionId?: string,
   preScore?: number,
   postScore?: number,
-  scoreDimensions?: any
+  scoreDimensions?: any,
+  originalFileUrl?: string
 ): Promise<number> {
   const conn = await getDb();
   if (!conn) throw new Error("Database not available");
   try {
     const [result] = await conn.execute(
-      `INSERT INTO riq_resumes (userId, originalFileName, candidateName, parsedData, docxBase64, paid, stripeSessionId, preScore, postScore, scoreDimensions)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, fileName, candidateName, JSON.stringify(parsedData), docxBase64, paid ? 1 : 0, stripeSessionId || null, preScore || null, postScore || null, scoreDimensions ? JSON.stringify(scoreDimensions) : null]
+      `INSERT INTO riq_resumes (userId, originalFileName, candidateName, parsedData, docxBase64, paid, stripeSessionId, preScore, postScore, scoreDimensions, originalFileUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, fileName, candidateName, JSON.stringify(parsedData), docxBase64, paid ? 1 : 0, stripeSessionId || null, preScore || null, postScore || null, scoreDimensions ? JSON.stringify(scoreDimensions) : null, originalFileUrl || null]
     ) as any;
     return result.insertId;
   } finally {
