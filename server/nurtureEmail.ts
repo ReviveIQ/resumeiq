@@ -152,7 +152,7 @@ function emailA7(firstName: string, email: string): { subject: string; html: str
       ${P("How's the search going?")}
       ${P("If you're targeting multiple roles or industries, each application deserves a resume tuned to it. Same story, different emphasis. Same bullets, different keywords.")}
       ${P("That's what the Starter pack is for — 3 transforms, no expiry, use them when you need them.")}
-      ${P("$9.99. Less than a job board posting.")}
+      ${P("$14.99. Less than a job board posting.")}
       ${CTA("Get 3 more transforms →", `${SITE}?utm_source=email&utm_medium=nurture&utm_campaign=a7_upgrade`)}
       ${SIGN}
     `, email),

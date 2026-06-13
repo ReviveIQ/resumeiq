@@ -1548,7 +1548,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
         if (tokenUser) {
           await upgradeToStarter(tokenUser.userId);
-          notifyPurchase(tokenUser.email, "", "Starter — 3 transformations", "$9.99").catch(() => {});
+          notifyPurchase(tokenUser.email, "", "Starter — 3 transformations", "$14.99").catch(() => {});
         }
 
       } else if (type === "monthly") {
@@ -1721,7 +1721,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
              DATE(createdAt)            AS date,
              COUNT(*)                   AS uploads,
              SUM(paid)                  AS paid,
-             SUM(CASE WHEN paid = 1 THEN 9.99 ELSE 0 END) AS revenue
+             SUM(CASE WHEN paid = 1 THEN 14.99 ELSE 0 END) AS revenue
            FROM riq_resumes
            WHERE createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
            GROUP BY DATE(createdAt)
@@ -1761,7 +1761,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         // ── Total revenue all-time ───────────────────────────────────────────
         const [revenueRow] = await conn.execute(
           `SELECT
-             SUM(CASE WHEN paid = 1 THEN 9.99 ELSE 0 END) AS totalRevenue,
+             SUM(CASE WHEN paid = 1 THEN 14.99 ELSE 0 END) AS totalRevenue,
              COUNT(*) AS totalResumes,
              SUM(paid) AS totalPaid
            FROM riq_resumes`

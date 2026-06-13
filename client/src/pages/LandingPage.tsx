@@ -138,7 +138,7 @@ const HOW_IT_WORKS = [
 const PRICING = [
   {
     name: "Starter",
-    price: "$9.99",
+    price: "$14.99",
     description: "One-time, no subscription",
     features: [
       "Full ATS-optimized transformation",
@@ -182,6 +182,89 @@ const PRICING = [
     highlighted: false,
   },
 ];
+
+const FAQ_ITEMS = [
+  {
+    q: "Will this actually work for my resume?",
+    a: "Yes — if you have real work experience, ResumeIQ will find it and frame it correctly. The tool doesn't invent experience. It takes what you have and rewrites it in the language that gets callbacks. The first transformation is completely free so you can see the result before paying anything.",
+  },
+  {
+    q: "Will ResumeIQ invent or fabricate things I didn't do?",
+    a: "No. ResumeIQ is explicitly trained never to invent companies, titles, dates, certifications, or metrics that don't appear in your original resume. It elevates what you have — stronger language, better framing, ATS-safe structure — but will never add a job you didn't have or a number that doesn't exist.",
+  },
+  {
+    q: "What does it actually output?",
+    a: "A clean, single-column Word document (.docx) in Calibri font — ATS-safe, no tables, no graphics, no columns. It includes a rewritten summary, elevated experience bullets, skills section, education, and an optional 'Working With Me' behavioral section. You see a before/after ATS score showing the improvement.",
+  },
+  {
+    q: "How long does it take?",
+    a: "About 60 seconds from upload to preview. Upload your resume, the AI transforms it, you review and edit any field, then download the Word document.",
+  },
+  {
+    q: "What if I don't have impressive metrics or big numbers?",
+    a: "You don't need them. Strong bullets can be specific without being numeric. Every job has proxy metrics — scope, volume, geography, team size, time saved, error rate reduced. ResumeIQ knows how to find and frame these. It never invents numbers that don't exist.",
+  },
+  {
+    q: "How is this different from ChatGPT for resume writing?",
+    a: "ChatGPT writes resumes from scratch. ResumeIQ transforms your existing resume — keeping every real fact accurate while elevating the language, fixing ATS structure, and surfacing wins you undersold. It also scores your resume before and after on 4 ATS dimensions and outputs a properly formatted Word document ready to upload to any job portal.",
+  },
+  {
+    q: "Is my resume data private?",
+    a: "Yes. Your resume is processed to generate your document and stored in your account history for re-download. Your data is never sold, shared with employers, or used to train AI models.",
+  },
+  {
+    q: "What is the 'Working With Me' section?",
+    a: "A professional behavioral summary that tells hiring managers how you work — your communication style, decision-making, how you perform under pressure, and what brings out your best. Synthesized from DISC, MBTI, Predictive Index, or TKI assessment results. It's the only resume section that answers the question every hiring manager has but never gets. No other resume tool offers it.",
+  },
+];
+
+// Inject FAQ schema into <head> for AEO
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": FAQ_ITEMS.map(item => ({
+    "@type": "Question",
+    "name": item.q,
+    "acceptedAnswer": { "@type": "Answer", "text": item.a },
+  })),
+};
+
+function FAQAccordion() {
+  const [open, setOpen] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Inject FAQ schema
+    const existing = document.getElementById("faq-schema");
+    if (!existing) {
+      const script = document.createElement("script");
+      script.id = "faq-schema";
+      script.type = "application/ld+json";
+      script.textContent = JSON.stringify(faqSchema);
+      document.head.appendChild(script);
+    }
+    return () => { document.getElementById("faq-schema")?.remove(); };
+  }, []);
+
+  return (
+    <div>
+      {FAQ_ITEMS.map((item, i) => (
+        <div key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <button onClick={() => setOpen(open === i ? null : i)}
+            style={{ width: "100%", background: "none", border: "none", textAlign: "left", padding: "20px 0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", fontFamily: "inherit" }}>
+            <span style={{ fontSize: "16px", fontWeight: 500, color: "white", lineHeight: 1.4, flex: 1 }}>{item.q}</span>
+            <span style={{ color: "#60a5fa", fontSize: "20px", flexShrink: 0, transition: "transform 0.2s", transform: open === i ? "rotate(45deg)" : "none", marginTop: "2px" }}>+</span>
+          </button>
+          {open === i && (
+            <div style={{ paddingBottom: "20px", fontSize: "15px", color: "#94a3b8", lineHeight: 1.75 }}>{item.a}</div>
+          )}
+        </div>
+      ))}
+      <div style={{ marginTop: "32px", textAlign: "center" }}>
+        <a href="/faq" style={{ fontSize: "13px", color: "#60a5fa", textDecoration: "none" }}>View all 23 questions →</a>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [, navigate] = useLocation();
@@ -332,7 +415,7 @@ export default function LandingPage() {
             </button>
           </div>
           <p style={{ color: "#475569", fontSize: "12px", marginTop: "16px" }}>
-            First resume free · $9.99 after that · No credit card required
+            First resume free · $14.99 after that · No credit card required
           </p>
           {/* Scroll nudge */}
           <div style={{ marginTop: "48px", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", opacity: 0.4 }}>
@@ -536,6 +619,17 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section style={{ padding: "80px 40px", background: "rgba(0,0,0,0.3)" }}>
+        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+          <p style={{ fontSize: "11px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, textAlign: "center", marginBottom: "12px" }}>FAQ</p>
+          <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 30px)", fontWeight: 800, textAlign: "center", marginBottom: "48px", lineHeight: 1.2 }}>
+            Questions worth answering<br/><span style={{ color: "#60a5fa" }}>before you upload.</span>
+          </h2>
+          <FAQAccordion />
+        </div>
+      </section>
+
       {/* FINAL CTA */}
       <section style={{ padding: "100px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
         <div className="mesh" style={{ background: "rgba(37,99,235,0.12)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
@@ -549,7 +643,7 @@ export default function LandingPage() {
           <button className="cta-btn" onClick={() => navigate("/app")} style={{ fontSize: "17px", padding: "20px 52px" }}>
             Try It Free →
           </button>
-          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>First resume free · $9.99 after that · No credit card required</p>
+          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>First resume free · $14.99 after that · No credit card required</p>
         </div>
       </section>
 

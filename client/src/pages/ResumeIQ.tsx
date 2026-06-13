@@ -2356,7 +2356,7 @@ export default function ResumeIQ() {
                     style={{ border: `2px solid ${selectedPlan === "starter" ? "#2563eb" : "rgba(255,255,255,0.1)"}`, borderRadius: "12px", padding: "16px", cursor: "pointer", background: selectedPlan === "starter" ? "rgba(37,99,235,0.1)" : "transparent", transition: "all 0.2s" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                       <span style={{ color: "white", fontWeight: 700, fontSize: "14px" }}>Starter</span>
-                      <span style={{ color: selectedPlan === "starter" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$9.99</span>
+                      <span style={{ color: selectedPlan === "starter" ? "#60a5fa" : "#94a3b8", fontWeight: 700, fontSize: "15px" }}>$14.99</span>
                     </div>
                     <p style={{ color: "#64748b", fontSize: "12px", margin: 0, lineHeight: 1.5 }}>3 transformations — use them anytime, no expiry</p>
                   </div>
@@ -2447,7 +2447,7 @@ export default function ResumeIQ() {
                   : includeCareerLaunch ? "$79.99"
                   : includePersonality
                     ? (selectedPlan === "starter" ? "$17.98" : "$22.98")
-                    : (selectedPlan === "starter" ? "$9.99" : "$14.99")}
+                    : (selectedPlan === "starter" ? "$14.99" : "$14.99")}
               </span>
             </div>
 

@@ -15,7 +15,7 @@ const STRIPE_SECRET = isTestMode
   ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
   : process.env.STRIPE_SECRET_KEY;
 
-const STRIPE_PRICE       = 999;   // $9.99 — starter (3 transformations)
+const STRIPE_PRICE       = 1499;  // $14.99 — starter (3 transformations)
 const STRIPE_MONTHLY     = 1499;  // $14.99 — 30 days unlimited (monthly)
 const STRIPE_PERSONALITY = 799;   // $7.99 Working With Me add-on
 const STRIPE_BUNDLE      = 1999;  // $19.99 resume + Working With Me
