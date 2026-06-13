@@ -1638,7 +1638,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         if (session) await updateSessionPaid(resumeiqSession);
         if (tokenUser) {
           await upgradeToMonthly(tokenUser.userId, 30);
-          notifyPurchase(tokenUser.email, "", "Monthly — 30 days unlimited", "$14.99").catch(() => {});
+          notifyPurchase(tokenUser.email, "", "Monthly — 30 days unlimited", "$19.99").catch(() => {});
         }
 
       } else if (type === "personality") {
