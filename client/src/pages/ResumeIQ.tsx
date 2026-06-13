@@ -316,6 +316,7 @@ export default function ResumeIQ() {
   const [confirmEdits, setConfirmEdits] = useState<Record<string, string>>({});
   const [verifyBanner, setVerifyBanner] = useState<"success"|"pending"|null>(null);
   const [resendSent, setResendSent] = useState(false);
+  const [emailTypoWarning, setEmailTypoWarning] = useState<string|null>(null);
 
   // Handle ?verified= query param on page load
   useEffect(() => {
@@ -562,6 +563,7 @@ export default function ResumeIQ() {
         data._linkedinSignedIn = true;
       }
       setParsedData(data);
+      if (data.emailTypoWarning) setEmailTypoWarning(data.emailTypoWarning);
       trackEvent('resume_uploaded', { fileName: file.name, sessionId: data.sessionId });
       setSessionId(data.sessionId);
       setIsFree(data.isFree);
@@ -2160,7 +2162,25 @@ export default function ResumeIQ() {
                   <EditField label="Full Name" value={parsedData.name || ""} onSave={v => updateField("name", v)} />
                   <EditField label="Job Title" value={parsedData.title || ""} onSave={v => updateField("title", v)} />
                   <EditField label="Location" value={parsedData.location || ""} onSave={v => updateField("location", v)} />
-                  <EditField label="Email" value={parsedData.email || ""} onSave={v => updateField("email", v)} />
+                  <EditField label="Email" value={parsedData.email || ""} onSave={v => { updateField("email", v); setEmailTypoWarning(null); }} />
+                  {emailTypoWarning && (
+                    <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 12px", marginTop: "4px" }}>
+                      <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 600, margin: "0 0 4px" }}>⚠️ Possible email typo detected</p>
+                      <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0 0 8px" }}>
+                        Your resume has <strong style={{ color: "white" }}>{parsedData.email}</strong> — did you mean <strong style={{ color: "#34d399" }}>{emailTypoWarning}</strong>?
+                      </p>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button onClick={() => { updateField("email", emailTypoWarning!); setEmailTypoWarning(null); }}
+                          style={{ fontSize: "12px", padding: "5px 12px", background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)", borderRadius: "6px", cursor: "pointer", fontWeight: 600 }}>
+                          Yes, fix it
+                        </button>
+                        <button onClick={() => setEmailTypoWarning(null)}
+                          style={{ fontSize: "12px", padding: "5px 12px", background: "transparent", color: "#64748b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", cursor: "pointer" }}>
+                          No, keep original
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <EditField label="Phone" value={parsedData.phone || ""} onSave={v => updateField("phone", v)} />
                   <EditField label="LinkedIn" value={parsedData.linkedin || ""} onSave={v => updateField("linkedin", v)} />
                   {parsedData._linkedinSignedIn && !parsedData.linkedin && (

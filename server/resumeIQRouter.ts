@@ -340,6 +340,23 @@ WHAT YOU MUST NEVER DO:
 - If a role has ZERO bullets in the original, return [] — do not invent responsibilities
 - NEVER reference a target job title, target company, or target role in the summary unless it is explicitly stated in the resume. Do not write "making him a valuable asset for a [X] role" if that role is not in the resume.
 
+TYPO AND SPELLING CORRECTIONS (fix these automatically — they are always wrong):
+- HIPPA → HIPAA (always a misspelling — the correct acronym is HIPAA)
+- WASP → OWASP (security context — the correct name is OWASP)
+- Practioner → Practitioner
+- Managment → Management
+- Developement → Development
+- Administation → Administration
+- Enginering → Engineering
+- Fix any other obvious single-character typos in company names, certification names, or skills
+- DO NOT change the candidate's email address even if it appears to be a typo — flag it in emailTypoWarning instead
+
+EMAIL VALIDATION:
+- Check if the email field appears to have a typo (e.g. "gamil.com" instead of "gmail.com", "yahooo.com", "hotmal.com")
+- Common provider typos: gamil→gmail, yahooo→yahoo, hotmal→hotmail, outllook→outlook, gmaill→gmail
+- If you detect a likely typo, set "emailTypoWarning" to the likely correct email
+- If the email looks correct, set "emailTypoWarning" to null
+
 THE SUMMARY RULES:
 - Open with who this person IS professionally — their identity, not their last title
 - Lead with their most impressive credential, tenure, or achievement
@@ -383,7 +400,8 @@ CRITICAL EXTRACTION RULES:
 
   const jsonSchema = `{
   "name": "Extract the actual person's full name from the resume",
-  "email": "actual email address from resume",
+  "email": "actual email address from resume — do NOT correct typos here, flag them in emailTypoWarning",
+  "emailTypoWarning": "null OR the likely correct email if a provider typo is detected (e.g. 'sapkota@gmail.com' if original was 'sapkota@gamil.com')",
   "phone": "actual phone number from resume",
   "location": "actual city and state from resume",
   "linkedin": "actual linkedin URL if present, else empty string",
@@ -527,25 +545,21 @@ async function applyScoreFlags(parsedData: any, scoreFlags: any): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return parsedData;
 
-  // Only run if there are dimensions scoring below 7
-  const weakDimensions = Object.entries(scoreFlags)
+  // Always run enhancement — identify weak dimensions for targeted fixes,
+  // but run the full narrative enhancement pass regardless of score
+  const weakDimensions = scoreFlags ? Object.entries(scoreFlags)
     .filter(([, dim]: [string, any]) => dim.score < 7)
     .map(([key, dim]: [string, any]) => ({
       dimension: key,
       score: (dim as any).score,
       flag: (dim as any).flag,
-    }));
+    })) : [];
 
-  if (!weakDimensions.length) {
-    console.log("[ResumeIQ] All dimensions scored 7+ — no score-flag enhancement needed");
-    return parsedData;
-  }
+  const flagInstructions = weakDimensions.length > 0
+    ? weakDimensions.map(d => `- ${d.dimension} (score ${d.score}/10): ${d.flag}`).join("\n")
+    : "- All dimensions scored well — focus on elevating bullet language, narrative cohesion, and ensuring every bullet leads with impact";
 
-  const flagInstructions = weakDimensions
-    .map(d => `- ${d.dimension} (score ${d.score}/10): ${d.flag}`)
-    .join("\n");
-
-  console.log(`[ResumeIQ] Applying ${weakDimensions.length} score flags to enhancement pass`);
+  console.log(`[ResumeIQ] Running enhancement pass (${weakDimensions.length} weak dimensions)`);
 
   const experienceSummary = (parsedData.experience || []).map((e: any) => ({
     title: e.title,
@@ -1708,10 +1722,8 @@ flag = a specific GPT instruction to fix this dimension during transformation`
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
 
-      // Apply score flag enhancement pass if flags were provided
-      const enhancedData = scoreFlags
-        ? await applyScoreFlags(data, scoreFlags)
-        : data;
+      // Always run enhancement pass — improves narrative, fixes typos, elevates bullets
+      const enhancedData = await applyScoreFlags(data, scoreFlags || null);
 
       const buffer = await generateDocx(enhancedData, scoreFlags);
       const docxBase64 = buffer.toString("base64");
