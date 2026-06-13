@@ -1602,10 +1602,11 @@ flag = a specific GPT instruction to fix this dimension during transformation`
                 const conn = await getDb();
                 if (conn) {
                   await conn.execute(
-                    `UPDATE riq_resumes SET postScore = ? WHERE id = ?`,
-                    [postScoreData.overall, resumeId]
+                    `UPDATE riq_resumes SET postScore = ?, scoreDimensions = ? WHERE id = ?`,
+                    [postScoreData.overall, JSON.stringify(postScoreData.dimensions || {}), resumeId]
                   );
                   await conn.end();
+                  console.log(`[ResumeIQ] postScore saved: ${postScoreData.overall} for resume ${resumeId}`);
                 }
               } catch { /* non-fatal */ }
             }
