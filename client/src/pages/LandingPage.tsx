@@ -181,6 +181,21 @@ const PRICING = [
     cta: "Unlock Working With Me",
     highlighted: false,
   },
+  {
+    name: "Monthly Unlimited",
+    price: "$19.99",
+    description: "Per month · unlimited transforms",
+    features: [
+      "Unlimited resume transformations for 30 days",
+      "Targeting multiple roles or industries",
+      "Every application gets a fresh, tailored resume",
+      "Working With Me add-on available",
+      "Cancel anytime — no auto-renew",
+    ],
+    note: null,
+    cta: "Get Monthly →",
+    highlighted: false,
+  },
 ];
 
 const FAQ_ITEMS = [
@@ -415,7 +430,7 @@ export default function LandingPage() {
             </button>
           </div>
           <p style={{ color: "#475569", fontSize: "12px", marginTop: "16px" }}>
-            First resume free · $14.99 after that · No credit card required
+            First resume free · from $14.99 · No credit card required
           </p>
 
           {/* ATS trust strip */}
@@ -550,9 +565,9 @@ export default function LandingPage() {
           <div style={{ textAlign: "center", marginBottom: "52px" }}>
             <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px" }}>Pricing</p>
             <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, marginBottom: "12px" }}>
-              One-time. No subscription. Yours forever.
+              Simple, transparent pricing.
             </h2>
-            <p style={{ color: "#64748b", fontSize: "15px" }}>Pay once. Re-download anytime from your account.</p>
+            <p style={{ color: "#64748b", fontSize: "15px" }}>One-time options or monthly unlimited — no auto-renew, no tricks. First resume always free.</p>
             <p style={{ color: "#475569", fontSize: "13px", marginTop: "10px" }}>
               💡 The "Working With Me" add-on requires a personality assessment (DISC, Myers-Briggs, Predictive Index, TKI, 360 Feedback, or similar). Don't have one? The resume-only option is all you need.
             </p>
@@ -672,7 +687,7 @@ export default function LandingPage() {
           <button className="cta-btn" onClick={() => navigate("/app")} style={{ fontSize: "17px", padding: "20px 52px" }}>
             Try It Free →
           </button>
-          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>First resume free · $14.99 after that · No credit card required</p>
+          <p style={{ color: "#1e3a5f", fontSize: "12px", marginTop: "16px" }}>First resume free · from $14.99 · No credit card required</p>
         </div>
       </section>
 
