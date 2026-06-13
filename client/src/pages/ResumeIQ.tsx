@@ -1279,7 +1279,7 @@ export default function ResumeIQ() {
               {file ? (
                 <div><FileText size={44} color="#60a5fa" style={{ margin: "0 auto 10px" }} /><p style={{ color: "white", fontWeight: 600, fontSize: "16px", marginBottom: "3px" }}>{file.name}</p><p style={{ color: "#94a3b8", fontSize: "12px" }}>{(file.size / 1024).toFixed(0)} KB — Ready</p></div>
               ) : (
-                <div><Upload size={44} color="#64748b" style={{ margin: "0 auto 10px" }} /><p style={{ color: "white", fontWeight: 600, fontSize: "15px", marginBottom: "3px" }}>Drop your resume here or click to browse</p><p style={{ color: "#64748b", fontSize: "12px" }}>PDF, DOCX, or DOC</p></div>
+                <div><Upload size={44} color="#64748b" style={{ margin: "0 auto 10px" }} /><p style={{ color: "white", fontWeight: 600, fontSize: "15px", marginBottom: "3px" }}>Drop your resume here or click to browse</p><p style={{ color: "#64748b", fontSize: "12px" }}>PDF, DOCX, or DOC</p><p style={{ color: "#60a5fa", fontSize: "11px", marginTop: "6px" }}>💡 Word (.docx) gives the best results — PDF parsing can miss dates and formatting</p></div>
               )}
             </div>
             {error && <p style={{ color: "#f87171", textAlign: "center", marginTop: "10px", fontSize: "13px" }}>{error}</p>}
