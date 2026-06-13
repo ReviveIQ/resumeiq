@@ -346,6 +346,9 @@ export default function LandingPage() {
           .step-card { padding: 20px !important; }
           .pricing-card { padding: 24px !important; }
           .pricing-grid-top { grid-template-columns: 1fr !important; }
+          section { padding-left: 20px !important; padding-right: 20px !important; }
+          .hero-btns { flex-direction: column !important; align-items: stretch !important; }
+          .hero-btns button, .hero-btns a { text-align: center !important; }
           .grid-responsive { grid-template-columns: 1fr !important; }
           .grid-responsive-2 { grid-template-columns: 1fr 1fr !important; }
           .hide-mobile { display: none !important; }
@@ -574,7 +577,7 @@ export default function LandingPage() {
             </p>
           </div>
           {/* Top 3 plans — Starter, Bundle, WWM */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "20px" }} className="pricing-grid-top">
             {PRICING.slice(0, 3).map((plan, i) => (
               <div key={i} className={`pricing-card${plan.highlighted ? " featured" : ""}`} style={{ position: "relative" }}>
                 {plan.highlighted && (
@@ -608,7 +611,7 @@ export default function LandingPage() {
           </div>
 
           {/* Monthly — full-width horizontal banner */}
-          <div style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "16px", padding: "28px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "32px", flexWrap: "wrap" }}>
+          <div className="grid-responsive" style={{ background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "16px", padding: "28px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "32px", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: "200px" }}>
               <p style={{ color: "#60a5fa", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px" }}>Monthly Unlimited</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "4px" }}>
