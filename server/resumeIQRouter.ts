@@ -391,22 +391,29 @@ MISSING DATES RULE:
 - Example: "missingDates": ["Process Improvement Supervisor at Valley Queen Cheese"]
 - This triggers the interview flow to ask for those dates specifically
 
-BULLET EXTRACTION RULE — CRITICAL:
-- Extract EVERY bullet point from every role. Do NOT truncate, summarize, or stop at 3-4 bullets.
-- If a role has 7 bullets in the original resume, return all 7 in the JSON.
-- Never collapse two bullets into one or drop the "less important" ones — the user wrote them for a reason.
-- Then ELEVATE each bullet — stronger verb, better framing — but preserve all content.
+BULLET CURATION RULE — CRITICAL:
+- For each role, READ ALL content including sub-sections, sub-headers, and nested bullet groups before selecting bullets
+- Many resumes organize one role into sub-sections (e.g. "Performance Highlights", "Systems & Process", "Leadership"). Read ALL of them before deciding which bullets to include
+- Then SELECT the 4-6 strongest bullets across all sub-sections based on:
+  1. Specificity of metric — exact numbers ($1M AUD, 94%, 800+ work orders) beat vague claims
+  2. Scale of impact — larger scope wins (13 locations, 55+ stakeholders, $15M portfolio)
+  3. Uniqueness — bullets that only THIS person could have written, not generic role descriptions
+  4. Outcome clarity — what changed as a result? Revenue, time, cost, scale, compliance?
+- Do NOT just take the first 3-4 bullets and stop. The best bullet might be in the 4th sub-section.
+- Do NOT include all bullets just because they exist. A 20-bullet role should become 4-6 curated highlights.
+- For entry-level candidates with fewer total bullets: keep all bullets if the role has 3 or fewer, curate to 4 max if 4+
+- ELEVATE the selected bullets — stronger verb, tighter language — but never change the facts or numbers
 
 PROJECTS SECTION:
 - If the resume has a Projects section, extract ALL projects into the "projects" array
-- For each project: name, technologies used (tech field), and all bullet points
+- For each project: name, technologies used (tech field), and the 2-3 strongest bullets
 - Student projects, side projects, freelance work, and academic projects all count
 - Include metrics if present (accuracy, scale, users, performance improvement)
 - Do NOT skip this section — it is often the strongest part of an entry-level resume
 
 LEADERSHIP AND EXTRACURRICULAR:
 - If the resume has Leadership Experience, Extracurricular Activities, Volunteer Work, or similar sections, extract them into the "leadership" array
-- Include: title, organization, dates, and all bullet points
+- Include: title, organization, dates, and the 1-3 strongest bullets per role
 - Student government, club leadership, event coordination, volunteer roles all belong here
 - These sections significantly differentiate entry-level and early-career candidates
 
@@ -443,7 +450,7 @@ CRITICAL EXTRACTION RULES:
       "endDate": "MM/YYYY or Present — empty string if not found",
       "description": "one sentence: what this company does, market, and stage",
       "bullets": [
-        "EXTRACT ALL BULLETS — do not truncate or summarize. Every bullet from the original role must appear here. Elevate language but preserve all content."
+        "4-6 curated, elevated bullets — selected from ALL sub-sections of this role for maximum impact. Strong past-tense verb + specific scope + quantified outcome. Never generic."
       ],
       "achievements": ["any awards, recognitions, President's Club, or notable wins mentioned"]
     }
