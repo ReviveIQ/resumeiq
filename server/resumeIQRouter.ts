@@ -1394,6 +1394,44 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
     } finally { await conn.end(); }
   });
 
+  // ── ADMIN: Get presigned R2 download URL for original resume ─────────────
+  app.get("/api/resumeiq/admin/original/:sessionId", async (req: Request, res: Response) => {
+    const { secret } = req.query;
+    if (secret !== process.env.JWT_SECRET) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const { sessionId } = req.params;
+    try {
+      const session = await getSession(sessionId);
+      if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+
+      const key = session._originalKey;
+      if (!key) { res.status(404).json({ error: "No original file stored for this session" }); return; }
+
+      const accessKey = process.env.AWS_ACCESS_KEY_ID;
+      const secretKey = process.env.AWS_SECRET_ACCESS_KEY;
+      const endpoint = process.env.AWS_S3_ENDPOINT;
+      const bucket = process.env.AWS_S3_BUCKET || "mycareeriq";
+
+      if (!accessKey || !secretKey || !endpoint) {
+        res.status(500).json({ error: "R2 not configured" }); return;
+      }
+
+      // Generate presigned URL (15 min expiry)
+      const crypto = await import("crypto");
+      const expires = Math.floor(Date.now() / 1000) + 900;
+      const host = endpoint.replace("https://", "");
+      const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+      const stringToSign = `GET\n\n\n${expires}\n/${bucket}/${encodedKey}`;
+      const signature = crypto.default.createHmac("sha1", secretKey).update(stringToSign).digest("base64");
+      const url = `${endpoint}/${bucket}/${encodedKey}?AWSAccessKeyId=${accessKey}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`;
+
+      const fileName = key.split("/").pop() || "resume.pdf";
+      res.json({ url, fileName, key });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── TEMP DEBUG: reparse from existing parsedData ─────────────────────────
   // Remove after QC complete
   app.post("/api/resumeiq/debug-reparse", async (req: Request, res: Response) => {
