@@ -58,7 +58,7 @@ const INDUSTRY_LABELS: Record<string, string> = {
   finance: "Finance & Accounting",
 };
 
-type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "linkedin_confirm" | "preview" | "checkout" | "done" | "history" | "login" | "register";
+type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "linkedin_confirm" | "verify_pending" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",               question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -327,7 +327,27 @@ export default function ResumeIQ() {
       // Refresh user to get emailVerified=true
       const t = localStorage.getItem("riq_token");
       if (t) fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${t}` } })
-        .then(r => r.json()).then(d => { if (d.id) setUser(d); }).catch(() => {});
+        .then(r => r.json())
+        .then(d => {
+          if (d.id) {
+            setUser(d);
+            // If they had a file loaded before verifying, auto-trigger transform
+            setView(prev => {
+              if (prev === "verify_pending") {
+                const currentFile = file;
+                if (currentFile) {
+                  setTimeout(() => {
+                    setView("analyzing");
+                    handleAnalyzeWithToken(t);
+                  }, 500);
+                  return "verify_pending"; // will transition via setTimeout
+                }
+                return "upload";
+              }
+              return prev;
+            });
+          }
+        }).catch(() => {});
     }
   }, []);
   const [testimonials, setTestimonials] = useState<any[]>([]);
@@ -642,6 +662,12 @@ export default function ResumeIQ() {
     // Require account before transformation
     if (!user) {
       setView("register");
+      return;
+    }
+
+    // Require email verification before transformation
+    if (!user.emailVerified) {
+      setView("verify_pending");
       return;
     }
 
@@ -974,13 +1000,23 @@ export default function ResumeIQ() {
       if (!res.ok) throw new Error(data.error || "Auth failed");
       setToken(data.token); localStorage.setItem("riq_token", data.token);
       setUser(data.user);
-      // If they had a file ready, proceed straight to analysis
-      if (file) {
-        setView("analyzing");
-        // slight delay so token/user state settles before the fetch fires
-        setTimeout(() => handleAnalyzeWithToken(data.token), 100);
+      if (mode === "register") {
+        // New registrations must verify email before transforming
+        // File stays in state — will auto-trigger after verification
+        setView("verify_pending");
       } else {
-        setView("upload");
+        // Login — check if already verified
+        if (data.user?.emailVerified) {
+          if (file) {
+            setView("analyzing");
+            setTimeout(() => handleAnalyzeWithToken(data.token), 100);
+          } else {
+            setView("upload");
+          }
+        } else {
+          // Logged in but not verified — show pending screen
+          setView("verify_pending");
+        }
       }
     } catch (err: any) { setError(err.message); }
     finally { setAuthLoading(false); }
@@ -1002,6 +1038,7 @@ export default function ResumeIQ() {
     <div style={S}>
       <style>{`
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
         input,textarea{color-scheme:dark;}
         @media (max-width: 640px) {
           .riq-preview-grid { grid-template-columns: 1fr !important; }
@@ -1858,6 +1895,58 @@ export default function ResumeIQ() {
             )}
           </div>
         )}
+        {/* ── VERIFY PENDING ── */}
+        {view === "verify_pending" && (
+          <div style={{ maxWidth: "480px", margin: "0 auto", textAlign: "center" }}>
+            <div style={{ fontSize: "52px", marginBottom: "20px" }}>📧</div>
+            <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "24px", color: "white", marginBottom: "12px" }}>
+              Check your inbox
+            </h2>
+            <p style={{ color: "#94a3b8", fontSize: "15px", lineHeight: 1.7, marginBottom: "8px" }}>
+              We sent a verification link to <strong style={{ color: "white" }}>{user?.email}</strong>.
+            </p>
+            <p style={{ color: "#94a3b8", fontSize: "15px", lineHeight: 1.7, marginBottom: "32px" }}>
+              Click the link in the email to verify your account {file ? "and we'll start transforming your resume automatically." : "and continue."}
+            </p>
+
+            {file && (
+              <div style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ fontSize: "20px" }}>📄</span>
+                <div style={{ textAlign: "left" }}>
+                  <p style={{ color: "white", fontSize: "13px", fontWeight: 600, margin: 0 }}>{file.name}</p>
+                  <p style={{ color: "#64748b", fontSize: "12px", margin: "2px 0 0" }}>Ready to transform once verified</p>
+                </div>
+                <div style={{ marginLeft: "auto", width: "10px", height: "10px", background: "#2563eb", borderRadius: "50%", boxShadow: "0 0 8px #2563eb", animation: "pulse 2s infinite" }} />
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                onClick={async () => {
+                  if (resendSent) return;
+                  await fetch("/api/resumeiq/auth/resend-verification", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  setResendSent(true);
+                }}
+                style={{ background: resendSent ? "rgba(255,255,255,0.04)" : "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: "9px", padding: "12px", color: resendSent ? "#64748b" : "#60a5fa", fontSize: "14px", fontWeight: 600, cursor: resendSent ? "default" : "pointer" }}
+              >
+                {resendSent ? "Verification email sent ✓" : "Resend verification email"}
+              </button>
+              <button onClick={() => { setView("upload"); setFile(null); }}
+                style={{ background: "transparent", border: "none", color: "#475569", fontSize: "13px", cursor: "pointer", padding: "8px" }}>
+                Use a different email instead
+              </button>
+            </div>
+
+            <p style={{ color: "#334155", fontSize: "12px", marginTop: "24px", lineHeight: 1.6 }}>
+              Can't find it? Check your spam folder. The email comes from bryan@reviveiqi.com.
+            </p>
+          </div>
+        )}
+
+        {/* ── INTERVIEW ── */}
         {view === "interview" && currentInterviewQ && (
           <div style={{ maxWidth: "560px", margin: "0 auto" }}>
 
