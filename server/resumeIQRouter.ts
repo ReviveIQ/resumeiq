@@ -1396,16 +1396,20 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
 
   // ── ADMIN: Get presigned R2 download URL for original resume ─────────────
   app.get("/api/resumeiq/admin/original/:sessionId", async (req: Request, res: Response) => {
-    const { secret } = req.query;
+    const { secret, key: directKey } = req.query;
     if (secret !== process.env.JWT_SECRET) { res.status(403).json({ error: "Forbidden" }); return; }
 
     const { sessionId } = req.params;
-    try {
-      const session = await getSession(sessionId);
-      if (!session) { res.status(404).json({ error: "Session not found" }); return; }
 
-      const key = session._originalKey;
-      if (!key) { res.status(404).json({ error: "No original file stored for this session" }); return; }
+    try {
+      // Try session lookup first, fall back to direct key param
+      let key = directKey as string | undefined;
+      if (!key) {
+        const session = await getSession(sessionId);
+        key = session?._originalKey;
+      }
+
+      if (!key) { res.status(404).json({ error: "No original file found — session may have expired. Pass ?key=resumeiq/userId/sessionId/filename.pdf" }); return; }
 
       const accessKey = process.env.AWS_ACCESS_KEY_ID;
       const secretKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -1420,12 +1424,12 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       const crypto = await import("crypto");
       const expires = Math.floor(Date.now() / 1000) + 900;
       const host = endpoint.replace("https://", "");
-      const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+      const encodedKey = (key as string).split("/").map(encodeURIComponent).join("/");
       const stringToSign = `GET\n\n\n${expires}\n/${bucket}/${encodedKey}`;
       const signature = crypto.default.createHmac("sha1", secretKey).update(stringToSign).digest("base64");
       const url = `${endpoint}/${bucket}/${encodedKey}?AWSAccessKeyId=${accessKey}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`;
 
-      const fileName = key.split("/").pop() || "resume.pdf";
+      const fileName = (key as string).split("/").pop() || "resume.pdf";
       res.json({ url, fileName, key });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
