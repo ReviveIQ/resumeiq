@@ -391,6 +391,31 @@ MISSING DATES RULE:
 - Example: "missingDates": ["Process Improvement Supervisor at Valley Queen Cheese"]
 - This triggers the interview flow to ask for those dates specifically
 
+BULLET EXTRACTION RULE — CRITICAL:
+- Extract EVERY bullet point from every role. Do NOT truncate, summarize, or stop at 3-4 bullets.
+- If a role has 7 bullets in the original resume, return all 7 in the JSON.
+- Never collapse two bullets into one or drop the "less important" ones — the user wrote them for a reason.
+- Then ELEVATE each bullet — stronger verb, better framing — but preserve all content.
+
+PROJECTS SECTION:
+- If the resume has a Projects section, extract ALL projects into the "projects" array
+- For each project: name, technologies used (tech field), and all bullet points
+- Student projects, side projects, freelance work, and academic projects all count
+- Include metrics if present (accuracy, scale, users, performance improvement)
+- Do NOT skip this section — it is often the strongest part of an entry-level resume
+
+LEADERSHIP AND EXTRACURRICULAR:
+- If the resume has Leadership Experience, Extracurricular Activities, Volunteer Work, or similar sections, extract them into the "leadership" array
+- Include: title, organization, dates, and all bullet points
+- Student government, club leadership, event coordination, volunteer roles all belong here
+- These sections significantly differentiate entry-level and early-career candidates
+
+GPA AND GRADES:
+- For each education entry, extract GPA, CGPA, percentage, or grade exactly as written
+- Examples: "3.8/4.0", "7.77/10", "88.20%", "First Class Honours", "Distinction"
+- If multiple formats appear (CGPA + percentage), use the format that appears first
+- If no grade information is present, return empty string for gpa field
+
 CRITICAL EXTRACTION RULES:
 - Extract the person's FULL legal name including middle name if present
 - For partial dates with only a year (e.g. "2019"), return "2019" for startDate and "" for endDate
@@ -418,9 +443,25 @@ CRITICAL EXTRACTION RULES:
       "endDate": "MM/YYYY or Present — empty string if not found",
       "description": "one sentence: what this company does, market, and stage",
       "bullets": [
-        "ELEVATED bullet: strong past-tense action verb + specific scope + outcome. No soft attribute bullets. Every bullet answers: what, scope, result."
+        "EXTRACT ALL BULLETS — do not truncate or summarize. Every bullet from the original role must appear here. Elevate language but preserve all content."
       ],
       "achievements": ["any awards, recognitions, President's Club, or notable wins mentioned"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "project name exactly as written",
+      "tech": "technologies or tools used (e.g. Python, SQL, Power BI)",
+      "bullets": ["what was built, what data/scale, what outcome or metric — extract ALL project bullets"]
+    }
+  ],
+  "leadership": [
+    {
+      "title": "role or position title",
+      "organization": "club, university, organization name",
+      "startDate": "MM/YYYY or year if available",
+      "endDate": "MM/YYYY or year or Present",
+      "bullets": ["what they did, scope, outcome — extract ALL bullets"]
     }
   ],
   "skills": {
@@ -429,7 +470,13 @@ CRITICAL EXTRACTION RULES:
     ]
   },
   "education": [
-    { "degree": "actual degree name only — not school or location", "school": "actual school name only", "location": "city, state of school", "year": "4-digit graduation year" }
+    {
+      "degree": "actual degree name only — not school or location",
+      "school": "actual school name only",
+      "location": "city, state of school",
+      "year": "4-digit graduation year",
+      "gpa": "GPA, CGPA, or percentage score exactly as written — e.g. '3.8/4.0' or '7.77/10' or '88.20%' — empty string if not present"
+    }
   ],
   "certifications": ["full certification text exactly as written including expiry dates"],
   "seniorityLevel": "entry or mid or senior or executive",
@@ -888,8 +935,40 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
               new TextRun({ text: "  —  ", font: "Calibri", size: 20, color: LGRAY }),
               new TextRun({ text: `${edu.school || ""}${edu.location ? ", " + edu.location : ""}`, font: "Calibri", size: 20, color: ACCENT }),
               ...(edu.year ? [new TextRun({ text: `  ${edu.year}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
+              ...(edu.gpa ? [new TextRun({ text: `   |   GPA: ${edu.gpa}`, font: "Calibri", size: 18, color: GRAY })] : []),
             ]
           })),
+        ] : []),
+
+        // ── PROJECTS ───────────────────────────────────────────────────────
+        ...(parsedData.projects?.length ? [
+          sectionHeader("Projects"),
+          ...(parsedData.projects || []).flatMap((proj: any) => [
+            new Paragraph({
+              spacing: { before: 120, after: 20 },
+              children: [
+                new TextRun({ text: proj.name || "", font: "Calibri", size: 20, bold: true, color: NAVY }),
+                ...(proj.tech ? [new TextRun({ text: `  |  ${proj.tech}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
+              ]
+            }),
+            ...(proj.bullets || []).map((b: string) => bul(b)),
+          ]),
+        ] : []),
+
+        // ── LEADERSHIP & EXTRACURRICULAR ──────────────────────────────────
+        ...(parsedData.leadership?.length ? [
+          sectionHeader("Leadership Experience"),
+          ...(parsedData.leadership || []).flatMap((role: any) => [
+            new Paragraph({
+              spacing: { before: 140, after: 20 },
+              children: [
+                new TextRun({ text: role.title || "", font: "Calibri", size: 20, bold: true, color: NAVY }),
+                new TextRun({ text: `  |  ${role.organization || ""}`, font: "Calibri", size: 18, color: ACCENT }),
+                ...(role.startDate || role.endDate ? [new TextRun({ text: `   ${role.startDate || ""}${role.startDate && role.endDate ? " – " : ""}${role.endDate || ""}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
+              ]
+            }),
+            ...(role.bullets || []).map((b: string) => bul(b)),
+          ]),
         ] : []),
 
         // ── CERTIFICATIONS ─────────────────────────────────────────────────
