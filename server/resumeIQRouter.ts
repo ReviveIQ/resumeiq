@@ -1420,15 +1420,54 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
         res.status(500).json({ error: "R2 not configured" }); return;
       }
 
-      // Generate presigned URL (15 min expiry)
+      // Generate presigned URL using SigV4 (R2 requires SigV4, not SigV2)
       const crypto = await import("crypto");
-      const expires = Math.floor(Date.now() / 1000) + 900;
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:\-]|\.\d{3}/g, "").substring(0, 8);
+      const dateTimeStr = now.toISOString().replace(/[:\-]|\.\d{3}/g, "").substring(0, 15) + "Z";
+      const region = "auto";
+      const service = "s3";
+      const encodedKey = (key as string).split("/").map(k => encodeURIComponent(k)).join("/");
       const host = endpoint.replace("https://", "");
-      const encodedKey = (key as string).split("/").map(encodeURIComponent).join("/");
-      const stringToSign = `GET\n\n\n${expires}\n/${bucket}/${encodedKey}`;
-      const signature = crypto.default.createHmac("sha1", secretKey).update(stringToSign).digest("base64");
-      const url = `${endpoint}/${bucket}/${encodedKey}?AWSAccessKeyId=${accessKey}&Expires=${expires}&Signature=${encodeURIComponent(signature)}`;
+      const credentialScope = `${dateStr}/${region}/${service}/aws4_request`;
+      const credential = `${accessKey}/${credentialScope}`;
+      const expiresSeconds = 900; // 15 minutes
 
+      const queryParams = [
+        `X-Amz-Algorithm=AWS4-HMAC-SHA256`,
+        `X-Amz-Credential=${encodeURIComponent(credential)}`,
+        `X-Amz-Date=${dateTimeStr}`,
+        `X-Amz-Expires=${expiresSeconds}`,
+        `X-Amz-SignedHeaders=host`,
+      ].join("&");
+
+      const canonicalRequest = [
+        "GET",
+        `/${bucket}/${encodedKey}`,
+        queryParams,
+        `host:${host}`,
+        "",
+        "host",
+        "UNSIGNED-PAYLOAD",
+      ].join("\n");
+
+      const hmac = (k: Buffer | string, data: string) =>
+        crypto.default.createHmac("sha256", k).update(data).digest();
+
+      const stringToSign = [
+        "AWS4-HMAC-SHA256",
+        dateTimeStr,
+        credentialScope,
+        crypto.default.createHash("sha256").update(canonicalRequest).digest("hex"),
+      ].join("\n");
+
+      const signingKey = hmac(
+        hmac(hmac(hmac(Buffer.from(`AWS4${secretKey}`), dateStr), region), service),
+        "aws4_request"
+      );
+      const signature = hmac(signingKey, stringToSign).toString("hex");
+
+      const url = `${endpoint}/${bucket}/${encodedKey}?${queryParams}&X-Amz-Signature=${signature}`;
       const fileName = (key as string).split("/").pop() || "resume.pdf";
       res.json({ url, fileName, key });
     } catch (err: any) {
