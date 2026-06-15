@@ -331,21 +331,32 @@ export async function runNurtureCron(): Promise<void> {
 
   let users: any[] = [];
   try {
+    // Step 1: Get free verified users — TiDB doesn't support subqueries in ON clauses
     const [rows] = await conn.execute(`
       SELECT 
         u.id, u.email, u.name, u.plan, u.resumeCount, u.createdAt,
-        u.emailVerified,
-        r.preScore, r.postScore
+        u.emailVerified
       FROM riq_users u
-      LEFT JOIN riq_resumes r ON r.userId = u.id AND r.id = (
-        SELECT id FROM riq_resumes WHERE userId = u.id ORDER BY createdAt DESC LIMIT 1
-      )
       WHERE (u.plan = 'free' OR u.plan IS NULL)
         AND u.email IS NOT NULL
         AND u.email != ''
         AND u.emailVerified = 1
     `) as any;
-    users = Array.isArray(rows[0]) ? rows[0] : rows;
+    const rawUsers = Array.isArray(rows[0]) ? rows[0] : rows;
+
+    // Step 2: For each user, get their most recent resume scores
+    for (const user of rawUsers) {
+      const [scoreRows] = await conn.execute(
+        `SELECT preScore, postScore FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
+        [user.id]
+      ) as any;
+      const scores = Array.isArray(scoreRows[0]) ? scoreRows[0] : scoreRows;
+      users.push({
+        ...user,
+        preScore: scores[0]?.preScore ?? null,
+        postScore: scores[0]?.postScore ?? null,
+      });
+    }
   } finally {
     await conn.end();
   }
