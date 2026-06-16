@@ -1048,8 +1048,8 @@ export default function ResumeIQ() {
         }
       `}</style>
 
-      {/* Email verified success banner */}
-      {verifyBanner === "success" && (
+      {/* Email verified success banner — only show on non-upload views */}
+      {verifyBanner === "success" && view !== "upload" && (
         <div style={{ background: "rgba(16,185,129,0.12)", borderBottom: "1px solid rgba(16,185,129,0.25)", padding: "10px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ color: "#34d399", fontSize: "13px", fontWeight: 600, margin: 0 }}>✓ Email verified — your account is fully set up.</p>
           <button onClick={() => setVerifyBanner(null)} style={{ background: "none", border: "none", color: "#34d399", cursor: "pointer", fontSize: "16px" }}>×</button>
@@ -1356,15 +1356,35 @@ export default function ResumeIQ() {
             )}
 
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
-              <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>Transform Your Resume</h1>
-              <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                Upload any resume and get back a polished, ATS-optimized Word document.
-              </p>
-              {/* Always show free messaging prominently */}
-              <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
-                <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
-                <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>First transformation is free</span>
-              </div>
+              {verifyBanner === "success" ? (
+                <>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "99px", padding: "6px 16px", marginBottom: "16px" }}>
+                    <span style={{ color: "#34d399", fontSize: "14px" }}>✓</span>
+                    <span style={{ color: "#34d399", fontSize: "13px", fontWeight: 600 }}>Email verified — you're all set</span>
+                  </div>
+                  <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>
+                    Your free transformation<br/>is waiting.
+                  </h1>
+                  <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "10px" }}>
+                    Drop your resume below and we'll turn it into a polished, ATS-optimized Word document — scored before and after so you can see exactly what improved.
+                  </p>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
+                    <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
+                    <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>No credit card needed — completely free</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>Transform Your Resume</h1>
+                  <p style={{ color: "#94a3b8", fontSize: "14px" }}>
+                    Upload any resume and get back a polished, ATS-optimized Word document.
+                  </p>
+                  <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
+                    <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
+                    <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>First transformation is free</span>
+                  </div>
+                </>
+              )}
             </div>
             <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
               onDragOver={e => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
