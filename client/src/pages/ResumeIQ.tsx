@@ -1896,7 +1896,23 @@ export default function ResumeIQ() {
           </div>
         )}
         {/* ── VERIFY PENDING ── */}
-        {view === "verify_pending" && (
+        {view === "verify_pending" && (() => {
+          // If user is already verified, don't show this screen
+          if (user?.emailVerified) {
+            setTimeout(() => {
+              if (file) { setView("analyzing"); handleAnalyzeWithToken(token); }
+              else setView("upload");
+            }, 100);
+            return (
+              <div style={{ maxWidth: "480px", margin: "0 auto", textAlign: "center" }}>
+                <div style={{ fontSize: "52px", marginBottom: "20px" }}>✅</div>
+                <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "24px", color: "white", marginBottom: "12px" }}>Email verified</h2>
+                <p style={{ color: "#94a3b8", fontSize: "15px" }}>Taking you to your resume{file ? " transformation" : ""}...</p>
+              </div>
+            );
+          }
+
+          return (
           <div style={{ maxWidth: "480px", margin: "0 auto", textAlign: "center" }}>
             <div style={{ fontSize: "52px", marginBottom: "20px" }}>📧</div>
             <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: "24px", color: "white", marginBottom: "12px" }}>
@@ -1924,11 +1940,19 @@ export default function ResumeIQ() {
               <button
                 onClick={async () => {
                   if (resendSent) return;
-                  await fetch("/api/resumeiq/auth/resend-verification", {
+                  const t = localStorage.getItem("riq_token");
+                  const res = await fetch("/api/resumeiq/auth/resend-verification", {
                     method: "POST",
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${t}` }
                   });
-                  setResendSent(true);
+                  const data = await res.json();
+                  if (data.alreadyVerified) {
+                    // They're already verified — refresh user and proceed
+                    if (t) fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${t}` } })
+                      .then(r => r.json()).then(d => { if (d.id) { setUser(d); setVerifyBanner("success"); if (file) { setView("analyzing"); handleAnalyzeWithToken(t); } else setView("upload"); } }).catch(() => {});
+                  } else {
+                    setResendSent(true);
+                  }
                 }}
                 style={{ background: resendSent ? "rgba(255,255,255,0.04)" : "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: "9px", padding: "12px", color: resendSent ? "#64748b" : "#60a5fa", fontSize: "14px", fontWeight: 600, cursor: resendSent ? "default" : "pointer" }}
               >
@@ -1944,7 +1968,8 @@ export default function ResumeIQ() {
               Can't find it? Check your spam folder. The email comes from bryan@reviveiqi.com.
             </p>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── INTERVIEW ── */}
         {view === "interview" && currentInterviewQ && (

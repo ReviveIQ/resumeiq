@@ -1179,7 +1179,10 @@ export function registerResumeIQRoutes(app: Express) {
       if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
       const user = await getUserById(tokenUser.userId);
       if (!user) { res.status(404).json({ error: "User not found" }); return; }
-      if (user.emailVerified) { res.json({ ok: true, message: "Already verified" }); return; }
+      if (user.emailVerified) {
+        res.json({ ok: true, message: "Already verified", alreadyVerified: true });
+        return;
+      }
       const verifyTok = crypto.randomBytes(32).toString("hex");
       await setVerifyToken(user.id, verifyTok);
       await sendVerificationEmail(user.email, user.name || "", verifyTok);
@@ -2399,9 +2402,11 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       if (!user) { res.status(500).json({ error: "Failed to create account" }); return; }
 
       const riqToken = authService.generateToken(user.id, user.email);
+      // Fetch fresh user to get correct emailVerified state
+      const freshUser = await authService.getUserById(user.id);
       res.json({
         token: riqToken,
-        user: { id: user.id, email: user.email, name: user.name, plan: user.plan, resumeCount: user.resumeCount || 0 },
+        user: { id: user.id, email: user.email, name: user.name, plan: user.plan, resumeCount: user.resumeCount || 0, emailVerified: freshUser?.emailVerified || false },
         isNew: !rows?.[0],
       });
     } catch (err) {
