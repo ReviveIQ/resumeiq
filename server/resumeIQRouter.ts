@@ -1080,9 +1080,12 @@ async function scoreResume(parsedData: any): Promise<any> {
           { role: "user", content: `Score this resume:\n${resumeSummary}` }
         ],
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(25000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[ResumeIQ] scoreResume API error: ${res.status}`);
+      return null;
+    }
     const data = await res.json() as any;
     const raw = (data.choices?.[0]?.message?.content || "").trim().replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
     return JSON.parse(raw);
@@ -1935,9 +1938,15 @@ flag = a specific GPT instruction to fix this dimension during transformation`
                   await conn.end();
                   console.log(`[ResumeIQ] postScore saved: ${postScoreData.overall} for resume ${resumeId}`);
                 }
-              } catch { /* non-fatal */ }
+              } catch (err: any) {
+                console.error(`[ResumeIQ] postScore DB save failed for resume ${resumeId}:`, err.message);
+              }
+            } else {
+              console.warn(`[ResumeIQ] scoreResume returned null/no overall for resume ${resumeId}`);
             }
-          }).catch(() => {});
+          }).catch((err: any) => {
+            console.error(`[ResumeIQ] scoreResume background job failed for resume ${resumeId}:`, err.message);
+          });
         } catch (saveErr) {
           console.error("[ResumeIQ] Failed to save resume to DB:", saveErr);
         }
