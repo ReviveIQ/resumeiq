@@ -2370,6 +2370,7 @@ export default function ResumeIQ() {
                   )}
                   <EditField label="Phone" value={parsedData.phone || ""} onSave={v => updateField("phone", v)} />
                   <EditField label="LinkedIn" value={parsedData.linkedin || ""} onSave={v => updateField("linkedin", v)} />
+                  <EditField label="Website" value={parsedData.website || ""} onSave={v => updateField("website", v)} />
                   {parsedData._linkedinSignedIn && !parsedData.linkedin && (
                     <p style={{ fontSize: "11px", color: "#60a5fa", margin: "2px 0 6px 0" }}>
                       💡 You signed in with LinkedIn — paste your profile URL above (linkedin.com/in/yourname)

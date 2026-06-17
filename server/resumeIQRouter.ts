@@ -411,11 +411,17 @@ PROJECTS SECTION:
 - Include metrics if present (accuracy, scale, users, performance improvement)
 - Do NOT skip this section — it is often the strongest part of an entry-level resume
 
-LEADERSHIP AND EXTRACURRICULAR:
-- If the resume has Leadership Experience, Extracurricular Activities, Volunteer Work, or similar sections, extract them into the "leadership" array
-- Include: title, organization, dates, and the 1-3 strongest bullets per role
-- Student government, club leadership, event coordination, volunteer roles all belong here
-- These sections significantly differentiate entry-level and early-career candidates
+PERSONAL WEBSITE:
+- Extract any personal website, portfolio URL, or professional URL from the resume header or contact section
+- Examples: "marketingwithcrystal.com", "portfolio.dev/name", "github.com/username"
+- Do NOT confuse with LinkedIn — store separately in the "website" field
+- If no website is present, return empty string
+
+ADDITIONAL / FREELANCE / CONSULTING SECTIONS:
+- If the resume has an "Additional", "Other Experience", "Freelance", or "Consulting" section, extract it into the "leadership" array
+- Freelance consulting work, board positions, and side projects listed here should all be captured
+- For freelance/consulting entries: use the role description as the title, dates if present, and any bullet details
+- Example: "Freelance Marketing Consultant · Social media, content strategy · 2011–Present" → title: "Freelance Marketing Consultant", organization: "Independent", startDate: "2011", endDate: "Present", bullets describing services
 
 GPA AND GRADES:
 - For each education entry, extract GPA, CGPA, percentage, or grade exactly as written
@@ -437,6 +443,7 @@ CRITICAL EXTRACTION RULES:
   "phone": "actual phone number from resume",
   "location": "actual city and state from resume",
   "linkedin": "actual linkedin URL if present, else empty string",
+  "website": "personal website, portfolio, or professional URL if present, else empty string",
   "title": "their most recent actual job title",
   "industry": "one of: manufacturing, food_beverage, sales, technology, healthcare, finance, marketing, operations, engineering, education, nonprofit, government, consulting, other",
   "summary": "2-3 sentence pitch. Opens with professional identity. Includes strongest credential or achievement. Ends with what they bring to their next role — never fabricate a target role title.",
@@ -897,7 +904,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
             top: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
           },
           children: [new TextRun({
-            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin]
+            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin, parsedData.website]
               .filter(Boolean).join("   |   "),
             font: "Calibri", size: 18, color: GRAY,
           })]
