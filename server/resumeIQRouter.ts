@@ -1198,7 +1198,7 @@ export function registerResumeIQRoutes(app: Express) {
       const user = await loginUser(email, password);
       if (!user) { res.status(401).json({ error: "Invalid email or password" }); return; }
       const token = generateToken(user.id, user.email);
-      res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+      res.json({ token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan, resumeCount: user.resumeCount || 0, emailVerified: user.emailVerified || false } });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

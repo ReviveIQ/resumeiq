@@ -270,7 +270,7 @@ export async function getUserByEmail(email: string) {
   if (!conn) return null;
   try {
     const [rows] = await conn.execute(
-      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData FROM riq_users WHERE email = ? LIMIT 1",
+      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData, planExpiresAt, emailVerified FROM riq_users WHERE email = ? LIMIT 1",
       [email]
     ) as any;
     const data = Array.isArray(rows[0]) ? rows[0] : rows;
@@ -285,7 +285,7 @@ export async function getUserById(id: number) {
   if (!conn) return null;
   try {
     const [rows] = await conn.execute(
-      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData, createdAt FROM riq_users WHERE id = ?", [id]
+      "SELECT id, email, name, plan, resumeCount, personalityUnlocked, workingWithMeData, planExpiresAt, emailVerified, createdAt FROM riq_users WHERE id = ?", [id]
     ) as any;
     return rows[0] || null;
   } finally {
