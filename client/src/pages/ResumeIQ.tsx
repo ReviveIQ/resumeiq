@@ -317,21 +317,44 @@ export default function ResumeIQ() {
   const [verifyBanner, setVerifyBanner] = useState<"success"|"pending"|null>(null);
   const [resendSent, setResendSent] = useState(false);
   const [emailTypoWarning, setEmailTypoWarning] = useState<string|null>(null);
+  const [pendingFileName, setPendingFileName] = useState<string|null>(null);
 
-  // Handle ?verified= query param on page load
+  // Poll for email verification when on verify_pending screen
+  // Detects when user verifies in another tab
+  useEffect(() => {
+    if (view !== "verify_pending") return;
+    const interval = setInterval(async () => {
+      const t = localStorage.getItem("riq_token");
+      if (!t) return;
+      try {
+        const res = await fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${t}` } });
+        const data = await res.json();
+        if (data?.emailVerified) {
+          clearInterval(interval);
+          setUser(data);
+          setVerifyBanner("success");
+          if (file) {
+            setView("analyzing");
+            handleAnalyzeWithToken(t);
+          } else {
+            setView("upload");
+          }
+        }
+      } catch { /* silent */ }
+    }, 3000); // poll every 3 seconds
+    return () => clearInterval(interval);
+  }, [view]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("verified") === "success") {
       setVerifyBanner("success");
       window.history.replaceState({}, "", "/app");
-      // Refresh user to get emailVerified=true
       const t = localStorage.getItem("riq_token");
       if (t) fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${t}` } })
         .then(r => r.json())
         .then(d => {
           if (d.id) {
             setUser(d);
-            // If they had a file loaded before verifying, auto-trigger transform
             setView(prev => {
               if (prev === "verify_pending") {
                 const currentFile = file;
@@ -340,7 +363,7 @@ export default function ResumeIQ() {
                     setView("analyzing");
                     handleAnalyzeWithToken(t);
                   }, 500);
-                  return "verify_pending"; // will transition via setTimeout
+                  return "verify_pending";
                 }
                 return "upload";
               }
@@ -348,6 +371,13 @@ export default function ResumeIQ() {
             });
           }
         }).catch(() => {});
+    }
+
+    // Restore pending file name from before LinkedIn OAuth redirect
+    const pendingFileName = sessionStorage.getItem("riq_pending_file");
+    if (pendingFileName) {
+      sessionStorage.removeItem("riq_pending_file");
+      setPendingFileName(pendingFileName);
     }
   }, []);
   const [testimonials, setTestimonials] = useState<any[]>([]);
@@ -1265,7 +1295,10 @@ export default function ResumeIQ() {
                     LinkedIn fills in missing dates, skills, certifications, and education automatically — so your resume transformation is more complete without extra questions.
                   </p>
                   <button
-                    onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+                    onClick={() => {
+                      if (file) sessionStorage.setItem("riq_pending_file", file.name);
+                      window.location.href = "/api/resumeiq/auth/linkedin";
+                    }}
                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "13px 16px", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 16px rgba(0,119,181,0.3)" }}
                   >
                     <svg viewBox="0 0 24 24" style={{ width: "20px", height: "20px", fill: "white", flexShrink: 0 }}>
@@ -1278,7 +1311,10 @@ export default function ResumeIQ() {
 
               {view === "login" && (
                 <button
-                  onClick={() => { window.location.href = "/api/resumeiq/auth/linkedin"; }}
+                  onClick={() => {
+                      if (file) sessionStorage.setItem("riq_pending_file", file.name);
+                      window.location.href = "/api/resumeiq/auth/linkedin";
+                    }}
                   style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", background: "#0077B5", color: "white", border: "none", borderRadius: "8px", padding: "11px 16px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: "16px" }}
                 >
                   <svg viewBox="0 0 24 24" style={{ width: "18px", height: "18px", fill: "white", flexShrink: 0 }}>
@@ -1344,6 +1380,19 @@ export default function ResumeIQ() {
         )}
         {view === "upload" && (
           <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+            {/* File lost after LinkedIn OAuth — nudge to re-upload */}
+            {pendingFileName && !file && (
+              <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ fontSize: "20px" }}>📄</span>
+                <div>
+                  <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600, margin: 0 }}>Almost there — just re-upload your resume</p>
+                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: "2px 0 0" }}>
+                    Your account is ready. We couldn't hold onto <strong style={{ color: "white" }}>{pendingFileName}</strong> during sign-in — drop it below to continue.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* SSO arrival banner — shown when coming from MyCareerIQ */}
             {user && new URLSearchParams(window.location.search).get("handoff") === null && localStorage.getItem("riq_from_mycareeriq") === "1" && (
               <div style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.4)", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1987,6 +2036,10 @@ export default function ResumeIQ() {
             <p style={{ color: "#334155", fontSize: "12px", marginTop: "24px", lineHeight: 1.6 }}>
               Can't find it? Check your spam folder. The email comes from bryan@reviveiqi.com.
             </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "20px" }}>
+              <div style={{ width: "6px", height: "6px", background: "#2563eb", borderRadius: "50%", animation: "pulse 1.5s infinite" }} />
+              <p style={{ color: "#334155", fontSize: "11px", margin: 0 }}>Watching for verification — this page will update automatically</p>
+            </div>
           </div>
           );
         })()}
