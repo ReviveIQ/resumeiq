@@ -1468,7 +1468,9 @@ export default function ResumeIQ() {
                     <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>
                       {planType === "monthly" || planType === "agency" 
                         ? "Unlimited transformations — included in your plan" 
-                        : "First transformation is free"}
+                        : planType === "starter"
+                          ? `${Math.max(0, 3 - (user?.resumeCount || 0))} transformation${Math.max(0, 3 - (user?.resumeCount || 0)) === 1 ? "" : "s"} remaining — included in your plan`
+                          : "First transformation is free"}
                     </span>
                   </div>
                 </>
@@ -2579,7 +2581,7 @@ export default function ResumeIQ() {
               {(isFree && (user || emailCaptured)) || !isFree ? (
                 <button onClick={isFree ? handleDownload : handlePayAndDownload} disabled={downloading}
                   style={{ flex: 2, background: isFree ? "#16a34a" : "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? (planType === "monthly" || planType === "agency" ? <><Download size={18} />Download Resume</> : <><Download size={18} />Download Free Resume</>) : <><CreditCard size={18} />Review & Complete</>}
+                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? (planType === "monthly" || planType === "agency" || planType === "starter" ? <><Download size={18} />Download Resume</> : <><Download size={18} />Download Free Resume</>) : <><CreditCard size={18} />Review & Complete</>}
                 </button>
               ) : null}
             </div>
