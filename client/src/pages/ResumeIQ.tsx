@@ -346,6 +346,33 @@ export default function ResumeIQ() {
   }, [view]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Handle ?resume=true — from nurture email, land directly on their saved resume
+    if (params.get("resume") === "true") {
+      window.history.replaceState({}, "", "/app");
+      const t = localStorage.getItem("riq_token");
+      if (t) {
+        fetch("/api/resumeiq/history", { headers: { Authorization: `Bearer ${t}` } })
+          .then(r => r.json())
+          .then(resumes => {
+            if (Array.isArray(resumes) && resumes.length > 0) {
+              const latest = resumes[0];
+              if (latest.parsedData) {
+                setParsedData(typeof latest.parsedData === "string" ? JSON.parse(latest.parsedData) : latest.parsedData);
+                setView("preview");
+              } else {
+                setView("history");
+              }
+            } else {
+              setView("upload");
+            }
+          }).catch(() => setView("upload"));
+      } else {
+        setView("login");
+      }
+      return;
+    }
+
     if (params.get("verified") === "success") {
       setVerifyBanner("success");
       window.history.replaceState({}, "", "/app");

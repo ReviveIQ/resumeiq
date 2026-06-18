@@ -108,7 +108,7 @@ function emailA1WithScores(firstName: string, email: string, preScore: number, p
       ${P(`The most common fix we make: bullets that describe a job instead of proving one. <span style="color:#6b7280">"Managed accounts"</span> tells a recruiter nothing. <span style="color:#15803d">"Managed 28 enterprise accounts across a 4-state territory, delivering 118% of quota"</span> stops the scroll.`)}
       ${P("Your resume does that now. The question is whether the roles you're applying to know it.")}
       ${P("If you need another transform — for a different role, a new position, or just a fresher version — you're one upgrade away.")}
-      ${CTA("Transform another resume →", `${SITE}?utm_source=email&utm_medium=nurture&utm_campaign=a1_score`)}
+      ${CTA("Transform another resume →", `${SITE}/app?resume=true&utm_source=email&utm_medium=nurture&utm_campaign=a1_score`)}
       ${SIGN}
     `, email),
   };
@@ -122,7 +122,7 @@ function emailA1NoScores(firstName: string, email: string): { subject: string; h
       ${P("You've already transformed your resume with ResumeIQ. But did you know we now score every resume before and after transformation?")}
       ${P("4 dimensions: ATS format, bullet quality, keyword alignment, and completeness. Scored 1–10 each. You see exactly where your resume was weak and how much it improved.")}
       ${P("Run your resume through again and see your score. Takes 60 seconds. If you want to tune it further — the Starter pack gives you 3 more transforms.")}
-      ${CTA("See my resume score →", `${SITE}?utm_source=email&utm_medium=nurture&utm_campaign=a1_noscore`)}
+      ${CTA("See my resume score →", `${SITE}/app?resume=true&utm_source=email&utm_medium=nurture&utm_campaign=a1_noscore`)}
       ${SIGN}
     `, email),
   };
@@ -153,7 +153,7 @@ function emailA7(firstName: string, email: string): { subject: string; html: str
       ${P("If you're targeting multiple roles or industries, each application deserves a resume tuned to it. Same story, different emphasis. Same bullets, different keywords.")}
       ${P("That's what the Starter pack is for — 3 transforms, no expiry, use them when you need them.")}
       ${P("$14.99. Less than a job board posting.")}
-      ${CTA("Get 3 more transforms →", `${SITE}?utm_source=email&utm_medium=nurture&utm_campaign=a7_upgrade`)}
+      ${CTA("Get 3 more transforms →", `${SITE}/app?resume=true&utm_source=email&utm_medium=nurture&utm_campaign=a7_upgrade`)}
       ${SIGN}
     `, email),
   };
@@ -167,7 +167,7 @@ function emailA14(firstName: string, email: string): { subject: string; html: st
       ${P("I won't keep filling your inbox. But I did want to check in one more time.")}
       ${P("If you're still in the search — a lot changes in two weeks. New roles open. Hiring managers shift. The resume that was right for last month's applications might need a small tune for this month's.")}
       ${P("If you're ready for another pass, it's here when you need it.")}
-      ${CTA("Transform another resume →", `${SITE}?utm_source=email&utm_medium=nurture&utm_campaign=a14_final`)}
+      ${CTA("Transform another resume →", `${SITE}/app?resume=true&utm_source=email&utm_medium=nurture&utm_campaign=a14_final`)}
       <p style="margin:0 0 4px;font-size:15px;color:#111827;font-family:sans-serif">Wishing you the best,</p>
       <p style="margin:0;font-size:15px;font-weight:700;color:#111827;font-family:sans-serif">Bryan</p>
     `, email),
@@ -314,7 +314,7 @@ function emailC3(firstName: string, email: string, postScore: number): { subject
       ${P("How do you communicate under pressure? How do you make decisions when the data is incomplete? What does a good working relationship look like with you?")}
       ${P('The "Working With Me" section answers all of it — synthesized from your DISC, MBTI, Predictive Index, or TKI assessment results. Written in professional behavioral language, not assessment jargon. Permanently attached to every resume you generate.')}
       ${P("No other resume tool offers this section. No other candidate in the pile has it.")}
-      ${CTA('Add "Working With Me" — $7.99 →', `https://resumeiq.reviveiqi.com?utm_source=email&utm_medium=nurture&utm_campaign=c3_wwm_highscore`)}
+      ${CTA('Add "Working With Me" — $7.99 →', `https://resumeiq.reviveiqi.com/app?resume=true&utm_source=email&utm_medium=nurture&utm_campaign=c3_wwm_highscore`)}
       ${P("Upload your assessment results after logging in. Takes about 2 minutes.")}
       ${SIGN}
     `, email),
