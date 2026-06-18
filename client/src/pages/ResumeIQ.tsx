@@ -299,6 +299,10 @@ export default function ResumeIQ() {
   const [sessionId, setSessionId] = useState("");
   const [isFree, setIsFree] = useState(false);
   const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">("free");
+  // Effective plan — user.plan takes precedence over transform-derived planType for messaging
+  const effectivePlan = ((user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter")
+    ? (user as any).plan as "monthly"|"agency"|"starter"
+    : planType;
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "monthly">("monthly");
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
@@ -1466,9 +1470,9 @@ export default function ResumeIQ() {
                   <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
                     <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
                     <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>
-                      {planType === "monthly" || planType === "agency" 
+                      {effectivePlan === "monthly" || effectivePlan === "agency" 
                         ? "Unlimited transformations — included in your plan" 
-                        : planType === "starter"
+                        : effectivePlan === "starter"
                           ? `${Math.max(0, 3 - (user?.resumeCount || 0))} transformation${Math.max(0, 3 - (user?.resumeCount || 0)) === 1 ? "" : "s"} remaining — included in your plan`
                           : "First transformation is free"}
                     </span>
@@ -2567,7 +2571,7 @@ export default function ResumeIQ() {
             {!isFree && (
               <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
                 <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>
-                  {planType === "monthly" || planType === "agency" 
+                  {effectivePlan === "monthly" || effectivePlan === "agency" 
                     ? "Select any add-ons below to include with your download."
                     : "You've used your free transformation. Choose a plan below — one-time purchase, no subscription required."}
                 </p>
@@ -2581,7 +2585,7 @@ export default function ResumeIQ() {
               {(isFree && (user || emailCaptured)) || !isFree ? (
                 <button onClick={isFree ? handleDownload : handlePayAndDownload} disabled={downloading}
                   style={{ flex: 2, background: isFree ? "#16a34a" : "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? (planType === "monthly" || planType === "agency" || planType === "starter" ? <><Download size={18} />Download Resume</> : <><Download size={18} />Download Free Resume</>) : <><CreditCard size={18} />Review & Complete</>}
+                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? (effectivePlan === "monthly" || effectivePlan === "agency" || effectivePlan === "starter" ? <><Download size={18} />Download Resume</> : <><Download size={18} />Download Free Resume</>) : <><CreditCard size={18} />Review & Complete</>}
                 </button>
               ) : null}
             </div>
