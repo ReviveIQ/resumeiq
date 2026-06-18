@@ -111,7 +111,7 @@ async function createSession(sessionId: string, parsedData: any, paid: boolean, 
   try {
     await conn.execute(
       `INSERT INTO riq_sessions (sessionId, parsedData, paid, freeUsed, createdAt, expiresAt)
-       VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 2 HOUR))
+       VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
        ON DUPLICATE KEY UPDATE parsedData=VALUES(parsedData), paid=VALUES(paid), freeUsed=VALUES(freeUsed), expiresAt=VALUES(expiresAt)`,
       [sessionId, JSON.stringify(parsedData), paid ? 1 : 0, freeUsed ? 1 : 0]
     );
@@ -1414,7 +1414,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
     try {
       const { resumeiqSession, type } = req.body; // type: "personality" | "bundle"
       const session = await getSession(resumeiqSession);
-      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+      if (!session) { console.error(`[ResumeIQ] Checkout failed — session not found: ${sessionId || "no sessionId"}`); res.status(404).json({ error: "Session not found or expired" }); return; }
       const origin = req.headers.origin || `https://${req.headers.host}`;
       const successUrl = `${origin}/?payment=success&`;
       const cancelUrl = `${origin}/?payment=cancelled`;
@@ -1792,7 +1792,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
     try {
       const { sessionId } = req.body;
       const session = await getSession(sessionId);
-      if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+      if (!session) { console.error(`[ResumeIQ] Checkout failed — session not found: ${sessionId || "no sessionId"}`); res.status(404).json({ error: "Session not found or expired" }); return; }
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
       const origin = req.headers.origin || `https://${req.headers.host}`;
       const { url } = await createCheckoutSession(
