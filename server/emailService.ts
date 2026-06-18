@@ -13,7 +13,11 @@ const PIPELINE = "https://mycareeriq.reviveiqi.com";
 const FROM    = "Bryan @ ResumeIQ <bryan@reviveiqi.com>";
 
 // ── Send via Resend ────────────────────────────────────────────────────────
-export async function sendEmail(to: string, flowType: string): Promise<void> {
+export async function sendEmail(
+  to: string,
+  flowType: string,
+  attachment?: { filename: string; content: string } // base64 content
+): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     console.warn("[Email] RESEND_API_KEY not set — skipping email send");
@@ -23,6 +27,14 @@ export async function sendEmail(to: string, flowType: string): Promise<void> {
   const templateFn = EMAIL_TEMPLATES[flowType];
   if (!templateFn) throw new Error(`Unknown email flow: ${flowType}`);
   const payload = templateFn(to);
+
+  // Add attachment if provided
+  if (attachment) {
+    (payload as any).attachments = [{
+      filename: attachment.filename,
+      content: attachment.content,
+    }];
+  }
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -167,9 +179,10 @@ const EMAIL_TEMPLATES: Record<string, (email: string) => object> = {
 
   post_conversion: (email) => ({
     from: FROM, to: [email],
-    subject: "Your resume is ATS-optimized ✓ — ready to apply?",
+    subject: "Your transformed resume is attached ✓",
     html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
-      <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">You are ready to apply.</h2>
+      <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">Your resume is attached to this email.</h2>
+      <p style="color:#555;line-height:1.6;margin-bottom:16px">Your ATS-optimized Word document is attached above — ready to upload to any job portal or send directly to a hiring manager.</p>
       <ul style="color:#333;line-height:2;padding-left:20px">
         <li>Impact metrics added to every bullet</li>
         <li>Formatting restructured for clean ATS parsing</li>
@@ -179,11 +192,6 @@ const EMAIL_TEMPLATES: Record<string, (email: string) => object> = {
       <a href="${PIPELINE}?utm_source=email&utm_medium=post_conversion&utm_campaign=pipeline_upsell"
          style="display:inline-block;margin:16px 0 8px;padding:12px 28px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:500">
         Start my job search →
-      </a>
-      <br/>
-      <a href="${SITE}/app?utm_source=email&utm_medium=post_conversion&utm_campaign=linkedin_share"
-         style="display:inline-block;margin:8px 0;padding:10px 24px;background:#0077b5;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;font-size:14px">
-        Share on LinkedIn
       </a>
       <p style="font-size:13px;color:#888;margin-top:32px">— Bryan, ResumeIQ</p>
     </div>`,

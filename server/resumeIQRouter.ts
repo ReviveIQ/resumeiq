@@ -2016,8 +2016,10 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
       // Remove session after successful generation
       await deleteSession(sessionId);
 
-      // Fire post-conversion email (non-blocking)
+      // Fire post-conversion email with DOCX attachment (non-blocking)
       if (tokenUser?.email) {
+        const docxBase64ForEmail = buffer.toString("base64");
+        const emailFileName = `${(data.name || "Resume").replace(/[^a-zA-Z0-9_-]/g, "_")}_ResumeIQ.docx`;
         alreadySent(null as any, tokenUser.email, "post_conversion")
           .then(async (sent) => {
             if (sent) return;
@@ -2026,7 +2028,10 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
             if (!emailConn) return;
             try {
               await logEmailSend(emailConn, tokenUser.email, "post_conversion");
-              sendEmail(tokenUser.email, "post_conversion").catch(() => {});
+              sendEmail(tokenUser.email, "post_conversion", {
+                filename: emailFileName,
+                content: docxBase64ForEmail,
+              }).catch(() => {});
             } finally { await emailConn.end(); }
           }).catch(() => {});
       }
