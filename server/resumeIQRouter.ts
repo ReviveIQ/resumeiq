@@ -9,6 +9,7 @@ import {
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
   generateToken, verifyToken, upgradeToStarter, upgradeToMonthly, incrementResumeCount,
   unlockPersonality, saveWorkingWithMe, getUserByEmail, setVerifyToken, verifyEmail,
+  getDb,
 } from "./authService";
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
