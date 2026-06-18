@@ -2581,8 +2581,25 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
       if (!user) {
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await authService.createUser(email, randomPassword, name || email.split("@")[0]);
-        console.log(`[ResumeIQ LinkedIn] Created new user: ${email}`);
+        // LinkedIn-verified email — auto-verify immediately
+        const verifyConn = await authService.getDb();
+        if (verifyConn) {
+          await verifyConn.execute("UPDATE riq_users SET emailVerified = 1, verifyToken = NULL WHERE id = ?", [user.id]);
+          await verifyConn.end();
+        }
+        console.log(`[ResumeIQ LinkedIn] Created new user: ${email} (auto-verified)`);
+        import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(email, name || "")).catch(() => {});
+        notifyNewUser(email, name || "").catch(() => {});
       } else {
+        // Existing user — ensure emailVerified if they came through LinkedIn
+        if (!user.emailVerified) {
+          const verifyConn = await authService.getDb();
+          if (verifyConn) {
+            await verifyConn.execute("UPDATE riq_users SET emailVerified = 1 WHERE id = ?", [user.id]);
+            await verifyConn.end();
+            user.emailVerified = true;
+          }
+        }
         console.log(`[ResumeIQ LinkedIn] Existing user: ${email}`);
       }
 
@@ -2593,11 +2610,11 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
 
       const token = authService.generateToken(user.id, user.email);
       res.clearCookie("riq_linkedin_state");
-      // Pass name so the app can pre-populate resume fields
       const params = new URLSearchParams({
         linkedin_token: token,
         linkedin_name: name,
         linkedin_email: email,
+        linkedin_verified: "1",
       });
       res.redirect(`${frontendUrl}/app?${params.toString()}`);
     } catch (err) {

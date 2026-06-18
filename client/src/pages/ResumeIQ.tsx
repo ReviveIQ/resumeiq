@@ -446,12 +446,18 @@ export default function ResumeIQ() {
     } else if (linkedinToken) {
       localStorage.setItem("riq_token", linkedinToken);
       setToken(linkedinToken);
-      // Store LinkedIn profile data for pre-populating resume fields
       const linkedinName = params.get("linkedin_name") || "";
       const linkedinEmail = params.get("linkedin_email") || "";
+      const linkedinVerified = params.get("linkedin_verified") === "1";
       if (linkedinName) localStorage.setItem("riq_linkedin_name", linkedinName);
       if (linkedinEmail) localStorage.setItem("riq_linkedin_email", linkedinEmail);
       window.history.replaceState({}, "", window.location.pathname);
+      // Fetch fresh user so emailVerified state is correct
+      fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${linkedinToken}` } })
+        .then(r => r.json())
+        .then(data => {
+          if (data.id) setUser({ ...data, emailVerified: linkedinVerified || data.emailVerified });
+        }).catch(() => {});
       if (file) {
         setTimeout(() => handleAnalyzeWithToken(linkedinToken), 200);
       }
