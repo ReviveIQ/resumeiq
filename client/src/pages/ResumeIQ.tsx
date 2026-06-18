@@ -320,7 +320,16 @@ export default function ResumeIQ() {
   const [emailTypoWarning, setEmailTypoWarning] = useState<string|null>(null);
   const [pendingFileName, setPendingFileName] = useState<string|null>(null);
 
-  // Poll for email verification when on verify_pending screen
+  // Derive planType from user plan — keeps upload screen messaging correct on load
+  useEffect(() => {
+    if (!user) return;
+    const plan = (user as any).plan || "free";
+    if (plan === "monthly" || plan === "agency" || plan === "starter") {
+      setPlanType(plan as any);
+    } else {
+      setPlanType("free");
+    }
+  }, [user]);
   // Detects when user verifies in another tab
   useEffect(() => {
     if (view !== "verify_pending") return;
