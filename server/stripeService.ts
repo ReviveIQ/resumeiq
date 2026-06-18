@@ -2,18 +2,12 @@
  * ResumeIQ Stripe Integration
  * Handles payment sessions for resume transformations
  *
- * STRIPE_TEST_MODE env var:
- *   Set to "true" in Railway to force test keys even in production.
- *   Uses STRIPE_SECRET_KEY_TEST + STRIPE_PUBLISHABLE_KEY_TEST when active.
- *   Remove or set to "false" to go live with real payments.
+ * Live mode is always active. Stripe key determines live vs test:
+ *   sk_live_... = live payments
+ *   sk_test_... = test payments (dev only)
  */
 
-const isTestMode = process.env.STRIPE_TEST_MODE === "true";
-
-// In test mode, fall back to test-specific keys if provided, otherwise use the main key
-const STRIPE_SECRET = isTestMode
-  ? (process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY)
-  : process.env.STRIPE_SECRET_KEY;
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 
 const STRIPE_PRICE       = 1499;  // $14.99 — starter (3 transformations)
 const STRIPE_MONTHLY     = 1999;  // $19.99 — 30 days unlimited (monthly)
@@ -24,11 +18,14 @@ const STRIPE_MYCAREERIQ  = 4999;  // $49.99 MyCareerIQ standalone (30 days)
 const STRIPE_MYCAREERIQ_ANNUAL = 29900; // $299/year MyCareerIQ annual
 const CURRENCY = "usd";
 
-// Log mode on startup
-if (isTestMode) {
-  console.log("[Stripe] ⚠️  TEST MODE active — no real charges will occur");
-} else {
+// Log Stripe key mode on startup
+const keyPrefix = STRIPE_SECRET?.slice(0, 7);
+if (keyPrefix === "sk_live") {
   console.log("[Stripe] ✅ LIVE MODE — real payments enabled");
+} else if (keyPrefix === "sk_test") {
+  console.log("[Stripe] ⚠️  TEST KEY detected — no real charges will occur");
+} else {
+  console.log("[Stripe] ❌ No Stripe key configured");
 }
 
 async function stripePost(body: Record<string, string>): Promise<any> {
@@ -222,5 +219,5 @@ export async function verifyPayment(stripeSessionId: string): Promise<boolean> {
 }
 
 export function getStripeMode(): "test" | "live" {
-  return isTestMode ? "test" : "live";
+  return STRIPE_SECRET?.startsWith("sk_live") ? "live" : "test";
 }
