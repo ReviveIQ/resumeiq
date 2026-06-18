@@ -1738,6 +1738,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
       const hasCookie = cookies.includes("resumeiq_free_used=1");
 
       let isFree = false;
+      let planType = "free"; // free | starter | monthly | agency
 
       if (tokenUser) {
         const dbUser = await getUserById(tokenUser.userId);
@@ -1748,13 +1749,17 @@ flag = a specific GPT instruction to fix this dimension during transformation`
 
         if ((plan === "monthly" || plan === "agency") && planActive) {
           isFree = true; // unlimited during active period
+          planType = plan;
         } else if (plan === "starter") {
           isFree = resumeCount < 3;
+          planType = "starter";
         } else {
           isFree = resumeCount < 1; // free tier: 1 transformation
+          planType = "free";
         }
       } else {
         isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
+        planType = "free";
       }
 
       await createSession(sessionId, { ...parsed, _originalKey: tokenUser ? `resumeiq/${tokenUser.userId}/${sessionId}/${fileName || "resume.pdf"}` : null }, isFree, isFree);
@@ -1774,7 +1779,7 @@ flag = a specific GPT instruction to fix this dimension during transformation`
       }
 
       console.log(`[ResumeIQ] Session created for ${parsed.name} (free: ${isFree})`);
-      res.json({ ...parsed, sessionId, isFree });
+      res.json({ ...parsed, sessionId, isFree, planType });
     } catch (error: any) {
       console.error("[ResumeIQ] Transform error:", error);
       res.status(500).json({ error: error.message || "Failed to transform resume" });
