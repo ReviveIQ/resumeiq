@@ -418,10 +418,11 @@ PERSONAL WEBSITE:
 - If no website is present, return empty string
 
 ADDITIONAL / FREELANCE / CONSULTING SECTIONS:
-- If the resume has an "Additional", "Other Experience", "Freelance", or "Consulting" section, extract it into the "leadership" array
+- If the resume has ANY of these sections, extract into the "leadership" array: "Additional", "Other Experience", "Freelance", "Consulting", "Projects Skills", "Project Skills", "Community", "Volunteer", "Extracurricular", "Activities", "Hobbies", "Interests"
+- "Projects Skills" sections (like Jennifer Clark's) often contain strong metrics written as narrative — extract the key achievements as bullets
 - Freelance consulting work, board positions, and side projects listed here should all be captured
-- For freelance/consulting entries: use the role description as the title, dates if present, and any bullet details
-- Example: "Freelance Marketing Consultant · Social media, content strategy · 2011–Present" → title: "Freelance Marketing Consultant", organization: "Independent", startDate: "2011", endDate: "Present", bullets describing services
+- For narrative skills sections: convert the narrative into 2-3 strong bullet points extracting the best metrics
+- Example: "Projects Skills" with "Managed 500+ transactions/month with 99% accuracy" → bullet: "Processed 500+ transactions monthly with 99% accuracy rate"
 
 GPA AND GRADES:
 - For each education entry, extract GPA, CGPA, percentage, or grade exactly as written
@@ -1064,26 +1065,72 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
-async function scoreResume(parsedData: any): Promise<any> {
+async function scoreResume(parsedData: any, isPreScore: boolean = false): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   try {
     const resumeSummary = JSON.stringify({
-      name: parsedData.name, title: parsedData.title,
+      name: parsedData.name,
+      title: parsedData.title,
       summary: parsedData.summary?.slice(0, 300),
       experience: (parsedData.experience || []).slice(0, 3).map((e: any) => ({
         title: e.title, company: e.company,
-        bullets: (e.bullets || []).slice(0, 3),
+        bullets: (e.bullets || []).slice(0, 4),
       })),
-      skills: (parsedData.skills || []).slice(0, 10),
+      skills: parsedData.skills,
+      education: parsedData.education,
+      certifications: parsedData.certifications,
     });
+
+    const preScoreSystem = `You are a strict ATS resume auditor. Your job is to score the ORIGINAL, UNIMPROVED resume harshly and honestly. Most resumes score 4-7. A perfect 10 is nearly impossible on an original resume. Score low when:
+
+ATS FORMAT (1-10): Penalize heavily for: two-column layouts, tables, graphics, text boxes, non-standard section names, headers/footers with contact info, missing standard sections (Summary, Experience, Skills, Education). A plain single-column Word doc with standard headings scores 7+. Anything with tables or unusual structure scores 3-5.
+
+BULLET QUALITY (1-10): Penalize for: bullets starting with "Responsible for", "Assisted with", "Helped", "Managed" without specifics, passive voice, no metrics, vague outcomes, narrative prose instead of bullets, fewer than 3 bullets per role. Reward: strong past-tense verbs, specific metrics ($, %, headcount, time), clear outcome in every bullet. Most original resumes score 4-6 here.
+
+KEYWORDS (1-10): Does the resume use industry-standard terminology, relevant technical skills, role-specific keywords that ATS systems scan for? Generic resumes with no industry terms score 3-5.
+
+COMPLETENESS (1-10): Missing: summary, quantified achievements, dates, locations, skills section. Present and strong: all of the above plus certifications, LinkedIn, contact info.
+
+Return JSON only. No preamble. No markdown.
+{
+  "overall": 1-10,
+  "dimensions": {
+    "atsFormat": { "score": 1-10, "flag": "one sentence on what needs fixing" },
+    "bulletQuality": { "score": 1-10, "flag": "one sentence on what needs fixing" },
+    "keywords": { "score": 1-10, "flag": "one sentence on what needs fixing" },
+    "completeness": { "score": 1-10, "flag": "one sentence on what needs fixing" }
+  }
+}`;
+
+    const postScoreSystem = `You are an ATS resume quality reviewer. Score the TRANSFORMED, OPTIMIZED resume. This resume has already been improved — reward improvements generously. Most transformed resumes should score 7-9.
+
+ATS FORMAT (1-10): Is it single-column, standard headings, no tables or graphics, clean structure? Reward: proper section order, consistent formatting, ATS-safe layout.
+
+BULLET QUALITY (1-10): Do bullets start with strong action verbs? Do they have specific metrics (%, $, headcount, time)? Is there a clear outcome in each bullet? Reward: quantified impact, strong verbs, no filler language.
+
+KEYWORDS (1-10): Does it use industry-standard terminology and role-specific keywords? Reward: relevant technical skills, industry terms, role-appropriate language.
+
+COMPLETENESS (1-10): Is everything present — summary, experience with dates, education, skills, certifications, contact info? Reward: comprehensive profile with all key sections.
+
+Return JSON only. No preamble. No markdown.
+{
+  "overall": 1-10,
+  "dimensions": {
+    "atsFormat": { "score": 1-10, "flag": "one sentence highlight" },
+    "bulletQuality": { "score": 1-10, "flag": "one sentence highlight" },
+    "keywords": { "score": 1-10, "flag": "one sentence highlight" },
+    "completeness": { "score": 1-10, "flag": "one sentence highlight" }
+  }
+}`;
+
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: "gpt-4o-mini", max_tokens: 500, temperature: 0,
+        model: "gpt-4o-mini", max_tokens: 600, temperature: 0,
         messages: [
-          { role: "system", content: `You are an ATS resume scorer. Score on 4 dimensions and return JSON only. No preamble, no markdown.\n{\n  "overall": 1-10,\n  "dimensions": {\n    "atsFormat": { "score": 1-10 },\n    "bulletQuality": { "score": 1-10 },\n    "keywords": { "score": 1-10 },\n    "completeness": { "score": 1-10 }\n  }\n}` },
+          { role: "system", content: isPreScore ? preScoreSystem : postScoreSystem },
           { role: "user", content: `Score this resume:\n${resumeSummary}` }
         ],
       }),
@@ -1644,9 +1691,9 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           messages: [
             {
               role: "system",
-              content: `You are an ATS resume analyst. Score the resume on 4 dimensions and return JSON only. No preamble, no markdown.
+              content: `You are a strict ATS resume auditor scoring an ORIGINAL, UNIMPROVED resume. Be harsh and specific. Most resumes score 4-7. A 9 or 10 is extremely rare on an original resume.
 
-CRITICAL RULE: Every reason and topIssue MUST be based on specific evidence from THIS resume. Never give generic advice. If the resume has graduation years, don't say it's missing them. If bullets already have metrics, don't say they need metrics. Only flag what is actually missing or weak IN THIS SPECIFIC RESUME.
+CRITICAL RULE: Every reason and topIssue MUST be based on specific evidence from THIS resume. Never give generic advice.
 
 Schema:
 {
@@ -1660,42 +1707,44 @@ Schema:
   "topIssues": [string, string, string]
 }
 
-Scoring rules — only penalize what is ACTUALLY missing or weak:
+STRICT SCORING RULES:
 
 atsFormat (1-10):
-- Deduct points if: no contact info, no standard headings (Experience/Education/Skills), obvious multi-column detected
-- Do NOT deduct for formatting you cannot verify from text alone
-- Score 8+ if contact info present, headings present, no obvious structural issues
+- Start at 7. Deduct for each issue found:
+  -2: evidence of two-column layout, tables, or text boxes in the structure
+  -2: non-standard section names (e.g. "Projects Skills", "Core Competencies" instead of "Skills")
+  -1: contact info not clearly at top
+  -1: missing any standard section (Summary, Experience, Skills, Education)
+  -1: inconsistent date formatting
+- Score 8+ only if: single column confirmed, all standard headings, clean structure throughout
 
 bulletQuality (1-10):
-- WEAK verbs that MUST be flagged: "Responsible for", "Helped", "Assisted", "Participated in", "Worked on", "Was involved in", "Supported", "Contributed to" (when used as the opening verb without a specific action)
-- STRONG verbs that must NEVER be flagged: Managed, Led, Built, Grew, Reduced, Closed, Launched, Negotiated, Exceeded, Advised, Developed, Created, Delivered, Drove, Achieved, Oversaw, Established, Implemented, Executed, Coordinated, Secured, Generated, Increased, Decreased, Trained, Hired, Designed, Deployed, Streamlined — these are all acceptable strong action verbs
-- Count ONLY bullets that start with the WEAK verb list above
-- If ALL bullets use strong verbs: score 8-10 regardless of metrics
-- Metrics improve score but absence of metrics alone is NOT a reason to score below 7 if verbs are strong
-- reason must cite a SPECIFIC bullet from the resume as evidence, quoting the exact opening words
+- Start at 5. Adjust based on evidence:
+  +2: ALL bullets start with strong action verbs (Led, Built, Reduced, Drove, Closed, etc.)
+  +1: majority of bullets have specific metrics (%, $, headcount, time saved)
+  +1: clear outcome stated in most bullets
+  -2: any bullets starting with "Responsible for", "Helped", "Assisted", "Participated"
+  -1: bullets written as narrative prose instead of action-outcome format
+  -1: fewer than 3 bullets per role
+  -1: no metrics in any bullet across entire resume
+- Most original resumes score 4-6 here
 
 keywords (1-10):
-- Check for: industry terms, tool names, methodology names, role-specific vocabulary
-- Score based on what IS there, not hypothetical missing terms
-- reason must cite specific keywords found or specifically missing
+- Start at 5. Adjust:
+  +2: strong industry-specific terminology throughout
+  +1: tool names and methodologies named specifically
+  +1: role-specific vocabulary matches what ATS systems scan for
+  -2: generic language with no industry terms
+  -1: skills listed as narrative prose instead of scannable list
+- Score based on what IS there
 
 completeness (1-10):
-- Check: name? email? phone? LinkedIn URL? summary ≥40 words (use summaryWordCount)? all roles have startDate? skills section?
-- Education graduation year: NOT part of completeness score. Do not mention it in reason or deduct for it.
+- Check: name, email, phone, LinkedIn URL, summary ≥40 words (use summaryWordCount), all roles have startDate and endDate, skills section present
+- Start at 10. Deduct 1 point per missing field.
+- Education graduation year: NOT part of completeness score.
 - summaryWordCount is provided — never say summary is too short if summaryWordCount ≥ 40
-- Score 10 if all above present. Deduct 1 point per missing field.
-- reason must list specifically what is present and what (if anything) is missing
 
-topIssues: Only list issues that ACTUALLY exist in this resume.
-- If the resume scores 8+ overall AND has no real issues: return 3 genuine strengths instead (e.g. "Strong metrics throughout — $7M+ ARR and top 0.3% ranking give recruiters clear proof points")
-- Only flag issues with bulletCount === 0 (truly empty roles), not bulletCount === 1
-- NEVER flag: missing graduation year (senior professionals omit intentionally), "Managed"/"Advised" as weak verbs, generic "bullets could be stronger"
-- Never mix — if showing strengths, all 3 must be strengths. If showing issues, all 3 must be real specific issues with evidence.
-GOOD issue examples: "LinkedIn URL is missing", "3 bullets start with Responsible for", "Role X has zero bullets"
-GOOD strength examples: "Executive-level metrics throughout", "Clear progression from IC to VP to Founder", "All roles have dates and context"
-
-flag = a specific GPT instruction to fix this dimension during transformation`
+topIssues: List the 3 most impactful improvements this resume needs. Be specific — cite actual bullets, actual missing sections, actual weak language found in the resume. Never generic.`
             },
             {
               role: "user",
