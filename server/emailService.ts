@@ -197,4 +197,20 @@ const EMAIL_TEMPLATES: Record<string, (email: string) => object> = {
     </div>`,
   }),
 
+  abandoned_checkout: (email) => ({
+    from: FROM, to: [email],
+    subject: "Your resume transformation is waiting",
+    html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
+      <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">You were so close.</h2>
+      <p style="color:#555;line-height:1.6;margin-bottom:16px">Your resume has already been analyzed and transformed. The only thing left is downloading it.</p>
+      <p style="color:#555;line-height:1.6;margin-bottom:24px">Your session is still active — click below to pick up exactly where you left off.</p>
+      <a href="${SITE}/app?resume=true&utm_source=email&utm_medium=abandoned_checkout&utm_campaign=recovery"
+         style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+        Complete my download →
+      </a>
+      <p style="font-size:13px;color:#888;margin-top:32px">Your transformed resume will be ready to download in seconds. No need to re-upload anything.</p>
+      <p style="font-size:13px;color:#888;margin-top:8px">— Bryan, ResumeIQ</p>
+    </div>`,
+  }),
+
 };

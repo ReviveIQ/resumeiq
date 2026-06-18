@@ -112,7 +112,7 @@ async function createSession(sessionId: string, parsedData: any, paid: boolean, 
   try {
     await conn.execute(
       `INSERT INTO riq_sessions (sessionId, parsedData, paid, freeUsed, createdAt, expiresAt)
-       VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR))
+       VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY))
        ON DUPLICATE KEY UPDATE parsedData=VALUES(parsedData), paid=VALUES(paid), freeUsed=VALUES(freeUsed), expiresAt=VALUES(expiresAt)`,
       [sessionId, JSON.stringify(parsedData), paid ? 1 : 0, freeUsed ? 1 : 0]
     );
@@ -1849,6 +1849,31 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
       const session = await getSession(sessionId);
       if (!session) { console.error(`[ResumeIQ] Checkout failed — session not found: ${sessionId || "no sessionId"}`); res.status(404).json({ error: "Session not found or expired" }); return; }
       if (session.paid) { res.json({ alreadyPaid: true }); return; }
+
+      // Stamp checkout time and contact info for abandoned checkout recovery
+      const tokenUser = getTokenUser(req);
+      if (tokenUser) {
+        const dbUser = await getUserById(tokenUser.userId);
+        const conn = await getDb();
+        if (conn) {
+          await conn.execute(
+            `UPDATE riq_sessions SET checkoutAt = NOW(), contactEmail = ?, contactName = ? WHERE sessionId = ?`,
+            [dbUser?.email || null, dbUser?.name || null, sessionId]
+          ).catch(() => {});
+          await conn.end();
+        }
+      } else if (session.parsedData?.email) {
+        // Guest — use email from parsedData
+        const conn = await getDb();
+        if (conn) {
+          await conn.execute(
+            `UPDATE riq_sessions SET checkoutAt = NOW(), contactEmail = ?, contactName = ? WHERE sessionId = ?`,
+            [session.parsedData.email, session.parsedData.name || null, sessionId]
+          ).catch(() => {});
+          await conn.end();
+        }
+      }
+
       const origin = req.headers.origin || `https://${req.headers.host}`;
       const { url } = await createCheckoutSession(
         `${origin}/?payment=success&`,
@@ -2244,7 +2269,36 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
         } catch { /* non-fatal */ } finally { await conn.end(); }
       });
 
-      console.log("[ResumeIQ] Email recovery crons started");
+      // abandoned_checkout — every 15 minutes: fire 1 hour after checkout initiated, no payment
+      cronLib.default.schedule("*/15 * * * *", async () => {
+        const conn = await getDb();
+        if (!conn) return;
+        try {
+          const [rows] = await conn.execute(`
+            SELECT sessionId, contactEmail, contactName
+            FROM riq_sessions
+            WHERE checkoutAt IS NOT NULL
+              AND checkoutAt < DATE_SUB(NOW(), INTERVAL 1 HOUR)
+              AND paid = 0
+              AND checkoutRecoverySent = 0
+              AND contactEmail IS NOT NULL
+              AND expiresAt > NOW()
+            LIMIT 25
+          `) as any;
+          const data = Array.isArray(rows[0]) ? rows[0] : rows;
+          for (const row of data) {
+            await conn.execute(
+              `UPDATE riq_sessions SET checkoutRecoverySent = 1 WHERE sessionId = ?`,
+              [row.sessionId]
+            );
+            sendEmail(row.contactEmail, "abandoned_checkout").catch(() => {});
+            console.log(`[Cron] abandoned_checkout → ${row.contactEmail}`);
+          }
+          if (data.length) console.log(`[Cron] abandoned_checkout: ${data.length} recovery emails sent`);
+        } catch (err: any) {
+          console.error("[Cron] abandoned_checkout error:", err.message);
+        } finally { await conn.end(); }
+      });
     } catch (err: any) {
       console.warn("[ResumeIQ] node-cron not available:", err.message);
     }

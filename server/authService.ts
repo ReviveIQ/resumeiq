@@ -59,7 +59,10 @@ export async function initDb() {
     `);
     // Add planExpiresAt if upgrading existing DB
     await conn.execute(`ALTER TABLE riq_users ADD COLUMN planExpiresAt TIMESTAMP NULL DEFAULT NULL`).catch(() => {});
-    await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS emailVerified TINYINT DEFAULT 0`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS contactEmail VARCHAR(320) NULL`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS contactName VARCHAR(255) NULL`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS checkoutAt TIMESTAMP NULL`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS checkoutRecoverySent TINYINT DEFAULT 0`).catch(() => {});
     await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS verifyToken VARCHAR(64) NULL`).catch(() => {});
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_resumes (
