@@ -2933,26 +2933,39 @@ export default function ResumeIQ() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                     <p style={{ color: "#93c5fd", fontSize: "12px", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>Next step</p>
-                    <span style={{ background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "99px", fontSize: "10px", fontWeight: 700, padding: "2px 8px", letterSpacing: "0.04em" }}>FREE</span>
+                    <span style={{ background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "99px", fontSize: "10px", fontWeight: 700, padding: "2px 8px", letterSpacing: "0.04em" }}>7 DAYS FREE</span>
                   </div>
                   <p style={{ color: "white", fontSize: "15px", fontWeight: 700, marginBottom: "6px", lineHeight: 1.4 }}>
-                    Find{parsedData?.title ? ` ${parsedData.title}` : ""} roles this resume is built for
+                    Start your job search — your resume is already loaded
                   </p>
                   <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "16px", lineHeight: 1.5 }}>
-                    MyCareerIQ builds your job search pipeline — research companies, generate outreach, track applications, and send cover letters. Free to start, no credit card required.
+                    MyCareerIQ builds your pipeline — research companies, generate cover letters, track applications, and manage outreach. Your transformed resume transfers automatically. 7 days free, no credit card required.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <a
-                      href={`https://mycareeriq.reviveiqi.com/register?utm_source=resumeiq&utm_medium=done_screen&utm_campaign=upsell${parsedData?.title ? `&role=${encodeURIComponent(parsedData.title)}` : ""}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", borderRadius: "9px", padding: "10px 20px", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}
+                    <button
+                      onClick={async () => {
+                        if (!user) {
+                          window.open(`https://mycareeriq.reviveiqi.com/register?utm_source=resumeiq&utm_medium=done_screen${parsedData?.title ? `&role=${encodeURIComponent(parsedData.title)}` : ""}`, "_blank");
+                          return;
+                        }
+                        try {
+                          const t = localStorage.getItem("riq_token");
+                          const res = await fetch("/api/resumeiq/auth/mycareeriq-handoff", {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${t}` },
+                          });
+                          const data = await res.json();
+                          if (data.token) {
+                            window.open(`https://mycareeriq.reviveiqi.com/sso?token=${encodeURIComponent(data.token)}&utm_source=resumeiq&utm_medium=done_screen`, "_blank");
+                          }
+                        } catch {
+                          window.open("https://mycareeriq.reviveiqi.com/register?utm_source=resumeiq&utm_medium=done_screen", "_blank");
+                        }
+                      }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", borderRadius: "9px", padding: "10px 20px", fontSize: "13px", fontWeight: 700, border: "none", cursor: "pointer" }}
                     >
-                      Create free account →
-                    </a>
-                    <span style={{ color: "#475569", fontSize: "12px" }}>Already have one?{" "}
-                      <a href="https://mycareeriq.reviveiqi.com/login" target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", textDecoration: "none" }}>Sign in</a>
-                    </span>
+                      Start my job search — 7 days free →
+                    </button>
                   </div>
                 </div>
               </div>

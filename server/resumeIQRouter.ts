@@ -2493,6 +2493,41 @@ Return ONLY a valid JSON object with exactly these 5 fields — no preamble, no 
   });
 
 
+  // ── ResumeIQ → MyCareerIQ SSO handoff token generator ────────────────────
+  // Called from done screen. Returns a short-lived token MyCareerIQ can use
+  // to auto-login the user and pre-load their resume.
+  app.post("/api/resumeiq/auth/mycareeriq-handoff", async (req: Request, res: Response) => {
+    try {
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+      const user = await getUserById(tokenUser.userId);
+      if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+      // Get their most recent resume R2 key
+      const resumes = await getUserResumes(tokenUser.userId);
+      const latestResume = resumes?.[0];
+      const resumeKey = latestResume?.originalFileUrl || null;
+      const resumeDocxKey = latestResume ? `resumeiq/${tokenUser.userId}/${latestResume.id}/transformed.docx` : null;
+
+      const secret = process.env.CROSS_APP_SECRET || process.env.JWT_SECRET || "cross-app-secret";
+      const payload = JSON.stringify({
+        email: user.email,
+        name: user.name || "",
+        resumeKey,
+        resumeDocxKey,
+        source: "resumeiq",
+        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minute window
+      });
+      const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+      const token = Buffer.from(JSON.stringify({ payload, sig })).toString("base64url");
+
+      res.json({ token, email: user.email, name: user.name });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── Cross-app SSO handoff ─────────────────────────────────────────────────
   // Accepts a short-lived token from MyCareerIQ, verifies it, finds or creates
   // the user in ResumeIQ's DB, and returns a riq_token for auto-login.
