@@ -2105,7 +2105,7 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
     if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
     try {
       const conn = await getDb();
-      if (!conn) { res.status(500).json({ error: "DB unavailable" }); return; }
+      if (!conn) { res.json({ postScore: null }); return; }
       const [rows] = await conn.execute(
         `SELECT id, preScore, postScore, scoreDimensions FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
         [tokenUser.userId]
@@ -2114,14 +2114,25 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
       const data = Array.isArray(rows[0]) ? rows[0] : rows;
       const resume = data[0];
       if (!resume) { res.json({ postScore: null }); return; }
+      
+      let scoreDimensions = null;
+      try {
+        if (resume.scoreDimensions) {
+          scoreDimensions = typeof resume.scoreDimensions === "string"
+            ? JSON.parse(resume.scoreDimensions)
+            : resume.scoreDimensions;
+        }
+      } catch { scoreDimensions = null; }
+
       res.json({
         resumeId: resume.id,
-        preScore: resume.preScore,
-        postScore: resume.postScore,
-        scoreDimensions: resume.scoreDimensions ? JSON.parse(resume.scoreDimensions) : null,
+        preScore: resume.preScore || null,
+        postScore: resume.postScore || null,
+        scoreDimensions,
       });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      console.error("[ResumeIQ] latest-score error:", err.message);
+      res.json({ postScore: null }); // never 500 — just return null
     }
   });
 
