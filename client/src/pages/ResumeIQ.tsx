@@ -320,7 +320,33 @@ export default function ResumeIQ() {
   const [emailTypoWarning, setEmailTypoWarning] = useState<string|null>(null);
   const [pendingFileName, setPendingFileName] = useState<string|null>(null);
 
-  // Poll for email verification when on verify_pending screen
+  // Poll for postScore on done screen — background job saves it after generate
+  useEffect(() => {
+    if (view !== "done") return;
+    if (!user || !token) return;
+    // Only poll if postScore isn't showing yet (resumeScore same as preTransformScore or null)
+    if (resumeScore && preTransformScore && resumeScore.overall !== preTransformScore.overall) return;
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > 20) { clearInterval(interval); return; } // stop after ~60 seconds
+      try {
+        const res = await fetch("/api/resumeiq/latest-score", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.postScore && data.postScore !== preTransformScore?.overall) {
+          setResumeScore({
+            overall: data.postScore,
+            dimensions: data.scoreDimensions || {},
+          });
+          clearInterval(interval);
+        }
+      } catch { /* silent */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [view, user]);
   // Detects when user verifies in another tab
   useEffect(() => {
     if (view !== "verify_pending") return;
