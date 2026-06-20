@@ -921,25 +921,28 @@ export default function ResumeIQ() {
       document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
       setView("done"); trackEvent('resume_generated', { sessionId });
 
-      // Poll for postScore from background job — plain setTimeout, no hooks
+      // Poll for postScore from background job — plain setTimeout, no stale closure issues
       if (token) {
         const authToken = token;
+        const preScoreValue = resumeScore?.overall ?? null;
         let attempts = 0;
         const pollPostScore = () => {
           attempts++;
-          if (attempts > 20) return; // give up after ~60s
+          if (attempts > 20) return;
           fetch("/api/resumeiq/latest-score", {
             headers: { Authorization: `Bearer ${authToken}` }
           }).then(r => r.ok ? r.json() : null)
             .then(d => {
-              if (d?.postScore && d.postScore !== (resumeScore?.overall)) {
+              if (d?.postScore && d.postScore !== preScoreValue) {
+                // postScore arrived and differs from preScore — update display
                 setResumeScore({ overall: d.postScore, dimensions: d.scoreDimensions || {} });
-              } else {
+              } else if (!d?.postScore || d.postScore === preScoreValue) {
+                // Not ready yet — keep polling
                 setTimeout(pollPostScore, 3000);
               }
             }).catch(() => setTimeout(pollPostScore, 3000));
         };
-        setTimeout(pollPostScore, 5000); // start polling 5s after download
+        setTimeout(pollPostScore, 5000);
       }
 
     } catch (err: any) { setError(err.message); }
