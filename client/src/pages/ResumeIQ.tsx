@@ -921,14 +921,26 @@ export default function ResumeIQ() {
       document.cookie = "resumeiq_free_used=1; max-age=31536000; path=/";
       setView("done"); trackEvent('resume_generated', { sessionId });
 
-      // Run post-transform score in background to show improvement
-      fetch("/api/resumeiq/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ parsedData: data }),
-      }).then(r => r.ok ? r.json() : null)
-        .then(scores => { if (scores) setResumeScore(scores); })
-        .catch(() => {});
+      // Poll for postScore from background job — plain setTimeout, no hooks
+      if (token) {
+        const authToken = token;
+        let attempts = 0;
+        const pollPostScore = () => {
+          attempts++;
+          if (attempts > 20) return; // give up after ~60s
+          fetch("/api/resumeiq/latest-score", {
+            headers: { Authorization: `Bearer ${authToken}` }
+          }).then(r => r.ok ? r.json() : null)
+            .then(d => {
+              if (d?.postScore && d.postScore !== (resumeScore?.overall)) {
+                setResumeScore({ overall: d.postScore, dimensions: d.scoreDimensions || {} });
+              } else {
+                setTimeout(pollPostScore, 3000);
+              }
+            }).catch(() => setTimeout(pollPostScore, 3000));
+        };
+        setTimeout(pollPostScore, 5000); // start polling 5s after download
+      }
 
     } catch (err: any) { setError(err.message); }
     finally { setDownloading(false); }
