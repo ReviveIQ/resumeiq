@@ -2099,31 +2099,7 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
       res.status(500).json({ error: error.message || "Failed to generate resume" });
     }
   });
-  // ── LATEST SCORE — polled from done screen to get postScore ───────────────
-  app.get("/api/resumeiq/latest-score", async (req: Request, res: Response) => {
-    const tokenUser = getTokenUser(req);
-    if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
-    try {
-      const conn = await getDb();
-      if (!conn) { res.status(500).json({ error: "DB unavailable" }); return; }
-      const [rows] = await conn.execute(
-        `SELECT id, preScore, postScore, scoreDimensions FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
-        [tokenUser.userId]
-      ) as any;
-      await conn.end();
-      const data = Array.isArray(rows[0]) ? rows[0] : rows;
-      const resume = data[0];
-      if (!resume) { res.json({ postScore: null }); return; }
-      res.json({
-        resumeId: resume.id,
-        preScore: resume.preScore,
-        postScore: resume.postScore,
-        scoreDimensions: resume.scoreDimensions ? JSON.parse(resume.scoreDimensions) : null,
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
   // GET /api/resumeiq/analytics?range=7d|30d|all
   // Returns daily upload/paid/revenue buckets + funnel totals + Stripe session stats
   app.get("/api/resumeiq/analytics", (req: Request, res: Response, next: any) => adminAuth(req, res, next), async (req: Request, res: Response) => {
