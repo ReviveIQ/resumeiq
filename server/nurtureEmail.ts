@@ -146,7 +146,7 @@ function emailA3(firstName: string, email: string): { subject: string; html: str
 
 function emailA7(firstName: string, email: string): { subject: string; html: string } {
   return {
-    subject: "One question",
+    subject: "Did you get what you needed?",
     html: WRAP(`
       ${P(`Hey ${firstName},`)}
       ${P("How's the search going?")}
@@ -161,7 +161,7 @@ function emailA7(firstName: string, email: string): { subject: string; html: str
 
 function emailA14(firstName: string, email: string): { subject: string; html: string } {
   return {
-    subject: "Last one from me",
+    subject: "Just checking in on your search",
     html: WRAP(`
       ${P(`Hey ${firstName},`)}
       ${P("I won't keep filling your inbox. But I did want to check in one more time.")}
@@ -224,7 +224,7 @@ function emailB3(firstName: string, email: string): { subject: string; html: str
 
 function emailB7(firstName: string, email: string): { subject: string; html: string } {
   return {
-    subject: "Honest question",
+    subject: "Everything go okay on your end?",
     html: WRAP(`
       ${P(`Hey ${firstName},`)}
       ${P("You signed up for ResumeIQ a week ago and haven't run your first transform.")}
