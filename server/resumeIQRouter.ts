@@ -353,10 +353,11 @@ TYPO AND SPELLING CORRECTIONS (fix these automatically — they are always wrong
 - DO NOT change the candidate's email address even if it appears to be a typo — flag it in emailTypoWarning instead
 
 EMAIL VALIDATION:
-- Check if the email field appears to have a typo (e.g. "gamil.com" instead of "gmail.com", "yahooo.com", "hotmal.com")
-- Common provider typos: gamil→gmail, yahooo→yahoo, hotmal→hotmail, outllook→outlook, gmaill→gmail
-- If you detect a likely typo, set "emailTypoWarning" to the likely correct email
-- If the email looks correct, set "emailTypoWarning" to null
+- Check if the email field appears to have a typo in the PROVIDER DOMAIN ONLY
+- Only flag these known provider misspellings: gamil→gmail, yahooo→yahoo, hotmal→hotmail, outllook→outlook, gmaill→gmail, yaho→yahoo, gmial→gmail
+- NEVER flag custom domains like sternsoftware.com, reviveiqi.com, company.com — these are legitimate business emails
+- If you detect a likely provider typo, set "emailTypoWarning" to the likely correct email
+- If the email looks correct OR uses a custom domain, set "emailTypoWarning" to null
 
 THE SUMMARY RULES:
 - Open with who this person IS professionally — their identity, not their last title
@@ -400,6 +401,7 @@ BULLET CURATION RULE — CRITICAL:
   2. Scale of impact — larger scope wins (13 locations, 55+ stakeholders, $15M portfolio)
   3. Uniqueness — bullets that only THIS person could have written, not generic role descriptions
   4. Outcome clarity — what changed as a result? Revenue, time, cost, scale, compliance?
+- IMPORTANT: If a bullet contains the same metric or achievement that appears in topMetrics, that bullet MUST be included in the experience section for that role. Never put a metric in topMetrics that doesn't also appear in the role bullets.
 - Do NOT just take the first 3-4 bullets and stop. The best bullet might be in the 4th sub-section.
 - Do NOT include all bullets just because they exist. A 20-bullet role should become 4-6 curated highlights.
 - For entry-level candidates with fewer total bullets: keep all bullets if the role has 3 or fewer, curate to 4 max if 4+
@@ -425,11 +427,29 @@ ADDITIONAL / FREELANCE / CONSULTING SECTIONS:
 - For narrative skills sections: convert the narrative into 2-3 strong bullet points extracting the best metrics
 - Example: "Projects Skills" with "Managed 500+ transactions/month with 99% accuracy" → bullet: "Processed 500+ transactions monthly with 99% accuracy rate"
 
-GPA AND GRADES:
-- For each education entry, extract GPA, CGPA, percentage, or grade exactly as written
+PUBLICATIONS:
+- If the resume has a Publications, Books, Articles, or similar section, extract into the "publications" array
+- Include full title, publisher, and year if mentioned
+- Example: "OS/2 Warp Presentation Manager for Power Programmers published by Wiley" → one entry
+
+EDUCATION MINOR AND HONORS:
+- If a degree mentions a minor, concentration, honors, or GPA, capture it in the gpa field
+- Example: "Bachelor of Science + Minor in Computer Science" → gpa: "Minor in Computer Science"
+
+TOP METRICS AND EXPERIENCE BULLETS:
+- topMetrics should reflect the 3 strongest quantified achievements across the ENTIRE resume
+- These same achievements MUST also appear as bullets in the relevant experience role
+- Do not put a metric in topMetrics if it is not also represented in the experience bullets
+- The curation pass selects the best 4-6 bullets — make sure topMetrics achievements are always included
 - Examples: "3.8/4.0", "7.77/10", "88.20%", "First Class Honours", "Distinction"
 - If multiple formats appear (CGPA + percentage), use the format that appears first
 - If no grade information is present, return empty string for gpa field
+- Also extract Minor or Concentration fields: add to the degree name (e.g. "Bachelor of Science in Business Administration, Minor in Computer Science")
+
+PUBLICATIONS:
+- If the resume has a Publications, Books, Articles, or Research section, extract all entries into the "publications" array
+- Include: title, publisher, and year if present
+- Example: "OS/2 Warp Presentation Manager for Power Programmers published by Wiley" → "OS/2 Warp Presentation Manager for Power Programmers — Wiley"
 
 CRITICAL EXTRACTION RULES:
 - Extract the person's FULL legal name including middle name if present
@@ -495,6 +515,8 @@ CRITICAL EXTRACTION RULES:
     }
   ],
   "certifications": ["full certification text exactly as written including expiry dates"],
+  "publications": ["book title, article, or publication exactly as written — include publisher if mentioned"],
+  "publications": ["book, article, or paper titles exactly as written — include publisher if mentioned"],
   "seniorityLevel": "entry or mid or senior or executive",
   "yearsOfExperience": 0,
   "languages": [
@@ -985,6 +1007,12 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
             }),
             ...(role.bullets || []).map((b: string) => bul(b)),
           ]),
+        ] : []),
+
+        // ── PUBLICATIONS ───────────────────────────────────────────────────
+        ...(parsedData.publications?.length ? [
+          sectionHeader("Publications"),
+          ...(parsedData.publications || []).map((pub: string) => bul(pub)),
         ] : []),
 
         // ── CERTIFICATIONS ─────────────────────────────────────────────────
