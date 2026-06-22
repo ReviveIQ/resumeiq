@@ -690,13 +690,22 @@ export default function ResumeIQ() {
         // Show scoring view immediately — score loads in background
         setView("scoring");
         setScoreLoading(true);
+
+        // Timeout fallback — if scoring takes >12s, show preview anyway
+        const scoreTimeout = setTimeout(() => {
+          setScoreLoading(false);
+          if (!resumeScore) {
+            setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+          }
+        }, 12000);
+
         fetch("/api/resumeiq/score", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
           body: JSON.stringify({ parsedData: data }),
         }).then(r => r.ok ? r.json() : null)
-          .then(scores => { if (scores) setResumeScore(scores); })
-          .catch(() => {})
+          .then(scores => { clearTimeout(scoreTimeout); if (scores) setResumeScore(scores); })
+          .catch(() => { clearTimeout(scoreTimeout); })
           .finally(() => setScoreLoading(false));
 
         // If personality assessments were uploaded on the upload screen,
@@ -788,13 +797,17 @@ export default function ResumeIQ() {
         setView("scoring");
       }
       setScoreLoading(true);
+      const scoreTimeoutNext = setTimeout(() => {
+        setScoreLoading(false);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: JSON.stringify({ parsedData: updated }),
       }).then(r => r.ok ? r.json() : null)
-        .then(scores => { if (scores) setResumeScore(scores); })
-        .catch(() => {})
+        .then(scores => { clearTimeout(scoreTimeoutNext); if (scores) setResumeScore(scores); })
+        .catch(() => { clearTimeout(scoreTimeoutNext); })
         .finally(() => setScoreLoading(false));
     }
   };
@@ -804,16 +817,19 @@ export default function ResumeIQ() {
       setInterviewStep(interviewStep + 1);
       setInterviewAnswer("");
     } else {
-      // Skip remaining questions but still show scoring
       setView("scoring");
       setScoreLoading(true);
+      const scoreTimeoutSkip = setTimeout(() => {
+        setScoreLoading(false);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: JSON.stringify({ parsedData: parsedData }),
       }).then(r => r.ok ? r.json() : null)
-        .then(scores => { if (scores) setResumeScore(scores); })
-        .catch(() => {})
+        .then(scores => { clearTimeout(scoreTimeoutSkip); if (scores) setResumeScore(scores); })
+        .catch(() => { clearTimeout(scoreTimeoutSkip); })
         .finally(() => setScoreLoading(false));
     }
   };
