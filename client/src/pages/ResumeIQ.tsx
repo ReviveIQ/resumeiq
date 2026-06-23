@@ -1130,6 +1130,8 @@ export default function ResumeIQ() {
       }
     } catch { /* silent */ }
   };
+
+  const handleRedownload = async (resumeId: number) => {
     const res = await fetch(`/api/resumeiq/resume/${resumeId}/download`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) { setError("Failed to download"); return; }
     const blob = await res.blob();
