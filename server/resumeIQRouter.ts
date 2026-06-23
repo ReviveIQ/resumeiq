@@ -2136,7 +2136,29 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
     }
   });
 
-  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  // ── DELETE RESUME ─────────────────────────────────────────────────────────
+  app.delete("/api/resumeiq/resume/:id", async (req: Request, res: Response) => {
+    const tokenUser = getTokenUser(req);
+    if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+    try {
+      const resumeId = parseInt(req.params.id);
+      const conn = await getDb();
+      if (!conn) { res.status(500).json({ error: "DB unavailable" }); return; }
+      // Only delete if it belongs to this user
+      const [result] = await conn.execute(
+        "DELETE FROM riq_resumes WHERE id = ? AND userId = ?",
+        [resumeId, tokenUser.userId]
+      ) as any;
+      await conn.end();
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Resume not found" }); return;
+      }
+      console.log(`[ResumeIQ] Resume ${resumeId} deleted by user ${tokenUser.userId}`);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
   // GET /api/resumeiq/analytics?range=7d|30d|all
   // Returns daily upload/paid/revenue buckets + funnel totals + Stripe session stats
   app.get("/api/resumeiq/analytics", (req: Request, res: Response, next: any) => adminAuth(req, res, next), async (req: Request, res: Response) => {

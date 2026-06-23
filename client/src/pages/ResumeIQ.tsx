@@ -1118,7 +1118,18 @@ export default function ResumeIQ() {
     finally { setAuthLoading(false); }
   };
 
-  const handleRedownload = async (resumeId: number) => {
+  const handleDeleteResume = async (resumeId: number, candidateName: string) => {
+    if (!window.confirm(`Delete "${candidateName || "this resume"}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/resumeiq/resume/${resumeId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setHistory(prev => prev.filter((r: any) => r.id !== resumeId));
+      }
+    } catch { /* silent */ }
+  };
     const res = await fetch(`/api/resumeiq/resume/${resumeId}/download`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) { setError("Failed to download"); return; }
     const blob = await res.blob();
@@ -3125,10 +3136,17 @@ export default function ResumeIQ() {
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => handleRedownload(r.id)}
-                      style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "7px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
-                      <Download size={13} /> Download
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <button onClick={() => handleRedownload(r.id)}
+                        style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "7px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                        <Download size={13} /> Download
+                      </button>
+                      <button onClick={() => handleDeleteResume(r.id, r.candidateName)}
+                        title="Delete resume"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "7px", padding: "8px 10px", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
