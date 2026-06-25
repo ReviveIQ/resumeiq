@@ -197,6 +197,27 @@ const EMAIL_TEMPLATES: Record<string, (email: string) => object> = {
     </div>`,
   }),
 
+  single_role_nudge: (email) => ({
+    from: FROM, to: [email],
+    subject: "Great start — one thing that would make your resume stronger",
+    html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
+      <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">Your transformation looks great.</h2>
+      <p style="color:#555;line-height:1.6;margin-bottom:16px">One thing worth knowing — we noticed your resume only included one role. The more of your background you give ResumeIQ to work with, the stronger your output.</p>
+      <p style="color:#555;line-height:1.6;margin-bottom:8px">Past roles — even brief ones, even early in your career — give the AI more to work with:</p>
+      <ul style="color:#333;line-height:2;padding-left:20px;margin-bottom:20px">
+        <li>More metrics and achievements to surface</li>
+        <li>A stronger career narrative across your history</li>
+        <li>Progression that hiring managers look for</li>
+      </ul>
+      <p style="color:#555;line-height:1.6;margin-bottom:24px">It takes about 10 minutes to add a previous role to your resume. Re-upload and run it through again — your next transformation is just $14.99.</p>
+      <a href="${SITE}/app?resume=true&utm_source=email&utm_medium=single_role_nudge&utm_campaign=more_content"
+         style="display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
+        Add more experience and re-upload →
+      </a>
+      <p style="font-size:13px;color:#888;margin-top:32px">— Bryan, ResumeIQ</p>
+    </div>`,
+  }),
+
   abandoned_checkout: (email) => ({
     from: FROM, to: [email],
     subject: "Your resume transformation is waiting",

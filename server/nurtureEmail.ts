@@ -375,6 +375,33 @@ export async function runNurtureCron(): Promise<void> {
 
     // Segment A — used free transform
     if (resumeCount >= 1) {
+      // Single role nudge — Day 3, only for users with 1 experience entry
+      if (daysSince >= 3 && daysSince < 7) {
+        const key = "single_role_nudge";
+        const sent = await alreadySentFlow(conn2, email, key);
+        if (!sent) {
+          // Check if their resume only has 1 role
+          const [resumeRows] = await conn2.execute(
+            `SELECT parsedData FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
+            [user.id]
+          ) as any;
+          const resumeData = Array.isArray(resumeRows[0]) ? resumeRows[0] : resumeRows;
+          if (resumeData[0]?.parsedData) {
+            try {
+              const parsed = typeof resumeData[0].parsedData === "string"
+                ? JSON.parse(resumeData[0].parsedData)
+                : resumeData[0].parsedData;
+              const roleCount = (parsed.experience || []).length;
+              if (roleCount === 1) {
+                await logFlow(conn2, email, key);
+                await sendEmail(email, "single_role_nudge");
+                console.log(`[Nurture] single_role_nudge → ${email} (1 role)`);
+              }
+            } catch { /* silent */ }
+          }
+        }
+      }
+
       // Day 3 high scorer WWM intercept
       if (isHighScorer && daysSince >= 3 && daysSince < 7) {
         const key = "c3";
