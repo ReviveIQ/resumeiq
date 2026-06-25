@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createCheckoutSession, createPersonalityCheckoutSession, createBundleCheckoutSession, createCareerLaunchSession, createMonthlySession, verifyPayment } from "./stripeService";
-import { sendEmail, logEmailSend, alreadySent, notifyNewUser, notifyPurchase } from "./emailService";
+import { sendEmail, logEmailSend, alreadySent, notifyNewUser, notifyPurchase, notifyOwner } from "./emailService";
 import crypto from "crypto";
 import JSZip from "jszip";
 // docx imported dynamically inside generateDocx to avoid ESM/CJS interop issues
@@ -1531,7 +1531,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           [userId, name || "ResumeIQ User", title || null, Math.min(5, Math.max(1, parseInt(rating))), quote.trim(), preScore || null, postScore || null]
         );
         // Notify Bryan
-        notifyPurchase("", "", `New testimonial (${rating}★): "${quote.trim().slice(0, 80)}..."`, "").catch(() => {});
+        notifyOwner(`⭐ New testimonial (${rating}★) — ${name}`, `<div style="font-family:sans-serif;padding:20px;color:#1a1a1a"><h3>${name} — ${rating}★</h3><p style="font-size:15px;font-style:italic">"${quote.trim()}"</p><p style="color:#64748b;font-size:13px">Pre-score: ${preScore} → Post-score: ${postScore}</p></div>`).catch(() => {});
         res.json({ ok: true });
       } finally { await conn.end(); }
     } catch (err: any) {
