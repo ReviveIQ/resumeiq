@@ -69,7 +69,9 @@ async function startServer() {
 
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(process.cwd(), "dist/public");
-    app.use(express.static(distPath));
+    // index: false prevents express.static from auto-serving index.html for /
+    // so our explicit route handlers below control what each path serves
+    app.use(express.static(distPath, { index: false }));
 
     // Clean URL routes for SEO pages
     app.get("/ats-checker", (_req, res) => {
