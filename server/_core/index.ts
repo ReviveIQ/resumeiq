@@ -80,6 +80,17 @@ async function startServer() {
       res.sendFile(path.join(distPath, "faq.html"));
     });
 
+    // Root → landing page (marketing)
+    app.get("/", (_req, res) => {
+      res.sendFile(path.join(distPath, "landing.html"));
+    });
+
+    // /app → React SPA (upload flow)
+    app.get("/app", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+
+    // Everything else → React SPA
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
