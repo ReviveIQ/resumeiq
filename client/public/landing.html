@@ -6,7 +6,7 @@
   <title>ResumeIQ — Get callbacks. ATS-optimized resumes in 60 seconds.</title>
   <meta name="description" content="Upload any resume from any profession. Get a polished, ATS-optimized Word document in seconds. Powered by AI. First one free." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=DM+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     :root { --navy:#0a0f1e; --blue:#1a56db; --blue-bright:#3b82f6; --blue-glow:#60a5fa; --white:#f8fafc; --muted:#94a3b8; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -21,7 +21,7 @@
     .nav-inner{display:flex;align-items:center;justify-content:space-between}
     .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
     .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--blue),var(--blue-glow));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
-    .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--white)}
+    .logo-text{font-family:'Montserrat',sans-serif;font-weight:800;font-size:20px;color:var(--white)}
     .logo-by{font-size:12px;color:var(--muted);margin-left:4px}
     .nav-cta{background:var(--blue);color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;font-family:'Inter',sans-serif}
     .nav-cta:hover{background:var(--blue-bright);transform:translateY(-1px)}
@@ -29,7 +29,7 @@
     .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);border-radius:999px;padding:6px 16px;font-size:13px;color:var(--blue-glow);margin-bottom:32px}
     .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--blue-glow);animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-    .hero h1{font-family:'Syne',sans-serif;font-size:clamp(24px,2.8vw,42px);font-weight:800;line-height:1.1;letter-spacing:-.03em;margin-bottom:24px}
+    .hero h1{font-family:'Montserrat',sans-serif;font-size:clamp(32px,4.5vw,62px);font-weight:800;line-height:1.1;letter-spacing:-.03em;margin-bottom:24px}
     .hero h1 em{font-style:normal;background:linear-gradient(135deg,#60a5fa,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap}
     .hero p{font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:600px;margin:0 auto 40px;line-height:1.7;font-weight:300}
     .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
@@ -39,26 +39,26 @@
     .btn-secondary:hover{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
     .section{padding:80px 0}
     .section-tag{font-size:12px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--blue-glow);margin-bottom:16px;text-align:center}
-    .section-title{font-family:'Syne',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:16px;text-align:center}
+    .section-title{font-family:'Montserrat',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:16px;text-align:center}
     .section-sub{color:var(--muted);font-size:17px;max-width:520px;line-height:1.7;font-weight:300;text-align:center;margin:0 auto 48px}
     .professions-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .profession-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;transition:all .2s}
     .profession-card:hover{border-color:rgba(59,130,246,.3);transform:translateY(-2px)}
     .profession-icon{font-size:28px;margin-bottom:10px}
-    .profession-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px}
+    .profession-name{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px}
     .profession-examples{font-size:11px;color:var(--muted);line-height:1.5}
     .stats{padding:60px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
     .stats-grid{display:grid;grid-template-columns:repeat(4,1fr)}
     .stat{padding:32px;text-align:center;border-right:1px solid var(--border)}
     .stat:last-child{border-right:none}
-    .stat-number{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;background:linear-gradient(135deg,var(--white),var(--blue-glow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:8px}
+    .stat-number{font-family:'Montserrat',sans-serif;font-size:48px;font-weight:800;background:linear-gradient(135deg,var(--white),var(--blue-glow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:8px}
     .stat-label{color:var(--muted);font-size:14px}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
     .step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px;transition:all .2s}
     .step:hover{border-color:rgba(59,130,246,.3);transform:translateY(-4px)}
-    .step-num{font-family:'Syne',sans-serif;font-size:64px;font-weight:800;color:rgba(59,130,246,.15);line-height:1;margin-bottom:16px}
+    .step-num{font-family:'Montserrat',sans-serif;font-size:64px;font-weight:800;color:rgba(59,130,246,.15);line-height:1;margin-bottom:16px}
     .step-icon{font-size:32px;margin-bottom:12px}
-    .step h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:8px}
+    .step h3{font-family:'Montserrat',sans-serif;font-size:20px;font-weight:700;margin-bottom:8px}
     .step p{color:var(--muted);font-size:14px;line-height:1.7;font-weight:300}
     .comparison{display:grid;grid-template-columns:1fr 1fr;gap:24px}
     .comp-card{border-radius:16px;padding:32px;border:1px solid var(--border)}
@@ -72,15 +72,15 @@
     .feature{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;display:flex;gap:20px;align-items:flex-start;transition:border-color .2s}
     .feature:hover{border-color:rgba(59,130,246,.25)}
     .feature-icon{width:44px;height:44px;border-radius:10px;background:rgba(59,130,246,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-    .feature h4{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
+    .feature h4{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px}
     .feature p{color:var(--muted);font-size:14px;line-height:1.6;font-weight:300}
     .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
     .pricing-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px;position:relative;transition:transform .2s}
     .pricing-card:hover{transform:translateY(-4px)}
     .pricing-card.featured{border-color:var(--blue);background:rgba(26,86,219,.08);box-shadow:0 0 60px rgba(26,86,219,.15)}
     .pricing-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--blue);color:white;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 14px;border-radius:999px}
-    .pricing-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px}
-    .pricing-price{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;line-height:1;margin-bottom:4px}
+    .pricing-name{font-family:'Montserrat',sans-serif;font-size:18px;font-weight:700;margin-bottom:8px}
+    .pricing-price{font-family:'Montserrat',sans-serif;font-size:48px;font-weight:800;line-height:1;margin-bottom:4px}
     .pricing-per{color:var(--muted);font-size:13px;margin-bottom:24px}
     .pricing-features{list-style:none;margin-bottom:28px}
     .pricing-features li{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);margin-bottom:10px;font-weight:300}
@@ -92,7 +92,7 @@
     .pricing-btn.outline:hover{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
     .cta-section{padding:100px 0;text-align:center;border-top:1px solid var(--border)}
     .cta-glow{display:inline-block;background:radial-gradient(ellipse at center,rgba(59,130,246,.15),transparent 70%);padding:60px;border-radius:32px;border:1px solid rgba(59,130,246,.15)}
-    .cta-section h2{font-family:'Syne',sans-serif;font-size:clamp(32px,4vw,52px);font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+    .cta-section h2{font-family:'Montserrat',sans-serif;font-size:clamp(32px,4vw,52px);font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
     .cta-section p{color:var(--muted);font-size:18px;margin-bottom:36px;font-weight:300}
     footer{border-top:1px solid var(--border);padding:40px 0;text-align:center}
     footer p{color:var(--muted);font-size:13px}
