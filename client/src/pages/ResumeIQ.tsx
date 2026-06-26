@@ -2431,6 +2431,49 @@ export default function ResumeIQ() {
               )}
             </div>
 
+            {/* Personality upsell — top of preview */}
+            <div style={{ marginBottom: "20px", background: workingWithMeTeaser ? "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(37,99,235,0.1))" : "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))", border: `1px solid ${workingWithMeTeaser ? "rgba(124,58,237,0.4)" : "rgba(99,102,241,0.3)"}`, borderRadius: "12px", padding: "18px 20px" }}>
+              {workingWithMeTeaser ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "18px" }}>✅</span>
+                    <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Your "Working With Me" section is ready</span>
+                  </div>
+                  <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "10px", lineHeight: 1.6 }}>
+                    We've translated your assessment results into professional behavioral language — how you communicate, make decisions, collaborate, and perform under pressure. This is the section hiring managers don't expect and can't forget.
+                  </p>
+                  <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px" }}>
+                    <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0, fontWeight: 600 }}>
+                      ⚠️ Not included in the free download — add it for $7.99 to include it in your resume.
+                    </p>
+                  </div>
+                  <button onClick={() => setPersonalityStep(true)}
+                    style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+                    Add Working With Me — $7.99 →
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "18px" }}>🧠</span>
+                      <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Stand out beyond your credentials</span>
+                    </div>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
+                      Every candidate has accomplishments. <strong style={{ color: "#c7d2fe" }}>Few can articulate how they think, decide, and collaborate.</strong> Upload your DISC, MBTI, Predictive Index, or TKI and we'll translate your personality data into a professional "Working With Me" section — the section hiring managers actually remember.
+                    </p>
+                    <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
+                      Unlocked forever · Auto-added to every future resume
+                    </p>
+                  </div>
+                  <button onClick={() => setPersonalityStep(true)}
+                    style={{ background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    Add It →
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="riq-preview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
               <div>
                 <Section title="Personal Info">
@@ -2637,50 +2680,6 @@ export default function ResumeIQ() {
                 <button onClick={() => setView("register")} style={{ color: "#60a5fa", background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}>Create a free account</button> to save your resumes and re-download anytime.
               </p>
             )}
-            {/* Personality upsell — elevated */}
-            <div style={{ marginTop: "16px", background: workingWithMeTeaser ? "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(37,99,235,0.1))" : "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.08))", border: `1px solid ${workingWithMeTeaser ? "rgba(124,58,237,0.4)" : "rgba(99,102,241,0.3)"}`, borderRadius: "12px", padding: "18px 20px" }}>
-              {workingWithMeTeaser ? (
-                // Already generated — show confirmation + clear upsell
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "18px" }}>✅</span>
-                    <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Your "Working With Me" section is ready</span>
-                  </div>
-                  <p style={{ color: "#c4b5fd", fontSize: "13px", marginBottom: "10px", lineHeight: 1.6 }}>
-                    We've translated your assessment results into professional behavioral language — how you communicate, make decisions, collaborate, and perform under pressure. This is the section hiring managers don't expect and can't forget.
-                  </p>
-                  <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px" }}>
-                    <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0, fontWeight: 600 }}>
-                      ⚠️ Not included in the free download — add it for $7.99 to include it in your resume.
-                    </p>
-                  </div>
-                  <button onClick={() => setPersonalityStep(true)}
-                    style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
-                    Add Working With Me — $7.99 →
-                  </button>
-                </div>
-              ) : (
-                // Not yet generated — show the value prop
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <span style={{ fontSize: "18px" }}>🧠</span>
-                      <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Stand out beyond your credentials</span>
-                    </div>
-                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
-                      Every candidate has accomplishments. <strong style={{ color: "#c7d2fe" }}>Few can articulate how they think, decide, and collaborate.</strong> Upload your DISC, MBTI, Predictive Index, or TKI and we'll translate your personality data into a professional "Working With Me" section — the section hiring managers actually remember.
-                    </p>
-                    <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
-                      Unlocked forever · Auto-added to every future resume
-                    </p>
-                  </div>
-                  <button onClick={() => setPersonalityStep(true)}
-                    style={{ background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                    Add It →
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         )}
         {view === "checkout" && (
