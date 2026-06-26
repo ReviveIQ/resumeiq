@@ -1503,9 +1503,12 @@ export default function ResumeIQ() {
                 </>
               ) : (
                 <>
-                  <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>Transform Your Resume</h1>
-                  <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-                    Upload any resume and get back a polished, ATS-optimized Word document.
+                  <h1 style={{ color: "white", fontSize: "30px", fontWeight: "bold", marginBottom: "10px" }}>
+                    Your resume is about to get<br />
+                    <span style={{ color: "#60a5fa" }}>a lot more callbacks.</span>
+                  </h1>
+                  <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: 1.6 }}>
+                    Drop your resume below. We'll rewrite every bullet with measurable impact, optimize for ATS, and deliver a polished Word document — scored before and after so you see exactly what improved.
                   </p>
                   <div style={{ marginTop: "10px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "20px", padding: "5px 14px" }}>
                     <span style={{ color: "#4ade80", fontSize: "13px" }}>✦</span>
