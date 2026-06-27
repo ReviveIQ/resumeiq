@@ -1674,6 +1674,53 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
     }
   });
 
+  // ── ATS CHECKER (no auth, free, rate-limited) ───────────────────────────────
+  // Public endpoint — parses resume and returns ATS score + flags + topIssues.
+  // No transformation, no session, no payment. Drives /ats-checker page.
+  const atsCheckRateLimit = new Map<string, { count: number; resetAt: number }>();
+  function checkAtsRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = atsCheckRateLimit.get(ip);
+    if (entry && now < entry.resetAt) {
+      if (entry.count >= 3) return false;
+      entry.count++;
+    } else {
+      atsCheckRateLimit.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    }
+    return true;
+  }
+
+  app.post("/api/resumeiq/ats-check", async (req: Request, res: Response) => {
+    try {
+      const ip = getClientIp(req);
+      if (!checkAtsRateLimit(ip)) {
+        res.status(429).json({ error: "You\'ve used your 3 free checks this hour. Try again later or transform your resume to see the full fix." });
+        return;
+      }
+
+      const { fileBase64, fileName } = req.body;
+      if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
+
+      // Parse the resume to structured data
+      const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
+
+      // Score it as a pre-score (harsh, original resume grading)
+      const scoreData = await scoreResume(parsed, true);
+      if (!scoreData) { res.status(500).json({ error: "Scoring failed" }); return; }
+
+      // Return score + candidate name for personalisation, nothing else
+      res.json({
+        name: parsed.name || null,
+        overall: scoreData.overall,
+        dimensions: scoreData.dimensions,
+        topIssues: scoreData.topIssues || [],
+      });
+    } catch (error: any) {
+      console.error("[ResumeIQ] ATS check error:", error);
+      res.status(500).json({ error: error.message || "Check failed" });
+    }
+  });
+
   // ── RESUME SCORE ────────────────────────────────────────────────────
   // Scores the parsed resume on 4 ATS dimensions before transformation.
   // Returns scores + specific flags that drive the GPT transformation.
