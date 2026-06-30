@@ -388,8 +388,8 @@ export async function runNurtureCron(): Promise<void> {
 
     // Segment A — used free transform
     if (resumeCount >= 1) {
-      // Single role nudge — Day 3, only for users with 1 experience entry
-      if (daysSince >= 3 && daysSince < 7) {
+      // Single role nudge — Day 3 ONLY (not a range — one send, one day)
+      if (daysSince === 3) {
         const key = "single_role_nudge";
         const sent = await hasAlreadySent(user.id, key);
         if (!sent) {
