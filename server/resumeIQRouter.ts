@@ -390,6 +390,7 @@ AWARDS AND HONORS RULE:
 - If the source resume contains awards, honors, or recognitions embedded inline inside an experience block (e.g. a trophy emoji line like "🏆 Regional Sales Manager of the Year" sitting between bullets), put them in that role's "achievements" array — NOT in the "bullets" array
 - Do NOT leave decorative emoji or icon-prefixed lines embedded inside the bullets array — ATS parsers can misread them as bullets or corrupt nearby text
 - Strip the emoji/icon itself — store just the clean award text (e.g. "Regional Sales Manager of the Year") in "achievements"
+- CRITICAL — NO DUPLICATION: once an award is placed in "achievements", it must NOT also appear as a bullet, rewritten or otherwise, anywhere in that role's "bullets" array. An award is either an achievement entry OR a bullet — never both. Do not write a bullet like "Recognized as Rookie of the Year 2019" if "Rookie of the Year 2019" is already in achievements — that is a duplicate.
 - This keeps awards visually and structurally separated from the bullets in the final document instead of cluttering the experience narrative
 
 SKILLS EXTRACTION RULES:
