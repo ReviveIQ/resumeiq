@@ -250,6 +250,19 @@ function emailB30(firstName: string, email: string): { subject: string; html: st
   };
 }
 
+function emailSingleRoleNudge(firstName: string, email: string): { subject: string; html: string } {
+  return {
+    subject: "One more role makes a real difference",
+    html: WRAP(`
+      ${P(`Hey ${firstName},`)}
+      ${P("I noticed your resume only has one role listed.")}
+      ${P("If you've held other positions — even briefly, even a while back — adding them usually makes a noticeable difference in how complete and credible your resume reads to a hiring manager.")}
+      ${P("Worth a quick look if you have a few minutes.")}
+      <p style="margin:0;font-size:15px;color:#111827;font-family:sans-serif">— Bryan</p>
+    `, email),
+  };
+}
+
 // ── Send via Resend ───────────────────────────────────────────────────────────
 async function sendNurtureEmail(to: string, subject: string, html: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
@@ -378,26 +391,34 @@ export async function runNurtureCron(): Promise<void> {
       // Single role nudge — Day 3, only for users with 1 experience entry
       if (daysSince >= 3 && daysSince < 7) {
         const key = "single_role_nudge";
-        const sent = await alreadySentFlow(conn2, email, key);
+        const sent = await hasAlreadySent(user.id, key);
         if (!sent) {
-          // Check if their resume only has 1 role
-          const [resumeRows] = await conn2.execute(
-            `SELECT parsedData FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
-            [user.id]
-          ) as any;
-          const resumeData = Array.isArray(resumeRows[0]) ? resumeRows[0] : resumeRows;
-          if (resumeData[0]?.parsedData) {
+          // Check if their resume only has 1 role — fresh connection, since the outer conn is already closed
+          const lookupConn = await getDb();
+          if (lookupConn) {
             try {
-              const parsed = typeof resumeData[0].parsedData === "string"
-                ? JSON.parse(resumeData[0].parsedData)
-                : resumeData[0].parsedData;
-              const roleCount = (parsed.experience || []).length;
-              if (roleCount === 1) {
-                await logFlow(conn2, email, key);
-                await sendEmail(email, "single_role_nudge");
-                console.log(`[Nurture] single_role_nudge → ${email} (1 role)`);
+              const [resumeRows] = await lookupConn.execute(
+                `SELECT parsedData FROM riq_resumes WHERE userId = ? ORDER BY createdAt DESC LIMIT 1`,
+                [user.id]
+              ) as any;
+              const resumeData = Array.isArray(resumeRows[0]) ? resumeRows[0] : resumeRows;
+              if (resumeData[0]?.parsedData) {
+                try {
+                  const parsed = typeof resumeData[0].parsedData === "string"
+                    ? JSON.parse(resumeData[0].parsedData)
+                    : resumeData[0].parsedData;
+                  const roleCount = (parsed.experience || []).length;
+                  if (roleCount === 1) {
+                    const tpl = emailSingleRoleNudge(firstName, email);
+                    await sendNurtureEmail(email, tpl.subject, tpl.html);
+                    await markSent(user.id, key);
+                    console.log(`[Nurture] single_role_nudge → ${email} (1 role)`);
+                  }
+                } catch { /* silent */ }
               }
-            } catch { /* silent */ }
+            } finally {
+              await lookupConn.end();
+            }
           }
         }
       }
