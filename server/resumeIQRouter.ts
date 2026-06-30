@@ -272,7 +272,7 @@ async function extractCareerNarrativePdf(pdfText: string, apiKey: string): Promi
   return extractCareerNarrative(pdfText, apiKey);
 }
 
-async function parseResume(fileBase64: string, fileName: string): Promise<any> {
+async function parseResume(fileBase64: string, fileName: string, targetRole?: string): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
@@ -302,6 +302,8 @@ async function parseResume(fileBase64: string, fileName: string): Promise<any> {
     }
   }
 
+  const targetRoleText = targetRole && targetRole.trim() ? targetRole.trim() : "Not provided — do not reference any target role.";
+
   const systemPrompt = `You are an elite resume writer and career strategist used by executives at Fortune 500 companies. You have ONE job: take a mediocre resume and make it exceptional — while keeping every fact 100% accurate.
 
 YOUR PHILOSOPHY:
@@ -310,12 +312,22 @@ Most resumes are terrible not because the person has bad experience, but because
 CAREER NARRATIVE CONTEXT (extracted before this step):
 {NARRATIVE_CONTEXT}
 
+TARGET ROLE (provided by the candidate, may be empty):
+{TARGET_ROLE_CONTEXT}
+
 USE THE NARRATIVE TO:
 - Write a summary that opens with the candidate's professional identity and career theme — not just their last job
 - Frame each role so the bullets ladder up to the overall narrative
 - Surface the progression arc (SDR → AE → Manager → VP) explicitly in the summary
 - Address any career transitions factually and confidently — pivots are strengths, not gaps
 - Make the first bullet of each role the one that best connects to the narrative theme
+
+USE THE TARGET ROLE (when provided, otherwise ignore this section entirely):
+- This is the ONE case where you ARE allowed to reference a target role in the summary — because the candidate explicitly told you what they want, you are not fabricating it
+- Close the summary with a line connecting their background to this target role (e.g. "...positions them well for a [Target Role] focused on [relevant theme]")
+- Weight word choice in bullets and skills toward terminology a hiring manager for THIS role would scan for — without changing any facts, numbers, companies, or dates
+- Prioritize skills in the categorized list that are most relevant to this target role, while still including all skills found in the source resume
+- If TARGET_ROLE_CONTEXT is empty or says "Not provided", follow the existing rule: never fabricate or reference any target role
 
 WHAT YOU DO:
 1. EXTRACT every fact, company, date, title, and metric EXACTLY as written
@@ -546,7 +558,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
     const promptWithNarrative = systemPrompt.replace(
       "{NARRATIVE_CONTEXT}",
       narrative || "Not enough information to extract narrative — treat each role independently and write the strongest possible summary from what's available."
-    );
+    ).replace("{TARGET_ROLE_CONTEXT}", targetRoleText);
 
     const res = await fetch(OPENAI_API, {
       method: "POST",
@@ -586,7 +598,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
       const promptWithNarrative = systemPrompt.replace(
         "{NARRATIVE_CONTEXT}",
         narrative || "Not enough information to extract narrative — treat each role independently."
-      );
+      ).replace("{TARGET_ROLE_CONTEXT}", targetRoleText);
       const res = await fetch(OPENAI_API, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -613,7 +625,7 @@ Return ONLY the JSON object. Start with { and end with }.`;
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: systemPrompt.replace("{NARRATIVE_CONTEXT}", "Extract from the visual resume below.") },
+          { role: "system", content: systemPrompt.replace("{NARRATIVE_CONTEXT}", "Extract from the visual resume below.").replace("{TARGET_ROLE_CONTEXT}", targetRoleText) },
           {
             role: "user",
             content: [
@@ -1863,10 +1875,10 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
         return;
       }
 
-      const { fileBase64, fileName } = req.body;
+      const { fileBase64, fileName, targetRole } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
 
-      const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
+      const parsed = await parseResume(fileBase64, fileName || "resume.pdf", targetRole);
       const sessionId = crypto.randomBytes(16).toString("hex");
 
       const tokenUser = getTokenUser(req);
