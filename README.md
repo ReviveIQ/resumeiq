@@ -29,6 +29,9 @@ ResumeIQ is an AI-powered resume transformation tool that takes any resume — m
 - Pre-score grades the original harshly (target 4–7); post-score rewards the transformation (target 7–9) — visible before/after delta on the done screen
 - Injects score flags into a targeted GPT enhancement pass — fixes weak bullets specifically
 - Elevates every bullet using the "So what?" test — strong verbs, real scope, credible outcomes
+- Enforces tense consistency within each role — no mixing past and present tense across bullets
+- Extracts inline awards/honors (trophy emojis, icons embedded mid-bullet) into the role's dedicated achievements field — keeps decorative content out of ATS-parsed bullets
+- Deduplicates skills — consolidates flat keyword lists and overlapping categorized tables into one clean section
 - Captures non-standard sections: Publications, Projects, Hobbies, Activities, Volunteer work
 - Email typo detection — flags known provider misspellings without flagging custom domains
 - Never fabricates metrics, companies, dates, or titles
