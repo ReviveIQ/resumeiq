@@ -268,10 +268,6 @@ Be specific. Use actual companies and titles from the resume. Do not invent metr
   }
 }
 
-async function extractCareerNarrativePdf(pdfText: string, apiKey: string): Promise<string> {
-  return extractCareerNarrative(pdfText, apiKey);
-}
-
 async function parseResume(fileBase64: string, fileName: string, targetRole?: string): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
@@ -1263,7 +1259,7 @@ topIssues: List the 3 most impactful improvements this resume needs. Be specific
   }
 }
 
-async function scoreResume(parsedData: any, isPreScore: boolean = false): Promise<any> {
+async function scoreResume(parsedData: any): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   try {
@@ -1279,27 +1275,6 @@ async function scoreResume(parsedData: any, isPreScore: boolean = false): Promis
       education: parsedData.education,
       certifications: parsedData.certifications,
     });
-
-    const preScoreSystem = `You are a strict ATS resume auditor. Your job is to score the ORIGINAL, UNIMPROVED resume harshly and honestly. Most resumes score 4-7. A perfect 10 is nearly impossible on an original resume. Score low when:
-
-ATS FORMAT (1-10): Penalize heavily for: two-column layouts, tables, graphics, text boxes, non-standard section names, headers/footers with contact info, missing standard sections (Summary, Experience, Skills, Education), and decorative inline content (emojis, icons, trophy symbols, or award lines embedded mid-bullet inside experience blocks — these should live in a dedicated Awards/Honors section, not inline). A plain single-column Word doc with standard headings scores 7+. Anything with tables, unusual structure, or embedded decorative content scores 3-5.
-
-BULLET QUALITY (1-10): Penalize for: bullets starting with "Responsible for", "Assisted with", "Helped", "Managed" without specifics, passive voice, no metrics, vague outcomes, narrative prose instead of bullets, fewer than 3 bullets per role, and inconsistent verb tense (e.g. one present-tense bullet like "Advise..." mixed into a role where every other bullet is past-tense like "Founded...", "Built..."; completed past roles should be entirely past tense, current roles should be consistently past tense for completed work or consistently present tense for ongoing duties — not a mix). Reward: strong past-tense verbs, specific metrics ($, %, headcount, time), clear outcome in every bullet, consistent tense throughout each role. Most original resumes score 4-6 here.
-
-KEYWORDS (1-10): Does the resume use industry-standard terminology, relevant technical skills, role-specific keywords that ATS systems scan for? Generic resumes with no industry terms score 3-5.
-
-COMPLETENESS (1-10): Missing: summary, quantified achievements, dates, locations, skills section. Present and strong: all of the above plus certifications, LinkedIn, contact info. Also penalize redundant duplication — e.g. a flat keyword skills list followed by a separate categorized skills table that repeats most of the same terms; this should be one clean, consolidated, non-duplicative section.
-
-Return JSON only. No preamble. No markdown.
-{
-  "overall": 1-10,
-  "dimensions": {
-    "atsFormat": { "score": 1-10, "flag": "one sentence on what needs fixing" },
-    "bulletQuality": { "score": 1-10, "flag": "one sentence on what needs fixing" },
-    "keywords": { "score": 1-10, "flag": "one sentence on what needs fixing" },
-    "completeness": { "score": 1-10, "flag": "one sentence on what needs fixing" }
-  }
-}`;
 
     const postScoreSystem = `You are an ATS resume quality reviewer. Score the TRANSFORMED, OPTIMIZED resume. This resume has already been improved — reward improvements generously. Most transformed resumes should score 7-9.
 
@@ -1328,7 +1303,7 @@ Return JSON only. No preamble. No markdown.
       body: JSON.stringify({
         model: "gpt-4o-mini", max_tokens: 600, temperature: 0,
         messages: [
-          { role: "system", content: isPreScore ? preScoreSystem : postScoreSystem },
+          { role: "system", content: postScoreSystem },
           { role: "user", content: `Score this resume:\n${resumeSummary}` }
         ],
       }),
