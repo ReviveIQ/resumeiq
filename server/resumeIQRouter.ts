@@ -326,6 +326,7 @@ WHAT YOU DO:
 
 BULLET TRANSFORMATION RULES:
 - Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Improved, Standardized, Supervised — NOT "Responsible for", "Helped with", "Assisted in", "Participated in", "Developed a deep understanding of")
+- TENSE CONSISTENCY: All bullets within a single role must use the same tense. Completed past roles → all past tense. Current/ongoing role → past tense for completed achievements (the normal case), present tense ONLY if describing a literally ongoing recurring duty — and if so, ALL bullets in that role must match, never mix past and present tense within the same role.
 - If the resume contains a number for this bullet — use it EXACTLY. Never round, inflate, or change it.
 - If the resume does NOT contain a number — do NOT invent one. Elevate language and framing instead.
 - Every bullet MUST answer: What did you do? What was the scope? What was the outcome or impact?
@@ -373,6 +374,12 @@ EDUCATION PARSING RULES:
 - Extract graduation year from anywhere in the education string — 4-digit years like 1995, 2002, 2018 are always graduation years
 - If location appears in the education string, extract it into the location field
 
+AWARDS AND HONORS RULE:
+- If the source resume contains awards, honors, or recognitions embedded inline inside an experience block (e.g. a trophy emoji line like "🏆 Regional Sales Manager of the Year" sitting between bullets), put them in that role's "achievements" array — NOT in the "bullets" array
+- Do NOT leave decorative emoji or icon-prefixed lines embedded inside the bullets array — ATS parsers can misread them as bullets or corrupt nearby text
+- Strip the emoji/icon itself — store just the clean award text (e.g. "Regional Sales Manager of the Year") in "achievements"
+- This keeps awards visually and structurally separated from the bullets in the final document instead of cluttering the experience narrative
+
 SKILLS EXTRACTION RULES:
 - Extract ALL skills explicitly mentioned anywhere in the resume
 - ALSO infer industry-standard skills based on job titles, company type, and role descriptions — these are skills the candidate almost certainly has but didn't list
@@ -382,6 +389,7 @@ SKILLS EXTRACTION RULES:
 - Label inferred skills in a separate category called "Industry Standard" so the user can verify
 - Always include a "Technical Skills", "Leadership", and "Industry Standard" category at minimum
 - Return at least 8-12 total skills for any professional with 5+ years of experience
+- DEDUPLICATION RULE: If the source resume lists skills in multiple overlapping formats (e.g. a flat comma-separated keyword string AND a separate categorized table covering mostly the same terms), CONSOLIDATE into ONE clean categorized list. Never output the same skill twice across categories, and never preserve a redundant flat list alongside a categorized one.
 
 INDUSTRY DETECTION:
 - Detect the candidate's industry from job titles, company names, and descriptions
@@ -1113,13 +1121,13 @@ async function scoreResume(parsedData: any, isPreScore: boolean = false): Promis
 
     const preScoreSystem = `You are a strict ATS resume auditor. Your job is to score the ORIGINAL, UNIMPROVED resume harshly and honestly. Most resumes score 4-7. A perfect 10 is nearly impossible on an original resume. Score low when:
 
-ATS FORMAT (1-10): Penalize heavily for: two-column layouts, tables, graphics, text boxes, non-standard section names, headers/footers with contact info, missing standard sections (Summary, Experience, Skills, Education). A plain single-column Word doc with standard headings scores 7+. Anything with tables or unusual structure scores 3-5.
+ATS FORMAT (1-10): Penalize heavily for: two-column layouts, tables, graphics, text boxes, non-standard section names, headers/footers with contact info, missing standard sections (Summary, Experience, Skills, Education), and decorative inline content (emojis, icons, trophy symbols, or award lines embedded mid-bullet inside experience blocks — these should live in a dedicated Awards/Honors section, not inline). A plain single-column Word doc with standard headings scores 7+. Anything with tables, unusual structure, or embedded decorative content scores 3-5.
 
-BULLET QUALITY (1-10): Penalize for: bullets starting with "Responsible for", "Assisted with", "Helped", "Managed" without specifics, passive voice, no metrics, vague outcomes, narrative prose instead of bullets, fewer than 3 bullets per role. Reward: strong past-tense verbs, specific metrics ($, %, headcount, time), clear outcome in every bullet. Most original resumes score 4-6 here.
+BULLET QUALITY (1-10): Penalize for: bullets starting with "Responsible for", "Assisted with", "Helped", "Managed" without specifics, passive voice, no metrics, vague outcomes, narrative prose instead of bullets, fewer than 3 bullets per role, and inconsistent verb tense (e.g. one present-tense bullet like "Advise..." mixed into a role where every other bullet is past-tense like "Founded...", "Built..."; completed past roles should be entirely past tense, current roles should be consistently past tense for completed work or consistently present tense for ongoing duties — not a mix). Reward: strong past-tense verbs, specific metrics ($, %, headcount, time), clear outcome in every bullet, consistent tense throughout each role. Most original resumes score 4-6 here.
 
 KEYWORDS (1-10): Does the resume use industry-standard terminology, relevant technical skills, role-specific keywords that ATS systems scan for? Generic resumes with no industry terms score 3-5.
 
-COMPLETENESS (1-10): Missing: summary, quantified achievements, dates, locations, skills section. Present and strong: all of the above plus certifications, LinkedIn, contact info.
+COMPLETENESS (1-10): Missing: summary, quantified achievements, dates, locations, skills section. Present and strong: all of the above plus certifications, LinkedIn, contact info. Also penalize redundant duplication — e.g. a flat keyword skills list followed by a separate categorized skills table that repeats most of the same terms; this should be one clean, consolidated, non-duplicative section.
 
 Return JSON only. No preamble. No markdown.
 {
@@ -1134,13 +1142,13 @@ Return JSON only. No preamble. No markdown.
 
     const postScoreSystem = `You are an ATS resume quality reviewer. Score the TRANSFORMED, OPTIMIZED resume. This resume has already been improved — reward improvements generously. Most transformed resumes should score 7-9.
 
-ATS FORMAT (1-10): Is it single-column, standard headings, no tables or graphics, clean structure? Reward: proper section order, consistent formatting, ATS-safe layout.
+ATS FORMAT (1-10): Is it single-column, standard headings, no tables or graphics, clean structure, with awards/honors in their own dedicated section rather than embedded inline with emojis or icons? Reward: proper section order, consistent formatting, ATS-safe layout, decorative content properly separated out.
 
-BULLET QUALITY (1-10): Do bullets start with strong action verbs? Do they have specific metrics (%, $, headcount, time)? Is there a clear outcome in each bullet? Reward: quantified impact, strong verbs, no filler language.
+BULLET QUALITY (1-10): Do bullets start with strong action verbs? Do they have specific metrics (%, $, headcount, time)? Is there a clear outcome in each bullet? Is verb tense consistent within each role? Reward: quantified impact, strong verbs, no filler language, consistent tense throughout.
 
 KEYWORDS (1-10): Does it use industry-standard terminology and role-specific keywords? Reward: relevant technical skills, industry terms, role-appropriate language.
 
-COMPLETENESS (1-10): Is everything present — summary, experience with dates, education, skills, certifications, contact info? Reward: comprehensive profile with all key sections.
+COMPLETENESS (1-10): Is everything present — summary, experience with dates, education, skills, certifications, contact info — without redundant duplication (e.g. skills listed once, cleanly, not repeated across a flat list and a separate table)? Reward: comprehensive profile with all key sections, no duplicated content.
 
 Return JSON only. No preamble. No markdown.
 {
@@ -1792,7 +1800,8 @@ atsFormat (1-10):
   -1: contact info not clearly at top
   -1: missing any standard section (Summary, Experience, Skills, Education)
   -1: inconsistent date formatting
-- Score 8+ only if: single column confirmed, all standard headings, clean structure throughout
+  -1: decorative inline content (emojis, icons, trophy symbols, award lines) embedded mid-bullet inside experience blocks instead of a dedicated Awards/Honors section
+- Score 8+ only if: single column confirmed, all standard headings, clean structure throughout, no embedded decorative content
 
 bulletQuality (1-10):
 - Start at 5. Adjust based on evidence:
@@ -1803,6 +1812,7 @@ bulletQuality (1-10):
   -1: bullets written as narrative prose instead of action-outcome format
   -1: fewer than 3 bullets per role
   -1: no metrics in any bullet across entire resume
+  -1: inconsistent verb tense within a single role (e.g. one present-tense bullet like "Advise..." mixed into a role where every other bullet is past-tense like "Founded...", "Built...")
 - Most original resumes score 4-6 here
 
 keywords (1-10):
@@ -1817,6 +1827,7 @@ keywords (1-10):
 completeness (1-10):
 - Check: name, email, phone, LinkedIn URL, summary ≥40 words (use summaryWordCount), all roles have startDate and endDate, skills section present
 - Start at 10. Deduct 1 point per missing field.
+- Deduct 1 point if skills are duplicated across formats (e.g. a flat keyword list AND a separate categorized table repeating most of the same terms) — should be one clean, consolidated section.
 - Education graduation year: NOT part of completeness score.
 - summaryWordCount is provided — never say summary is too short if summaryWordCount ≥ 40
 
