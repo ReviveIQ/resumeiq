@@ -1114,6 +1114,154 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+// ── DETAILED ATS SCORER (shared by /score and /ats-check) ────────────────────
+// Point-based rubric with topIssues, achievements visibility, and a
+// pre-computed skills-duplication signal (not left for the model to spot on its own).
+function detectSkillsDuplication(skills: any): boolean {
+  const categories = skills?.categories || [];
+  if (categories.length < 2) return false;
+  const allSkillLists = categories.map((c: any) => (c.skills || []).map((s: string) => s.toLowerCase().trim()));
+  // Check pairwise overlap between categories — if any two categories share 50%+ of their skills, flag as duplicated
+  for (let i = 0; i < allSkillLists.length; i++) {
+    for (let j = i + 1; j < allSkillLists.length; j++) {
+      const a = allSkillLists[i], b = allSkillLists[j];
+      if (a.length === 0 || b.length === 0) continue;
+      const overlap = a.filter((s: string) => b.includes(s)).length;
+      const overlapRatio = overlap / Math.min(a.length, b.length);
+      if (overlapRatio >= 0.5) return true;
+    }
+  }
+  return false;
+}
+
+async function scoreResumeDetailed(parsedData: any): Promise<any> {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) return null;
+
+  const skillsDuplicated = detectSkillsDuplication(parsedData.skills);
+  const allAchievements = (parsedData.experience || []).flatMap((e: any) => e.achievements || []);
+
+  // Send full resume data — truncating causes inaccurate scoring
+  const resumeSummary = JSON.stringify({
+    name: parsedData.name,
+    title: parsedData.title,
+    email: parsedData.email,
+    phone: parsedData.phone,
+    linkedin: parsedData.linkedin,
+    summary: parsedData.summary,
+    summaryWordCount: (parsedData.summary || "").split(/\s+/).filter(Boolean).length,
+    experience: (parsedData.experience || []).map((e: any) => ({
+      title: e.title,
+      company: e.company,
+      startDate: e.startDate,
+      endDate: e.endDate,
+      bullets: e.bullets || [],
+      bulletCount: (e.bullets || []).length,
+      achievements: e.achievements || [],
+    })),
+    skills: parsedData.skills,
+    skillsDuplicatedAcrossCategories: skillsDuplicated,
+    totalAchievementsFound: allAchievements.length,
+    education: (parsedData.education || []).map((e: any) => ({
+      degree: e.degree, school: e.school, year: e.year,
+    })),
+    certifications: parsedData.certifications,
+    languages: parsedData.languages,
+  });
+
+  try {
+    const scoreRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 800,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You are a strict ATS resume auditor scoring an ORIGINAL, UNIMPROVED resume. Be harsh and specific. Most resumes score 4-7. A 9 or 10 is extremely rare on an original resume.
+
+CRITICAL RULE: Every reason and topIssue MUST be based on specific evidence from THIS resume. Never give generic advice.
+
+IMPORTANT — pre-computed signals provided for you (use these directly, do not re-derive):
+- "skillsDuplicatedAcrossCategories": true means the skills section repeats the same skills across multiple category groups — this IS a real issue, deduct for it in completeness even if you can't see the original flat-list format.
+- "totalAchievementsFound": if this is > 0, the resume contains separately-tracked awards/honors (e.g. "President's Club", "Rookie of the Year") — these were already correctly extracted out of the bullets. Do NOT penalize atsFormat for embedded awards if totalAchievementsFound > 0 AND achievements arrays are populated — that means it's already clean. If totalAchievementsFound is 0 but you still see award-like phrases inside any bullet text itself (e.g. a bullet that says "Won President's Club" or contains a trophy emoji), THAT is the inline-embedding problem — penalize atsFormat for it specifically and mention it by name in the flag.
+
+Schema:
+{
+  "overall": number (1-10, average of 4 dimensions),
+  "dimensions": {
+    "atsFormat": { "score": number, "reason": string, "flag": string },
+    "bulletQuality": { "score": number, "reason": string, "flag": string },
+    "keywords": { "score": number, "reason": string, "flag": string },
+    "completeness": { "score": number, "reason": string, "flag": string }
+  },
+  "topIssues": [string, string, string]
+}
+
+STRICT SCORING RULES:
+
+atsFormat (1-10):
+- Start at 7. Deduct for each issue found:
+  -2: evidence of two-column layout, tables, or text boxes in the structure
+  -2: non-standard section names (e.g. "Projects Skills", "Core Competencies" instead of "Skills")
+  -1: contact info not clearly at top
+  -1: missing any standard section (Summary, Experience, Skills, Education)
+  -1: inconsistent date formatting
+  -2: any bullet text contains an award, honor, or trophy emoji embedded inline (only applies if totalAchievementsFound is 0 — see note above)
+- Score 8+ only if: single column confirmed, all standard headings, clean structure throughout, no embedded decorative content in bullets
+
+bulletQuality (1-10):
+- Start at 5. Adjust based on evidence:
+  +2: ALL bullets start with strong action verbs (Led, Built, Reduced, Drove, Closed, etc.)
+  +1: majority of bullets have specific metrics (%, $, headcount, time saved)
+  +1: clear outcome stated in most bullets
+  -2: any bullets starting with "Responsible for", "Helped", "Assisted", "Participated"
+  -1: bullets written as narrative prose instead of action-outcome format
+  -1: fewer than 3 bullets per role
+  -1: no metrics in any bullet across entire resume
+  -1: inconsistent verb tense within a single role (e.g. one present-tense bullet like "Advise..." mixed into a role where every other bullet is past-tense like "Founded...", "Built...")
+- Most original resumes score 4-6 here
+
+keywords (1-10):
+- Start at 5. Adjust:
+  +2: strong industry-specific terminology throughout
+  +1: tool names and methodologies named specifically
+  +1: role-specific vocabulary matches what ATS systems scan for
+  -2: generic language with no industry terms
+  -1: skills listed as narrative prose instead of scannable list
+- Score based on what IS there
+
+completeness (1-10):
+- Check: name, email, phone, LinkedIn URL, summary ≥40 words (use summaryWordCount), all roles have startDate and endDate, skills section present
+- Start at 10. Deduct 1 point per missing field.
+- Deduct 1 point if "skillsDuplicatedAcrossCategories" is true — mention this specifically in the flag (e.g. "Skills are listed twice across overlapping categories").
+- Education graduation year: NOT part of completeness score.
+- summaryWordCount is provided — never say summary is too short if summaryWordCount ≥ 40
+
+topIssues: List the 3 most impactful improvements this resume needs. Be specific — cite actual bullets, actual missing sections, actual weak language found in the resume. Never generic. If skillsDuplicatedAcrossCategories is true, that should be one of the 3 topIssues.`
+          },
+          {
+            role: "user",
+            content: `Score this resume:\n${resumeSummary}`,
+          }
+        ]
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (!scoreRes.ok) throw new Error("Scoring failed");
+    const scoreData = await scoreRes.json() as any;
+    const raw = (scoreData.choices?.[0]?.message?.content || "").trim()
+      .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+    return JSON.parse(raw);
+  } catch (err: any) {
+    console.error("[ResumeIQ] scoreResumeDetailed error:", err.message);
+    return null;
+  }
+}
+
 async function scoreResume(parsedData: any, isPreScore: boolean = false): Promise<any> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
@@ -1724,8 +1872,8 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       // Parse the resume to structured data
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf");
 
-      // Score it as a pre-score (harsh, original resume grading)
-      const scoreData = await scoreResume(parsed, true);
+      // Score it using the detailed rubric — same scorer used by the full app's /score route
+      const scoreData = await scoreResumeDetailed(parsed);
       if (!scoreData) { res.status(500).json({ error: "Scoring failed" }); return; }
 
       // Return score + candidate name for personalisation, nothing else
@@ -1749,116 +1897,8 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       const { parsedData } = req.body;
       if (!parsedData) { res.status(400).json({ error: "No parsed data" }); return; }
 
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      if (!openaiApiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
-
-      // Send full resume data — truncating causes inaccurate scoring
-      const resumeSummary = JSON.stringify({
-        name: parsedData.name,
-        title: parsedData.title,
-        email: parsedData.email,
-        phone: parsedData.phone,
-        linkedin: parsedData.linkedin,
-        summary: parsedData.summary,
-        summaryWordCount: (parsedData.summary || "").split(/\s+/).filter(Boolean).length,
-        experience: (parsedData.experience || []).map((e: any) => ({
-          title: e.title,
-          company: e.company,
-          startDate: e.startDate,
-          endDate: e.endDate,
-          bullets: e.bullets || [],
-          bulletCount: (e.bullets || []).length,
-        })),
-        skills: parsedData.skills,
-        education: (parsedData.education || []).map((e: any) => ({
-          degree: e.degree, school: e.school, year: e.year,
-        })),
-        certifications: parsedData.certifications,
-        languages: parsedData.languages,
-      });
-
-      const scoreRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          max_tokens: 800,
-          temperature: 0,
-          messages: [
-            {
-              role: "system",
-              content: `You are a strict ATS resume auditor scoring an ORIGINAL, UNIMPROVED resume. Be harsh and specific. Most resumes score 4-7. A 9 or 10 is extremely rare on an original resume.
-
-CRITICAL RULE: Every reason and topIssue MUST be based on specific evidence from THIS resume. Never give generic advice.
-
-Schema:
-{
-  "overall": number (1-10, average of 4 dimensions),
-  "dimensions": {
-    "atsFormat": { "score": number, "reason": string, "flag": string },
-    "bulletQuality": { "score": number, "reason": string, "flag": string },
-    "keywords": { "score": number, "reason": string, "flag": string },
-    "completeness": { "score": number, "reason": string, "flag": string }
-  },
-  "topIssues": [string, string, string]
-}
-
-STRICT SCORING RULES:
-
-atsFormat (1-10):
-- Start at 7. Deduct for each issue found:
-  -2: evidence of two-column layout, tables, or text boxes in the structure
-  -2: non-standard section names (e.g. "Projects Skills", "Core Competencies" instead of "Skills")
-  -1: contact info not clearly at top
-  -1: missing any standard section (Summary, Experience, Skills, Education)
-  -1: inconsistent date formatting
-  -1: decorative inline content (emojis, icons, trophy symbols, award lines) embedded mid-bullet inside experience blocks instead of a dedicated Awards/Honors section
-- Score 8+ only if: single column confirmed, all standard headings, clean structure throughout, no embedded decorative content
-
-bulletQuality (1-10):
-- Start at 5. Adjust based on evidence:
-  +2: ALL bullets start with strong action verbs (Led, Built, Reduced, Drove, Closed, etc.)
-  +1: majority of bullets have specific metrics (%, $, headcount, time saved)
-  +1: clear outcome stated in most bullets
-  -2: any bullets starting with "Responsible for", "Helped", "Assisted", "Participated"
-  -1: bullets written as narrative prose instead of action-outcome format
-  -1: fewer than 3 bullets per role
-  -1: no metrics in any bullet across entire resume
-  -1: inconsistent verb tense within a single role (e.g. one present-tense bullet like "Advise..." mixed into a role where every other bullet is past-tense like "Founded...", "Built...")
-- Most original resumes score 4-6 here
-
-keywords (1-10):
-- Start at 5. Adjust:
-  +2: strong industry-specific terminology throughout
-  +1: tool names and methodologies named specifically
-  +1: role-specific vocabulary matches what ATS systems scan for
-  -2: generic language with no industry terms
-  -1: skills listed as narrative prose instead of scannable list
-- Score based on what IS there
-
-completeness (1-10):
-- Check: name, email, phone, LinkedIn URL, summary ≥40 words (use summaryWordCount), all roles have startDate and endDate, skills section present
-- Start at 10. Deduct 1 point per missing field.
-- Deduct 1 point if skills are duplicated across formats (e.g. a flat keyword list AND a separate categorized table repeating most of the same terms) — should be one clean, consolidated section.
-- Education graduation year: NOT part of completeness score.
-- summaryWordCount is provided — never say summary is too short if summaryWordCount ≥ 40
-
-topIssues: List the 3 most impactful improvements this resume needs. Be specific — cite actual bullets, actual missing sections, actual weak language found in the resume. Never generic.`
-            },
-            {
-              role: "user",
-              content: `Score this resume:\n${resumeSummary}`,
-            }
-          ]
-        }),
-        signal: AbortSignal.timeout(20000),
-      });
-
-      if (!scoreRes.ok) throw new Error("Scoring failed");
-      const scoreData = await scoreRes.json() as any;
-      const raw = (scoreData.choices?.[0]?.message?.content || "").trim()
-        .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
-      const scores = JSON.parse(raw);
+      const scores = await scoreResumeDetailed(parsedData);
+      if (!scores) { res.status(500).json({ error: "Scoring failed" }); return; }
       res.json(scores);
     } catch (err: any) {
       console.error("[ResumeIQ] Score error:", err.message);
