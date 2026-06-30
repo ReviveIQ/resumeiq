@@ -294,6 +294,7 @@ export default function ResumeIQ() {
   const [preTransformScore, setPreTransformScore] = useState<any>(null);
   const [showPersonalityOnUpload, setShowPersonalityOnUpload] = useState(false);
   const [uploadAssessments, setUploadAssessments] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
+  const [targetRole, setTargetRole] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
@@ -633,7 +634,7 @@ export default function ResumeIQ() {
       });
       const res = await fetch("/api/resumeiq/transform", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ fileBase64: base64, fileName: file.name }),
+        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -1534,6 +1535,22 @@ export default function ResumeIQ() {
               )}
             </div>
             {error && <p style={{ color: "#f87171", textAlign: "center", marginTop: "10px", fontSize: "13px" }}>{error}</p>}
+
+            {/* Target role — optional, helps tailor language and keywords */}
+            {file && (
+              <div style={{ marginTop: "16px" }}>
+                <label style={{ display: "block", color: "#94a3b8", fontSize: "12px", fontWeight: 600, marginBottom: "6px" }}>
+                  What role or position are you looking for? <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional — helps us tailor your language)</span>
+                </label>
+                <input
+                  type="text"
+                  value={targetRole}
+                  onChange={e => setTargetRole(e.target.value)}
+                  placeholder="e.g. Senior Account Executive, Enterprise SaaS"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", color: "white", fontSize: "14px", padding: "12px 14px", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+            )}
 
             {/* Personality assessments — optional, above the fold */}
             {file && (
