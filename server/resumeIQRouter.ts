@@ -1970,7 +1970,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       await createSession(sessionId, { ...parsed, _originalKey: tokenUser ? `resumeiq/${tokenUser.userId}/${sessionId}/${fileName || "resume.pdf"}` : null }, isFree, isFree);
       // Store guestId on session for returning guest tracking
       if (guestId && !tokenUser) {
-        const gConn = await (await import("./authService")).getDb();
+        const gConn = await getDb();
         if (gConn) {
           gConn.execute("UPDATE riq_sessions SET guestId = ? WHERE sessionId = ?", [guestId, sessionId]).catch(() => {});
         }
