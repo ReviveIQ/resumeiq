@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://resumeiq.reviveiqi.com</loc><lastmod>2026-06-30</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://resumeiq.reviveiqi.com/ats-checker</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://resumeiq.reviveiqi.com/blog</loc><lastmod>2026-06-30</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com</loc><lastmod>2026-07-01</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/ats-checker</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog</loc><lastmod>2026-07-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/blog/working-with-me-section</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/blog/why-resume-rejected</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/blog/ats-resume-format-checklist</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog/resume-bullet-points-with-metrics</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog/two-column-resume-ats</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog/how-to-follow-up-with-hiring-manager</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog/professional-interview-etiquette</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/blog/resume-keyword-matching</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/faq</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://resumeiq.reviveiqi.com/app</loc><lastmod>2026-06-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://resumeiq.reviveiqi.com/app</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/privacy</loc><lastmod>2026-06-30</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://resumeiq.reviveiqi.com/terms</loc><lastmod>2026-06-30</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>
