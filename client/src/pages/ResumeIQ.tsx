@@ -58,7 +58,7 @@ const INDUSTRY_LABELS: Record<string, string> = {
   finance: "Finance & Accounting",
 };
 
-type View = "upload" | "analyzing" | "scoring" | "interview" | "skill_suggestions" | "linkedin_confirm" | "verify_pending" | "preview" | "checkout" | "done" | "history" | "login" | "register";
+type View = "upload" | "analyzing" | "enrichment" | "validating" | "scoring" | "interview" | "skill_suggestions" | "linkedin_confirm" | "verify_pending" | "preview" | "checkout" | "done" | "history" | "login" | "register";
 
 const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: string; required: boolean; multiline?: boolean }[] = [
   { field: "name",               question: "What's your full name?",                                          placeholder: "Bryan Michael Greer",              required: true },
@@ -513,6 +513,10 @@ export default function ResumeIQ() {
   const [interviewFields, setInterviewFields] = useState<string[]>([]);
   const [interviewStep, setInterviewStep] = useState(0);
   const [interviewAnswer, setInterviewAnswer] = useState("");
+  const [enrichmentAnswers, setEnrichmentAnswers] = useState<{ targetRole: string; careerHighlight: string; transitionContext: string }>({ targetRole: "", careerHighlight: "", transitionContext: "" });
+  const [validationFlags, setValidationFlags] = useState<{ type: string; severity: string; issue: string; suggestion: string }[]>([]);
+  const [analysisStep, setAnalysisStep] = useState(0); // 0=parsing, 1=enriching, 2=validating
+  const [analysisCount, setAnalysisCount] = useState(() => parseInt(localStorage.getItem("riq_analysis_count") || "0"));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const spin = { animation: "spin 1s linear infinite" };
@@ -658,14 +662,17 @@ export default function ResumeIQ() {
       const industry = data.industry || "other";
       const hasIndustrySuggestions = !!INDUSTRY_SKILLS[industry];
 
+      // Increment analysis count for display purposes
+      const newCount = analysisCount + 1;
+      setAnalysisCount(newCount);
+      localStorage.setItem("riq_analysis_count", String(newCount));
+
       // Check if signed in via LinkedIn — if so, show enrichment confirm screen
-      // when there are missing structured fields LinkedIn can fill
       const isLinkedinUser = !!localStorage.getItem("riq_linkedin_name");
       const linkedInEnrichableFields = ["experience_dates", "skills", "education", "certifications"];
       const hasEnrichableFields = missing.some(f => linkedInEnrichableFields.includes(f));
 
       if (missing.length > 0 && isLinkedinUser && hasEnrichableFields) {
-        // Show LinkedIn confirm screen — LinkedIn filled what it can, user confirms
         setLinkedinProfile({
           name: localStorage.getItem("riq_linkedin_name") || "",
           email: localStorage.getItem("riq_linkedin_email") || "",
@@ -675,7 +682,14 @@ export default function ResumeIQ() {
         setView("linkedin_confirm");
       } else if (missing.length > 0) {
         setInterviewFields(missing); setInterviewStep(0); setInterviewAnswer(""); setView("interview");
-      } else if (hasIndustrySuggestions) {
+      } else {
+        // Always go to enrichment first — qualifying questions for everyone
+        setEnrichmentAnswers({ targetRole: targetRole || "", careerHighlight: "", transitionContext: "" });
+        setView("enrichment");
+        return; // enrichment view handles the rest of the flow
+      }
+
+      if (false && hasIndustrySuggestions) { // preserved for skill_suggestions flow via enrichment
         setView("skill_suggestions");
         // Score in background
         setScoreLoading(true);
@@ -729,6 +743,64 @@ export default function ResumeIQ() {
         }
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
+  };
+
+  // ── Enrichment + Validation flow ──────────────────────────────────────────
+  const handleEnrichmentComplete = async (skip = false) => {
+    setView("validating");
+    setAnalysisStep(1);
+
+    let enrichedData = parsedData;
+
+    // Pass 2: Enrichment — only if user provided answers
+    if (!skip) {
+      try {
+        const enrichRes = await fetch("/api/resumeiq/enrich", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parsedData, enrichmentAnswers }),
+        });
+        if (enrichRes.ok) {
+          enrichedData = await enrichRes.json();
+          setParsedData(enrichedData);
+        }
+      } catch { /* non-blocking — fall through to validation */ }
+    }
+
+    // Pass 3: Validation
+    setAnalysisStep(2);
+    try {
+      const validateRes = await fetch("/api/resumeiq/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parsedData: enrichedData }),
+      });
+      if (validateRes.ok) {
+        const { flags } = await validateRes.json();
+        setValidationFlags(flags || []);
+      }
+    } catch { /* non-blocking */ }
+
+    // Score in background
+    const industry = enrichedData.industry || "other";
+    const hasIndustrySuggestions = !!INDUSTRY_SKILLS[industry];
+    if (hasIndustrySuggestions) {
+      setView("skill_suggestions");
+    } else {
+      setView("scoring");
+      setScoreLoading(true);
+      const scoreTimeout = setTimeout(() => {
+        setScoreLoading(false);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
+      fetch("/api/resumeiq/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ parsedData: enrichedData }),
+      }).then(r => r.ok ? r.json() : null)
+        .then(scores => { clearTimeout(scoreTimeout); if (scores) setResumeScore(scores); setScoreLoading(false); })
+        .catch(() => { setScoreLoading(false); });
+    }
   };
 
   const handleAnalyze = async () => {
@@ -2150,6 +2222,75 @@ export default function ResumeIQ() {
         })()}
 
         {/* ── INTERVIEW ── */}
+        {/* ── ENRICHMENT VIEW ──────────────────────────────────────────────── */}
+        {view === "enrichment" && (
+          <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 32 }}>
+              {["Pass 1: Parsed ✓", "Pass 2: Enrich", "Pass 3: Validate"].map((label, i) => (
+                <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ height: 4, borderRadius: 99, background: i === 0 ? "#2563eb" : "rgba(255,255,255,0.12)", marginBottom: 6 }} />
+                  <div style={{ fontSize: 11, color: i === 0 ? "#93c5fd" : "rgba(148,163,184,0.6)", fontWeight: i === 0 ? 600 : 400 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 14, padding: "16px 20px", marginBottom: 28 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#60a5fa", marginBottom: 4 }}>Pass 1 complete ✓</div>
+              <div style={{ fontSize: 14, color: "rgba(248,250,252,0.85)" }}>Your resume has been parsed and analyzed. Answer a few optional questions to tailor your output — or skip straight to validation.</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 8 }}>What role are you targeting? <span style={{ color: "#64748b", fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={enrichmentAnswers.targetRole} onChange={e => setEnrichmentAnswers(prev => ({ ...prev, targetRole: e.target.value }))}
+                  placeholder="e.g. Senior Account Executive, Enterprise SaaS"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "white", fontSize: 14, padding: "12px 14px", outline: "none", boxSizing: "border-box" as const }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 8 }}>Any major win not captured in your resume? <span style={{ color: "#64748b", fontWeight: 400 }}>(optional)</span></label>
+                <textarea value={enrichmentAnswers.careerHighlight} onChange={e => setEnrichmentAnswers(prev => ({ ...prev, careerHighlight: e.target.value }))}
+                  placeholder="e.g. Led a digital transformation that saved $2M — before I started documenting my work"
+                  rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "white", fontSize: 14, padding: "12px 14px", outline: "none", boxSizing: "border-box" as const, resize: "vertical" as const }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 8 }}>Any career gaps or transitions to address? <span style={{ color: "#64748b", fontWeight: 400 }}>(optional)</span></label>
+                <input type="text" value={enrichmentAnswers.transitionContext} onChange={e => setEnrichmentAnswers(prev => ({ ...prev, transitionContext: e.target.value }))}
+                  placeholder="e.g. 6-month gap — family caregiving; pivoting from finance to tech"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "white", fontSize: 14, padding: "12px 14px", outline: "none", boxSizing: "border-box" as const }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
+              <button onClick={() => handleEnrichmentComplete(true)}
+                style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, color: "#94a3b8", fontSize: 14, fontWeight: 500, padding: "13px", cursor: "pointer" }}>
+                Skip → validate now
+              </button>
+              <button onClick={() => handleEnrichmentComplete(false)}
+                style={{ flex: 2, background: "#2563eb", border: "none", borderRadius: 10, color: "white", fontSize: 15, fontWeight: 700, padding: "13px", cursor: "pointer" }}>
+                ✦ Enrich My Resume →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── VALIDATING VIEW ────────────────────────────────────────────────── */}
+        {view === "validating" && (
+          <div style={{ maxWidth: 480, margin: "60px auto", padding: "0 24px", textAlign: "center" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 40 }}>
+              {["Pass 1: Parsed ✓", analysisStep >= 1 ? "Pass 2: Enriching..." : "Pass 2: Enrich", analysisStep >= 2 ? "Pass 3: Validating..." : "Pass 3: Validate"].map((label, i) => (
+                <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ height: 4, borderRadius: 99, background: i <= analysisStep ? "#2563eb" : "rgba(255,255,255,0.12)", marginBottom: 6, transition: "background 0.4s" }} />
+                  <div style={{ fontSize: 11, color: i <= analysisStep ? "#93c5fd" : "rgba(148,163,184,0.6)", fontWeight: i <= analysisStep ? 600 : 400 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ width: 48, height: 48, border: "3px solid rgba(37,99,235,0.2)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 20px" }} />
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
+              {analysisStep === 1 ? "Enriching your profile..." : "Running final validation..."}
+            </div>
+            <div style={{ fontSize: 14, color: "#94a3b8" }}>
+              {analysisStep === 1 ? "Incorporating your context into the summary and key bullets" : "Reviewing output as a hiring manager would"}
+            </div>
+          </div>
+        )}
+
         {view === "interview" && currentInterviewQ && (
           <div style={{ maxWidth: "560px", margin: "0 auto" }}>
 
@@ -2498,7 +2639,20 @@ export default function ResumeIQ() {
                   <EditField label="Job Title" value={parsedData.title || ""} onSave={v => updateField("title", v)} />
                   <EditField label="Location" value={parsedData.location || ""} onSave={v => updateField("location", v)} />
                   <EditField label="Email" value={parsedData.email || ""} onSave={v => { updateField("email", v); setEmailTypoWarning(null); }} />
-                  {emailTypoWarning && (
+                  {/* Validation flags from Pass 3 */}
+            {validationFlags.length > 0 && (
+              <div style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#eab308", marginBottom: 12 }}>⚡ Validation pass flagged {validationFlags.length} item{validationFlags.length !== 1 ? "s" : ""}</div>
+                {validationFlags.map((flag, i) => (
+                  <div key={i} style={{ marginBottom: i < validationFlags.length - 1 ? 12 : 0, paddingBottom: i < validationFlags.length - 1 ? 12 : 0, borderBottom: i < validationFlags.length - 1 ? "1px solid rgba(234,179,8,0.15)" : "none" }}>
+                    <div style={{ fontSize: 13, color: "rgba(248,250,252,0.9)", marginBottom: 3 }}>{flag.issue}</div>
+                    <div style={{ fontSize: 12, color: "#94a3b8" }}>→ {flag.suggestion}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {emailTypoWarning && (
                     <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 12px", marginTop: "4px" }}>
                       <p style={{ color: "#fbbf24", fontSize: "12px", fontWeight: 600, margin: "0 0 4px" }}>⚠️ Possible email typo detected</p>
                       <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0 0 8px" }}>
