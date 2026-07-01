@@ -1908,25 +1908,27 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       let isFree = false;
       let planType = "free"; // free | starter | monthly | agency
 
+      // Analysis is always free — the download is the conversion point, not the analysis
+      // Plan only affects how many downloads the user gets at /generate
       if (tokenUser) {
         const dbUser = await getUserById(tokenUser.userId);
-        const resumeCount = dbUser?.resumeCount || 0;
         const plan = dbUser?.plan || "free";
         const planExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
         const planActive = !planExpiry || planExpiry > new Date();
 
         if ((plan === "monthly" || plan === "agency") && planActive) {
-          isFree = true; // unlimited during active period
+          isFree = true; // unlimited downloads
           planType = plan;
         } else if (plan === "starter") {
-          isFree = resumeCount < 3;
+          const resumeCount = dbUser?.resumeCount || 0;
+          isFree = resumeCount < 3; // starter: 3 downloads
           planType = "starter";
         } else {
-          isFree = resumeCount < 1; // free tier: 1 transformation
+          isFree = false; // free plan: analysis free, first download requires payment
           planType = "free";
         }
       } else {
-        isFree = !hasCookie && (freeUsedByIp.get(ip) || 0) === 0;
+        isFree = false; // guest: analysis free, download requires payment or email capture
         planType = "free";
       }
 
@@ -2069,6 +2071,146 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
   // Webhook upgrade logic exported for use by index.ts webhook handler
   // (webhook route must be before express.json() to get raw body)
 
+
+  // ── ENRICHMENT PASS — targeted enhancement with qualifying answers ──────────
+  // Accepts user answers to qualifying questions and re-runs the summary +
+  // targeted bullet enhancement without a full re-parse. Fast and cheap.
+  app.post("/api/resumeiq/enrich", async (req: Request, res: Response) => {
+    try {
+      const { parsedData, enrichmentAnswers } = req.body;
+      if (!parsedData) { res.status(400).json({ error: "No parsed data" }); return; }
+
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
+
+      const { targetRole, careerHighlight, transitionContext } = enrichmentAnswers || {};
+
+      // Only re-run if there's actually something to enrich
+      const hasEnrichment = (targetRole && targetRole.trim()) ||
+                            (careerHighlight && careerHighlight.trim()) ||
+                            (transitionContext && transitionContext.trim());
+
+      if (!hasEnrichment) {
+        res.json({ ...parsedData, enriched: false });
+        return;
+      }
+
+      const enrichContext = [
+        targetRole ? `Target role: ${targetRole}` : "",
+        careerHighlight ? `Key achievement not on resume: ${careerHighlight}` : "",
+        transitionContext ? `Career transition context: ${transitionContext}` : "",
+      ].filter(Boolean).join("\n");
+
+      const enrichRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          max_tokens: 600,
+          temperature: 0.3,
+          messages: [
+            {
+              role: "system",
+              content: `You are an elite resume writer. Given a candidate's parsed resume and enrichment context provided directly by the candidate, improve ONLY the summary and (if relevant) the first bullet of the most recent role. Return JSON with ONLY these two fields: { "summary": "improved summary string", "highlightBullet": "improved first bullet or null" }. The summary must incorporate the enrichment context naturally. Never fabricate facts not in the resume or enrichment context. Return JSON only, no markdown.`
+            },
+            {
+              role: "user",
+              content: `Resume summary: ${parsedData.summary}
+Most recent role first bullet: ${parsedData.experience?.[0]?.bullets?.[0] || "none"}
+Candidate name: ${parsedData.name}
+
+Enrichment context provided by candidate:
+${enrichContext}
+
+Return improved summary and first bullet JSON only.`
+            }
+          ]
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!enrichRes.ok) { res.json({ ...parsedData, enriched: false }); return; }
+
+      const enrichData = await enrichRes.json() as any;
+      const raw = (enrichData.choices?.[0]?.message?.content || "").trim()
+        .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+
+      try {
+        const improved = JSON.parse(raw);
+        const enrichedData = { ...parsedData };
+        if (improved.summary) enrichedData.summary = improved.summary;
+        if (improved.highlightBullet && enrichedData.experience?.[0]?.bullets?.length > 0) {
+          enrichedData.experience[0].bullets[0] = improved.highlightBullet;
+        }
+        res.json({ ...enrichedData, enriched: true });
+      } catch {
+        res.json({ ...parsedData, enriched: false });
+      }
+    } catch (err: any) {
+      console.error("[ResumeIQ] Enrich error:", err.message);
+      res.json({ ...req.body.parsedData, enriched: false });
+    }
+  });
+
+  // ── VALIDATION PASS — skeptical hiring manager review ───────────────────────
+  // Reads the enriched output and returns specific, actionable flags.
+  // Never blocks download — surfaced as inline suggestions on preview.
+  app.post("/api/resumeiq/validate", async (req: Request, res: Response) => {
+    try {
+      const { parsedData } = req.body;
+      if (!parsedData) { res.status(400).json({ error: "No parsed data" }); return; }
+
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) { res.status(500).json({ flags: [] }); return; }
+
+      const resumeSummary = {
+        name: parsedData.name,
+        summary: parsedData.summary,
+        experience: (parsedData.experience || []).slice(0, 3).map((e: any) => ({
+          title: e.title, company: e.company,
+          firstBullet: e.bullets?.[0] || "",
+          bulletCount: e.bullets?.length || 0,
+        })),
+        skills: parsedData.skills,
+      };
+
+      const validationRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiApiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          max_tokens: 400,
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content: `You are a skeptical hiring manager reviewing a resume. Find 1-3 specific, actionable issues that would make you hesitate. Be concrete — cite specific text from the resume, not generic advice. Each flag must be specific to THIS resume. Return JSON only: { "flags": [{ "type": "summary"|"bullet"|"skill"|"structure", "severity": "high"|"medium", "issue": "specific problem in 1 sentence", "suggestion": "specific fix in 1 sentence" }] }. Maximum 3 flags. If the resume is genuinely strong, return fewer or no flags.`
+            },
+            {
+              role: "user",
+              content: `Review this resume:\n${JSON.stringify(resumeSummary)}`
+            }
+          ]
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (!validationRes.ok) { res.json({ flags: [] }); return; }
+      const validationData = await validationRes.json() as any;
+      const raw = (validationData.choices?.[0]?.message?.content || "").trim()
+        .replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
+
+      try {
+        const result = JSON.parse(raw);
+        res.json({ flags: result.flags || [] });
+      } catch {
+        res.json({ flags: [] });
+      }
+    } catch (err: any) {
+      console.error("[ResumeIQ] Validate error:", err.message);
+      res.json({ flags: [] });
+    }
+  });
 
   app.post("/api/resumeiq/generate", async (req: Request, res: Response) => {
     try {
