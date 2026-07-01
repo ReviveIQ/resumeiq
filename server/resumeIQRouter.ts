@@ -372,9 +372,13 @@ THE SUMMARY RULES:
 - Open with who this person IS professionally — their identity, not their last title
 - Lead with their most impressive credential, tenure, or achievement
 - Name their strongest metric if one exists in the resume
-- End with what they bring to their next role — keep it general unless a target role is stated
 - 2-3 sentences maximum, every word earns its place
-- NEVER fabricate a target role or company. If no target is stated, end with "brings X years of [domain] expertise and a track record of [outcome]."
+- NEVER fabricate a target role or company
+- CLOSING LINE RULE — the final sentence must do ONE of these three things, in priority order:
+  1. If targetRole is provided: connect their background to that specific role
+  2. If a clear career theme or specialization is evident: name it specifically (e.g. "specializing in distributed systems and AI-enabled platform delivery at enterprise scale")
+  3. If neither: end with the single most impressive, specific outcome from their career — never use filler phrases like "brings X years of expertise", "proven track record", "valuable asset", "passionate about", or "positions them well for their next role" — these are generic and waste the closing line
+- The closing line should say something specific about this person that could not apply to anyone else in their field
 
 EDUCATION PARSING RULES:
 - If the education field appears to contain concatenated information (degree + school + location + year all in one string), parse them into separate fields
@@ -485,7 +489,7 @@ CRITICAL EXTRACTION RULES:
   "website": "personal website, portfolio, or professional URL if present, else empty string",
   "title": "their most recent actual job title",
   "industry": "one of: manufacturing, food_beverage, sales, technology, healthcare, finance, marketing, operations, engineering, education, nonprofit, government, consulting, other",
-  "summary": "2-3 sentence pitch. Opens with professional identity. Includes strongest credential or achievement. Ends with what they bring to their next role — never fabricate a target role title.",
+  "summary": "2-3 sentence pitch. Opens with professional identity. Includes strongest credential or achievement. Closes with a specific, non-generic statement — never use 'brings X years of expertise', 'proven track record', 'valuable asset', or 'positions them well'. Close with something specific only this candidate could claim.",
   "missingDates": ["Role Title at Company Name for any role where startDate or endDate could not be found"],
   "experience": [
     {
