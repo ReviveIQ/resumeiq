@@ -409,16 +409,6 @@ export default function ResumeIQ() {
       setPendingFileName(pendingFileName);
     }
 
-    // Check for returning guest session (no auth token, has guestId)
-    const storedToken = localStorage.getItem("riq_token");
-    const storedGuestId = localStorage.getItem("riq_guest_id");
-    if (!storedToken && storedGuestId) {
-      fetch(`/api/resumeiq/guest-history?guestId=${encodeURIComponent(storedGuestId)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data?.session?.name) setReturningGuestSession(data.session); })
-        .catch(() => {});
-    }
-
     // Restore full file from sessionStorage if user had a file before register/verify flow
     const savedFileName = sessionStorage.getItem("riq_pending_file_name");
     const savedFileB64 = sessionStorage.getItem("riq_pending_file_b64");
@@ -543,12 +533,6 @@ export default function ResumeIQ() {
   const [validationFlags, setValidationFlags] = useState<{ type: string; severity: string; issue: string; suggestion: string }[]>([]);
   const [analysisStep, setAnalysisStep] = useState(0); // 0=parsing, 1=enriching, 2=validating
   const [analysisCount, setAnalysisCount] = useState(() => parseInt(localStorage.getItem("riq_analysis_count") || "0"));
-  const [guestId] = useState<string>(() => {
-    let id = localStorage.getItem("riq_guest_id");
-    if (!id) { id = crypto.randomUUID(); localStorage.setItem("riq_guest_id", id); }
-    return id;
-  });
-  const [returningGuestSession, setReturningGuestSession] = useState<{ name: string | null; title: string | null; preScore: number | null; sessionId: string; createdAt: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const spin = { animation: "spin 1s linear infinite" };
@@ -672,7 +656,7 @@ export default function ResumeIQ() {
       });
       const res = await fetch("/api/resumeiq/transform", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined, guestId: !user ? guestId : undefined }),
+        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -968,10 +952,17 @@ export default function ResumeIQ() {
   }));
 
   // ── Assessment helpers ───────────────────────────────────────────────────
-  const addAssessmentSlot = (id: string, label: string) =>
-    setAssessmentFiles(prev => [...prev, { id, label, fileName: "", fileBase64: "", textInput: "" }]);
+  const addAssessmentSlot = (id: string, label: string) => {
+    // For "other" type, allow multiple by generating a unique ID each time
+    const uniqueId = id === "other" ? `other-${Date.now()}` : id;
+    // For named types, don't add duplicates
+    if (id !== "other" && assessmentFiles.some(a => a.id === id)) return;
+    setAssessmentFiles(prev => [...prev, { id: uniqueId, label, fileName: "", fileBase64: "", textInput: "" }]);
+  };
   const removeAssessmentSlot = (id: string) =>
     setAssessmentFiles(prev => prev.filter(a => a.id !== id));
+  const updateAssessmentLabel = (id: string, label: string) =>
+    setAssessmentFiles(prev => prev.map(a => a.id === id ? { ...a, label } : a));
   const updateAssessmentFile = (id: string, fileName: string, fileBase64: string) =>
     setAssessmentFiles(prev => prev.map(a => a.id === id ? { ...a, fileName, fileBase64 } : a));
   const updateAssessmentText = (id: string, textInput: string) =>
@@ -1211,7 +1202,7 @@ export default function ResumeIQ() {
     try {
       const res = await fetch(`/api/resumeiq/auth/${mode}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName, guestId }),
+        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Auth failed");
@@ -1581,23 +1572,6 @@ export default function ResumeIQ() {
         {view === "upload" && (
           <div style={{ maxWidth: "600px", margin: "0 auto" }}>
             {/* File lost after LinkedIn OAuth — nudge to re-upload */}
-            {/* Returning guest welcome-back banner */}
-            {returningGuestSession && !file && !user && (
-              <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 12, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#60a5fa", marginBottom: 3 }}>Welcome back</div>
-                  <div style={{ fontSize: 13, color: "rgba(248,250,252,0.8)" }}>
-                    {returningGuestSession.name && <span>Last session: <strong style={{ color: "white" }}>{returningGuestSession.name}</strong></span>}
-                    {returningGuestSession.preScore && <span style={{ color: "#94a3b8", marginLeft: 8 }}>· ATS score: <strong style={{ color: "#60a5fa" }}>{returningGuestSession.preScore}/10</strong></span>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setReturningGuestSession(null)}
-                  style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16, padding: 0, flexShrink: 0 }}
-                >✕</button>
-              </div>
-            )}
-
             {pendingFileName && !file && (
               <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
                 <span style={{ fontSize: "20px" }}>📄</span>
@@ -1723,7 +1697,9 @@ export default function ResumeIQ() {
                             if (isSelected) {
                               setUploadAssessments(uploadAssessments.filter(u => u.id !== a.id));
                             } else {
-                              setUploadAssessments([...uploadAssessments, { id: a.id, label: a.label, fileName: "", fileBase64: "", textInput: "" }]);
+                              const uid = a.id === "other" ? `other-${Date.now()}` : a.id;
+                              if (a.id !== "other" && uploadAssessments.some((u: any) => u.id === a.id)) return;
+                              setUploadAssessments([...uploadAssessments, { id: uid, label: a.label, fileName: "", fileBase64: "", textInput: "" }]);
                             }
                           }}
                             style={{ background: isSelected ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)", border: `1px solid ${isSelected ? "rgba(124,58,237,0.6)" : "rgba(255,255,255,0.12)"}`, borderRadius: "8px", padding: "6px 12px", color: isSelected ? "#c4b5fd" : "#94a3b8", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
@@ -3444,13 +3420,31 @@ export default function ResumeIQ() {
                       </button>
                     );
                   })}
+                  <button onClick={() => addAssessmentSlot("other", "Other")}
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.15)", borderRadius: "8px", padding: "7px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ color: "#64748b", fontSize: "14px", fontWeight: 700 }}>+</span>
+                    <div style={{ textAlign: "left" }}>
+                      <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600, margin: 0 }}>Unlisted assessment</p>
+                      <p style={{ color: "#475569", fontSize: "10px", margin: 0 }}>Enneagram, Hogan, StrengthsFinder, etc.</p>
+                    </div>
+                  </button>
                 </div>
               </div>
 
               {assessmentFiles.map((a: any) => (
                 <div key={a.id} style={{ marginBottom: "10px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                    <span style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600 }}>{a.label}</span>
+                    {a.id.startsWith("other-") ? (
+                      <input
+                        type="text"
+                        value={a.label === "Other" ? "" : a.label}
+                        onChange={(e: any) => updateAssessmentLabel(a.id, e.target.value || "Other")}
+                        placeholder="Name this assessment (e.g. Enneagram, Hogan...)"
+                        style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "7px", color: "white", fontSize: "13px", fontWeight: 600, padding: "5px 10px", outline: "none", marginRight: "8px" }}
+                      />
+                    ) : (
+                      <span style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600 }}>{a.label}</span>
+                    )}
                     <button onClick={() => removeAssessmentSlot(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: "18px", padding: "0 4px", lineHeight: 1 }}>×</button>
                   </div>
                   <div onClick={() => (document.getElementById(`upload-${a.id}`) as HTMLInputElement)?.click()}
