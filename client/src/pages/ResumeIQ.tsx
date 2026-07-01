@@ -408,6 +408,22 @@ export default function ResumeIQ() {
       sessionStorage.removeItem("riq_pending_file");
       setPendingFileName(pendingFileName);
     }
+
+    // Restore full file from sessionStorage if user had a file before register/verify flow
+    const savedFileName = sessionStorage.getItem("riq_pending_file_name");
+    const savedFileB64 = sessionStorage.getItem("riq_pending_file_b64");
+    if (savedFileName && savedFileB64) {
+      try {
+        const byteString = atob(savedFileB64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const mimeType = savedFileName.endsWith(".pdf") ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const restoredFile = new File([ab], savedFileName, { type: mimeType });
+        setFile(restoredFile);
+        // Don't remove yet — keep until analysis actually starts
+      } catch { /* non-critical */ }
+    }
   }, []);
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
@@ -628,6 +644,8 @@ export default function ResumeIQ() {
 
   const handleAnalyzeWithToken = async (authToken: string) => {
     if (!file) return;
+    sessionStorage.removeItem("riq_pending_file_name");
+    sessionStorage.removeItem("riq_pending_file_b64");
     setView("analyzing"); setError("");
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -808,6 +826,18 @@ export default function ResumeIQ() {
 
     // Require account before transformation
     if (!user) {
+      // Save file to sessionStorage so it survives email verification flow
+      if (file) {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const b64 = (reader.result as string).split(",")[1];
+            sessionStorage.setItem("riq_pending_file_name", file.name);
+            sessionStorage.setItem("riq_pending_file_b64", b64);
+          };
+          reader.readAsDataURL(file);
+        } catch { /* non-critical */ }
+      }
       setView("register");
       return;
     }
