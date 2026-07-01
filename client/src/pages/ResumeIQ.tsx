@@ -409,6 +409,16 @@ export default function ResumeIQ() {
       setPendingFileName(pendingFileName);
     }
 
+    // Check for returning guest session (no auth token, has guestId)
+    const storedToken = localStorage.getItem("riq_token");
+    const storedGuestId = localStorage.getItem("riq_guest_id");
+    if (!storedToken && storedGuestId) {
+      fetch(`/api/resumeiq/guest-history?guestId=${encodeURIComponent(storedGuestId)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.session?.name) setReturningGuestSession(data.session); })
+        .catch(() => {});
+    }
+
     // Restore full file from sessionStorage if user had a file before register/verify flow
     const savedFileName = sessionStorage.getItem("riq_pending_file_name");
     const savedFileB64 = sessionStorage.getItem("riq_pending_file_b64");
@@ -533,6 +543,12 @@ export default function ResumeIQ() {
   const [validationFlags, setValidationFlags] = useState<{ type: string; severity: string; issue: string; suggestion: string }[]>([]);
   const [analysisStep, setAnalysisStep] = useState(0); // 0=parsing, 1=enriching, 2=validating
   const [analysisCount, setAnalysisCount] = useState(() => parseInt(localStorage.getItem("riq_analysis_count") || "0"));
+  const [guestId] = useState<string>(() => {
+    let id = localStorage.getItem("riq_guest_id");
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem("riq_guest_id", id); }
+    return id;
+  });
+  const [returningGuestSession, setReturningGuestSession] = useState<{ name: string | null; title: string | null; preScore: number | null; sessionId: string; createdAt: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const spin = { animation: "spin 1s linear infinite" };
@@ -656,7 +672,7 @@ export default function ResumeIQ() {
       });
       const res = await fetch("/api/resumeiq/transform", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined }),
+        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined, guestId: !user ? guestId : undefined }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -1195,7 +1211,7 @@ export default function ResumeIQ() {
     try {
       const res = await fetch(`/api/resumeiq/auth/${mode}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName }),
+        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName, guestId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Auth failed");
@@ -1565,6 +1581,23 @@ export default function ResumeIQ() {
         {view === "upload" && (
           <div style={{ maxWidth: "600px", margin: "0 auto" }}>
             {/* File lost after LinkedIn OAuth — nudge to re-upload */}
+            {/* Returning guest welcome-back banner */}
+            {returningGuestSession && !file && !user && (
+              <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 12, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#60a5fa", marginBottom: 3 }}>Welcome back</div>
+                  <div style={{ fontSize: 13, color: "rgba(248,250,252,0.8)" }}>
+                    {returningGuestSession.name && <span>Last session: <strong style={{ color: "white" }}>{returningGuestSession.name}</strong></span>}
+                    {returningGuestSession.preScore && <span style={{ color: "#94a3b8", marginLeft: 8 }}>· ATS score: <strong style={{ color: "#60a5fa" }}>{returningGuestSession.preScore}/10</strong></span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setReturningGuestSession(null)}
+                  style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16, padding: 0, flexShrink: 0 }}
+                >✕</button>
+              </div>
+            )}
+
             {pendingFileName && !file && (
               <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "12px", padding: "14px 18px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
                 <span style={{ fontSize: "20px" }}>📄</span>
