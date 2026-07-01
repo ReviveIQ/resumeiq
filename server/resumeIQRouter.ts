@@ -9,6 +9,7 @@ import {
   getUserResumes, getResumeById, captureEmail as dbCaptureEmail,
   generateToken, verifyToken, upgradeToStarter, upgradeToMonthly, incrementResumeCount,
   unlockPersonality, saveWorkingWithMe, getUserByEmail, setVerifyToken, verifyEmail,
+  getLastGuestSession, mergeGuestSessionsToUser,
   getDb,
 } from "./authService";
 
@@ -1362,6 +1363,28 @@ export function registerResumeIQRoutes(app: Express) {
     res.json({ ok: true });
   });
 
+  // ── GUEST SESSION ───────────────────────────────────────────────────────────
+  // Returns last active session data for a guestId — used to restore returning guests
+  app.get("/api/resumeiq/guest-history", async (req: Request, res: Response) => {
+    const { guestId } = req.query;
+    if (!guestId || typeof guestId !== "string") { res.json({ session: null }); return; }
+    try {
+      const session = await getLastGuestSession(guestId);
+      if (!session) { res.json({ session: null }); return; }
+      // Return just enough to show the welcome-back banner — no full parsedData
+      res.json({
+        session: {
+          sessionId: session.sessionId,
+          name: session.parsedData?.name || null,
+          title: session.parsedData?.title || null,
+          preScore: session.parsedData?.preScore || null,
+          paid: session.paid,
+          createdAt: session.createdAt,
+        }
+      });
+    } catch { res.json({ session: null }); }
+  });
+
   app.post("/api/resumeiq/auth/register", async (req: Request, res: Response) => {
     try {
       const { email, password, name } = req.body;
@@ -1382,6 +1405,11 @@ export function registerResumeIQRoutes(app: Express) {
       // Fire welcome email + owner notification (non-blocking)
       import("./nurtureEmail").then(({ sendWelcomeEmail }) => sendWelcomeEmail(user.email, user.name || "")).catch(() => {});
       notifyNewUser(user.email, user.name || "").catch(() => {});
+      // Merge any guest sessions into the new account
+      const guestIdToMerge = req.body.guestId;
+      if (guestIdToMerge) {
+        mergeGuestSessionsToUser(guestIdToMerge, user.id).catch(() => {});
+      }
       res.json({ token, user: { id: user.id, email: user.email, name: user.name, emailVerified: false } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
@@ -1902,7 +1930,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
         return;
       }
 
-      const { fileBase64, fileName, targetRole } = req.body;
+      const { fileBase64, fileName, targetRole, guestId } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
 
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf", targetRole);
@@ -1940,6 +1968,13 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       }
 
       await createSession(sessionId, { ...parsed, _originalKey: tokenUser ? `resumeiq/${tokenUser.userId}/${sessionId}/${fileName || "resume.pdf"}` : null }, isFree, isFree);
+      // Store guestId on session for returning guest tracking
+      if (guestId && !tokenUser) {
+        const gConn = await (await import("./authService")).getDb();
+        if (gConn) {
+          gConn.execute("UPDATE riq_sessions SET guestId = ? WHERE sessionId = ?", [guestId, sessionId]).catch(() => {});
+        }
+      }
 
       // Save original file to R2 (non-blocking) — for QC and re-processing
       if (tokenUser && fileBase64) {
