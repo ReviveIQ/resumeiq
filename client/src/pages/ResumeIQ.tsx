@@ -742,22 +742,24 @@ export default function ResumeIQ() {
           .finally(() => setScoreLoading(false));
 
         // If personality assessments were uploaded on the upload screen,
-        // auto-generate Working With Me in background — ready in preview
+        // await the WWM generation BEFORE entering enrichment so it's ready
         const readyAssessments = uploadAssessments.filter(a => a.fileBase64 || a.textInput);
         if (readyAssessments.length > 0) {
-          fetch("/api/resumeiq/personality", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
-            body: JSON.stringify({ assessments: readyAssessments, parsedResumeData: data }),
-          }).then(r => r.ok ? r.json() : null)
-            .then(result => {
-              if (result?.workingWithMe) {
-                setWorkingWithMeTeaser(result.workingWithMe);
-                setTeaserFields(result.teaserFields || ["communicationStyle", "motivation"]);
-                setIncludePersonality(true); // pre-select in checkout
+          try {
+            const wwmRes = await fetch("/api/resumeiq/personality", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
+              body: JSON.stringify({ assessments: readyAssessments, parsedResumeData: data }),
+            });
+            if (wwmRes.ok) {
+              const wwmResult = await wwmRes.json();
+              if (wwmResult?.workingWithMe) {
+                setWorkingWithMeTeaser(wwmResult.workingWithMe);
+                setTeaserFields(wwmResult.teaserFields || ["communicationStyle", "motivation"]);
+                setIncludePersonality(true);
               }
-            })
-            .catch(() => {});
+            }
+          } catch { /* non-blocking */ }
         }
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
@@ -2126,8 +2128,13 @@ export default function ResumeIQ() {
                         onClick={() => {
                           setView("preview");
                           setTimeout(() => {
-                            setPersonalityStep(true);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
+                            const ready = uploadAssessments.filter((a: any) => a.fileBase64 || a.textInput);
+                            if (ready.length > 0 && workingWithMeTeaser) {
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            } else {
+                              setPersonalityStep(true);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }
                           }, 300);
                         }}
                         style={{ width: "100%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "pointer", marginBottom: "10px", boxShadow: "0 4px 20px rgba(124,58,237,0.3)" }}
@@ -3373,7 +3380,7 @@ export default function ResumeIQ() {
 
 
         {/* ── PERSONALITY STEP: Upload assessments ── */}
-        {personalityStep && !workingWithMeTeaser && (
+        {personalityStep && !workingWithMeTeaser && uploadAssessments.filter((a: any) => a.fileBase64 || a.textInput).length === 0 && (
           <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
             <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "580px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
