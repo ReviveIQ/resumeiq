@@ -1908,10 +1908,11 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       let isFree = false;
       let planType = "free"; // free | starter | monthly | agency
 
-      // Analysis is always free — the download is the conversion point, not the analysis
-      // Plan only affects how many downloads the user gets at /generate
+      // Analysis is always free — unlimited analyses for everyone
+      // isFree = true means this session gets a free download (no payment needed at /generate)
       if (tokenUser) {
         const dbUser = await getUserById(tokenUser.userId);
+        const resumeCount = dbUser?.resumeCount || 0;
         const plan = dbUser?.plan || "free";
         const planExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
         const planActive = !planExpiry || planExpiry > new Date();
@@ -1920,15 +1921,14 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           isFree = true; // unlimited downloads
           planType = plan;
         } else if (plan === "starter") {
-          const resumeCount = dbUser?.resumeCount || 0;
-          isFree = resumeCount < 3; // starter: 3 downloads
+          isFree = resumeCount < 3; // starter: 3 free downloads
           planType = "starter";
         } else {
-          isFree = false; // free plan: analysis free, first download requires payment
+          isFree = resumeCount < 1; // free tier: 1 free download
           planType = "free";
         }
       } else {
-        isFree = false; // guest: analysis free, download requires payment or email capture
+        isFree = !req.headers.cookie?.includes("resumeiq_free_used=1") && (freeUsedByIp.get(ip) || 0) === 0;
         planType = "free";
       }
 
