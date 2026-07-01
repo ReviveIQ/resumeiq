@@ -1586,10 +1586,17 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       const { teaserFields, ...workingWithMe } = result;
 
       // Check if this user already has personality unlocked — if so, save immediately
+      // Monthly and agency plan users always have personality unlocked
       const tokenUser = getTokenUser(req);
       if (tokenUser) {
         const dbUser = await getUserById(tokenUser.userId);
-        if (dbUser?.personalityUnlocked) {
+        const plan = dbUser?.plan || "free";
+        const planExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
+        const planActive = !planExpiry || planExpiry > new Date();
+        const hasWWMAccess = dbUser?.personalityUnlocked ||
+          ((plan === "monthly" || plan === "agency") && planActive) ||
+          plan === "starter";
+        if (hasWWMAccess) {
           await saveWorkingWithMe(tokenUser.userId, workingWithMe);
         }
       }
@@ -2228,7 +2235,13 @@ Return improved summary and first bullet JSON only.`
       const tokenUser = getTokenUser(req);
       if (tokenUser && !data.workingWithMe) {
         const dbUser = await getUserById(tokenUser.userId);
-        if (dbUser?.personalityUnlocked && dbUser?.workingWithMeData) {
+        const genPlan = dbUser?.plan || "free";
+        const genPlanExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
+        const genPlanActive = !genPlanExpiry || genPlanExpiry > new Date();
+        const genHasWWM = dbUser?.personalityUnlocked ||
+          ((genPlan === "monthly" || genPlan === "agency") && genPlanActive) ||
+          genPlan === "starter";
+        if (genHasWWM && dbUser?.workingWithMeData) {
           const stored = typeof dbUser.workingWithMeData === "string"
             ? JSON.parse(dbUser.workingWithMeData)
             : dbUser.workingWithMeData;
