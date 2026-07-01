@@ -181,7 +181,7 @@ export async function initDb() {
       CREATE TABLE IF NOT EXISTS riq_nurture_sent (
         id       INT AUTO_INCREMENT PRIMARY KEY,
         userId   INT NOT NULL,
-        emailKey VARCHAR(16) NOT NULL,
+        emailKey VARCHAR(64) NOT NULL,
         sentAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY unique_user_email (userId, emailKey),
         INDEX idx_userId (userId)
