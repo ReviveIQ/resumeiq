@@ -63,6 +63,7 @@ export async function initDb() {
     await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS contactName VARCHAR(255) NULL`).catch(() => {});
     await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS checkoutAt TIMESTAMP NULL`).catch(() => {});
     await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS checkoutRecoverySent TINYINT DEFAULT 0`).catch(() => {});
+    await conn.execute(`ALTER TABLE riq_sessions ADD COLUMN IF NOT EXISTS guestId VARCHAR(64) NULL`).catch(() => {});
     await conn.execute(`ALTER TABLE riq_users ADD COLUMN IF NOT EXISTS verifyToken VARCHAR(64) NULL`).catch(() => {});
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS riq_resumes (
@@ -417,6 +418,47 @@ export async function incrementResumeCount(userId: number) {
   } finally {
     await conn.end();
   }
+}
+
+export async function getLastGuestSession(guestId: string): Promise<any | null> {
+  const conn = await getDb();
+  if (!conn) return null;
+  try {
+    const [rows] = await conn.execute(
+      `SELECT sessionId, parsedData, paid, createdAt FROM riq_sessions
+       WHERE guestId = ? AND expiresAt > NOW() ORDER BY createdAt DESC LIMIT 1`,
+      [guestId]
+    ) as any[];
+    const data = Array.isArray(rows[0]) ? rows[0] : rows;
+    if (!data[0]) return null;
+    const parsed = typeof data[0].parsedData === "string" ? JSON.parse(data[0].parsedData) : data[0].parsedData;
+    return { sessionId: data[0].sessionId, parsedData: parsed, paid: !!data[0].paid, createdAt: data[0].createdAt };
+  } catch { return null; }
+  finally { await conn.end(); }
+}
+
+export async function mergeGuestSessionsToUser(guestId: string, userId: number): Promise<void> {
+  const conn = await getDb();
+  if (!conn) return;
+  try {
+    const [rows] = await conn.execute(
+      `SELECT sessionId, parsedData FROM riq_sessions WHERE guestId = ? AND paid = 1`,
+      [guestId]
+    ) as any[];
+    const sessions = Array.isArray(rows[0]) ? rows[0] : rows;
+    for (const s of sessions) {
+      const parsed = typeof s.parsedData === "string" ? JSON.parse(s.parsedData) : s.parsedData;
+      if (parsed?.name) {
+        await conn.execute(
+          `INSERT IGNORE INTO riq_resumes (userId, parsedData, createdAt) VALUES (?, ?, NOW())`,
+          [userId, JSON.stringify(parsed)]
+        );
+        await conn.execute(`UPDATE riq_users SET resumeCount = resumeCount + 1 WHERE id = ?`, [userId]);
+      }
+    }
+    await conn.execute(`UPDATE riq_sessions SET guestId = NULL WHERE guestId = ?`, [guestId]);
+  } catch { /* non-critical */ }
+  finally { await conn.end(); }
 }
 
 export async function captureEmail(email: string, name: string) {
