@@ -82,6 +82,17 @@ async function startServer() {
       res.sendFile(path.join(distPath, "faq.html"));
     });
 
+    // Blog routes — must be explicit before the catch-all
+    app.get("/blog", (_req, res) => {
+      res.sendFile(path.join(distPath, "blog/index.html"));
+    });
+    app.get("/blog/:slug", (req, res) => {
+      const filePath = path.join(distPath, "blog", `${req.params.slug}.html`);
+      res.sendFile(filePath, (err) => {
+        if (err) res.sendFile(path.join(distPath, "index.html")); // fallback to SPA
+      });
+    });
+
     // Root → landing page (marketing)
     app.get("/", (_req, res) => {
       res.sendFile(path.join(distPath, "landing.html"));
