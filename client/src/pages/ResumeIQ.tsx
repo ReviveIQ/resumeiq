@@ -807,19 +807,20 @@ export default function ResumeIQ() {
     if (hasIndustrySuggestions) {
       setView("skill_suggestions");
     } else {
+      setResumeScore(null); // clear stale score from previous run
       setView("scoring");
       setScoreLoading(true);
       const scoreTimeout = setTimeout(() => {
         setScoreLoading(false);
-        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
-      }, 12000);
+        setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 15000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: JSON.stringify({ parsedData: enrichedData }),
       }).then(r => r.ok ? r.json() : null)
-        .then(scores => { clearTimeout(scoreTimeout); if (scores) setResumeScore(scores); setScoreLoading(false); })
-        .catch(() => { setScoreLoading(false); });
+        .then(scores => { clearTimeout(scoreTimeout); if (scores) { setResumeScore(scores); setScoreLoading(false); } })
+        .catch(() => { clearTimeout(scoreTimeout); setScoreLoading(false); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); });
     }
   };
 
