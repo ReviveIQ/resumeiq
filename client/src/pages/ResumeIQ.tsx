@@ -737,9 +737,8 @@ export default function ResumeIQ() {
           headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
           body: JSON.stringify({ parsedData: data }),
         }).then(r => r.ok ? r.json() : null)
-          .then(scores => { clearTimeout(scoreTimeout); if (scores) setResumeScore(scores); })
-          .catch(() => { clearTimeout(scoreTimeout); })
-          .finally(() => setScoreLoading(false));
+          .then(scores => { clearTimeout(scoreTimeout); setResumeScore(scores || { overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); })
+          .catch(() => { clearTimeout(scoreTimeout); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); });
 
         // If personality assessments were uploaded on the upload screen,
         // await the WWM generation BEFORE entering enrichment so it's ready
@@ -807,20 +806,19 @@ export default function ResumeIQ() {
     if (hasIndustrySuggestions) {
       setView("skill_suggestions");
     } else {
-      setResumeScore(null); // clear stale score from previous run
       setView("scoring");
       setScoreLoading(true);
       const scoreTimeout = setTimeout(() => {
         setScoreLoading(false);
-        setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
-      }, 15000);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: JSON.stringify({ parsedData: enrichedData }),
       }).then(r => r.ok ? r.json() : null)
-        .then(scores => { clearTimeout(scoreTimeout); if (scores) { setResumeScore(scores); setScoreLoading(false); } })
-        .catch(() => { clearTimeout(scoreTimeout); setScoreLoading(false); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); });
+        .then(scores => { clearTimeout(scoreTimeout); setResumeScore(scores || { overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); })
+        .catch(() => { clearTimeout(scoreTimeout); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); });
     }
   };
 
