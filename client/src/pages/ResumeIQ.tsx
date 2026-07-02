@@ -1006,14 +1006,31 @@ export default function ResumeIQ() {
   };
 
   const handlePersonalityUnlock = async () => {
-    // Determine checkout type based on whether resume is already paid
-    const resumeAlreadyPaid = isFree || (sessionId && await (async () => {
-      try {
-        const s = await fetch(`/api/resumeiq/session/${sessionId}`);
-        return false; // session exists = not yet generated/paid via personality flow
-      } catch { return false; }
-    })());
+    // Paid plan users (monthly/agency/starter) get WWM included — skip Stripe entirely
+    const hasPaidPlan = planType === "monthly" || planType === "agency" || planType === "starter" ||
+      (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter" ||
+      (user as any)?.personalityUnlocked;
 
+    if (hasPaidPlan) {
+      // Save WWM directly to the user account and close the modal
+      try {
+        if (token && workingWithMeTeaser) {
+          await fetch("/api/resumeiq/personality-save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ workingWithMe: workingWithMeTeaser }),
+          }).catch(() => {}); // non-blocking
+        }
+      } catch { /* non-blocking */ }
+      setPersonalityStep(false);
+      setIncludePersonality(true);
+      // Trigger download with WWM included
+      const dataWithWWM = { ...parsedData, workingWithMe: workingWithMeTeaser };
+      await handleDownloadWithData(dataWithWWM);
+      return;
+    }
+
+    // Free/unpaid users — go through Stripe
     const type = (!isFree) ? "bundle" : "personality";
     const res = await fetch("/api/resumeiq/personality-checkout", {
       method: "POST",
@@ -3534,10 +3551,9 @@ export default function ResumeIQ() {
               {/* All 5 fields — teaser ones visible, others blurred */}
               <div style={{ display: "grid", gap: "10px", marginBottom: "20px" }}>
                 {Object.entries(FIELD_LABELS).map(([key, label]) => {
-                  // Paid plan users see all fields — free users see teaser only
-                  const hasPaidPlan = planType === "monthly" || planType === "agency" || planType === "starter" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter" || (user as any)?.personalityUnlocked;
+                  // Product decision: Communication Style + What Brings Out My Best always visible
                   const ALWAYS_VISIBLE = ["communicationStyle", "motivation"];
-                  const isVisible = hasPaidPlan || ALWAYS_VISIBLE.includes(key);
+                  const isVisible = ALWAYS_VISIBLE.includes(key);
                   return (
                     <div key={key} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "14px", border: `1px solid ${isVisible ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`, position: "relative" }}>
                       <p style={{ color: "#60a5fa", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "5px" }}>{label}</p>
@@ -3563,13 +3579,13 @@ export default function ResumeIQ() {
               <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                   <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>
-                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Working With Me — Included in Your Plan" : !isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
+                    {!isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
                   </span>
                   <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>
-                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "✓ Free" : !isFree ? "$19.99" : "$7.99"}
+                    {!isFree ? "$19.99" : "$7.99"}
                   </span>
                 </div>
-                {!isFree && !(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") && (
+                {!isFree && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
