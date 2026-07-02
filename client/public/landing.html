@@ -18,13 +18,12 @@
     .bg-glow-2{width:500px;height:500px;background:#7c3aed;bottom:0;right:-200px}
     .container{max-width:1100px;margin:0 auto;padding:0 24px}
     nav{position:fixed;top:0;left:0;right:0;z-index:1000;border-bottom:1px solid var(--border);background:rgba(8,15,30,0.97)}
-    .nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .nav-links{flex:1;display:flex;align-items:center;justify-content:center;gap:4px}
-    a{color:inherit}
-    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#ffffff!important;flex-shrink:0}
+    .nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:relative}
+    .nav-links{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;pointer-events:auto}
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#ffffff;flex-shrink:0}
     .logo-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .logo-text{font-family:'Montserrat',sans-serif;font-weight:800;font-size:20px;color:#ffffff!important}
-    .logo-by{font-size:12px;color:#94a3b8!important;margin-left:4px}
+    .logo-text{font-family:'Montserrat',sans-serif;font-weight:800;font-size:20px;color:#ffffff}
+    .logo-by{font-size:12px;color:#94a3b8;margin-left:4px}
     .nav-link{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;padding:7px 12px;border-radius:7px;transition:all .2s}
     .nav-link:hover{color:var(--white);background:rgba(255,255,255,0.06)}
     .nav-cta{background:var(--blue);color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;font-family:'Inter',sans-serif}
