@@ -1976,14 +1976,29 @@ export default function ResumeIQ() {
           };
 
           const handleAddSkills = () => {
+            let dataToScore = parsedData;
             if (suggestedSkills.length > 0) {
               const updated = { ...parsedData };
               const existing = updated.skills?.categories || [];
               const suggestionCategory = { name: "Industry Standard", skills: suggestedSkills };
               updated.skills = { categories: [...existing.filter((c: any) => c.name !== "Industry Standard"), suggestionCategory] };
               setParsedData(updated);
+              dataToScore = updated;
             }
+            setResumeScore(null);
             setView("scoring");
+            setScoreLoading(true);
+            const scoreTimeout = setTimeout(() => {
+              setScoreLoading(false);
+              setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+            }, 15000);
+            fetch("/api/resumeiq/score", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ parsedData: dataToScore }),
+            }).then(r => r.ok ? r.json() : null)
+              .then(scores => { clearTimeout(scoreTimeout); setResumeScore(scores || { overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); })
+              .catch(() => { clearTimeout(scoreTimeout); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); });
           };
 
           return (
@@ -2029,7 +2044,19 @@ export default function ResumeIQ() {
                 )}
 
                 <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-                  <button onClick={() => setView("scoring")}
+                  <button onClick={() => {
+                    setResumeScore(null);
+                    setView("scoring");
+                    setScoreLoading(true);
+                    const t = setTimeout(() => { setScoreLoading(false); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); }, 15000);
+                    fetch("/api/resumeiq/score", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+                      body: JSON.stringify({ parsedData }),
+                    }).then(r => r.ok ? r.json() : null)
+                      .then(s => { clearTimeout(t); setResumeScore(s || { overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); })
+                      .catch(() => { clearTimeout(t); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); });
+                  }}
                     style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "9px", padding: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
                     Skip
                   </button>
