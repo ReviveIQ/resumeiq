@@ -299,7 +299,7 @@ export default function ResumeIQ() {
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
   const [isFree, setIsFree] = useState(false);
-  const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">("free");
+  const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">(() => { const p = localStorage.getItem("riq_plan"); return (p === "monthly" || p === "agency" || p === "starter") ? p as any : "free"; });
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "monthly">("monthly");
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
@@ -544,7 +544,7 @@ export default function ResumeIQ() {
     if (token) {
       fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
-        .then(u => { if (u) { setUser(u); if (u?.plan === "monthly" || u?.plan === "agency" || u?.plan === "starter") setPlanType(u.plan); } else { setToken(""); localStorage.removeItem("riq_token"); } })
+        .then(u => { if (u) { setUser(u); const p = u?.plan || "free"; setPlanType(p as any); localStorage.setItem("riq_plan", p); } else { setToken(""); localStorage.removeItem("riq_token"); localStorage.removeItem("riq_plan"); } })
         .catch(() => {});
     }
   }, [token]);
@@ -1255,7 +1255,7 @@ export default function ResumeIQ() {
     URL.revokeObjectURL(url);
   };
 
-  const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
+  const logout = () => { setToken(""); setUser(null); setPlanType("free"); localStorage.removeItem("riq_token"); localStorage.removeItem("riq_plan"); setView("upload"); };
   const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); setWorkingWithMeTeaser(null); setTeaserFields([]); setResumeScore(null); setPreTransformScore(null); };
 
   return (
@@ -2870,10 +2870,10 @@ export default function ResumeIQ() {
                           });
                           const loginData = await loginRes.json();
                           if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                          setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                          setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
                         } else { setGuestAccountError(data.error || "Could not create account."); return; }
                       } else {
-                        setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                        setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
                       }
                       setEmailCaptured(true); captureMarketingEmail(email, 'upload_gate');
                       
@@ -3193,10 +3193,10 @@ export default function ResumeIQ() {
                             });
                             const loginData = await loginRes.json();
                             if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                            setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                            setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
                           } else { setGuestAccountError(data.error || "Could not create account."); return; }
                         } else {
-                          setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                          setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
                         }
                         setEmailCaptured(true);
                         captureMarketingEmail(email, "done_screen");
@@ -3637,10 +3637,10 @@ export default function ResumeIQ() {
                         });
                         const loginData = await loginRes.json();
                         if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                        setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
+                        setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
                       } else { setGuestAccountError(data.error || "Could not create account."); return; }
                     } else {
-                      setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
+                      setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
                     }
                     setShowPaidGuestModal(false);
                     await proceedToCheckout();
