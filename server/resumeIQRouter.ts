@@ -1604,6 +1604,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
           max_tokens: 800, temperature: 0.2,
         }),
+        signal: AbortSignal.timeout(45000),
       });
 
       if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
