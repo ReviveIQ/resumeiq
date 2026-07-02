@@ -384,6 +384,7 @@ export default function ResumeIQ() {
         .then(d => {
           if (d.id) {
             setUser(d);
+            if (d?.plan === "monthly" || d?.plan === "agency" || d?.plan === "starter") setPlanType(d.plan);
             setView(prev => {
               if (prev === "verify_pending") {
                 const currentFile = file;
@@ -484,6 +485,7 @@ export default function ResumeIQ() {
             localStorage.setItem("riq_from_mycareeriq", "1");
             setToken(data.token);
             setUser(data.user);
+      if (data.user?.plan === "monthly" || data.user?.plan === "agency" || data.user?.plan === "starter") setPlanType(data.user.plan);
             setView("upload");
           }
         })
@@ -542,7 +544,7 @@ export default function ResumeIQ() {
     if (token) {
       fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
-        .then(u => { if (u) setUser(u); else { setToken(""); localStorage.removeItem("riq_token"); } })
+        .then(u => { if (u) { setUser(u); if (u?.plan === "monthly" || u?.plan === "agency" || u?.plan === "starter") setPlanType(u.plan); } else { setToken(""); localStorage.removeItem("riq_token"); } })
         .catch(() => {});
     }
   }, [token]);
@@ -3587,7 +3589,7 @@ export default function ResumeIQ() {
 
               <button onClick={handlePersonalityUnlock}
                 style={{ width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginBottom: "10px" }}>
-                {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.personalityUnlocked) ? "✦ Add to My Resume — Included in Plan →" : !isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
+                {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || ((user as any)?.personalityUnlocked === 1 || (user as any)?.personalityUnlocked === true)) ? "✦ Add to My Resume — Included in Plan →" : !isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
               </button>
               <button onClick={() => { setWorkingWithMeTeaser(null); setTeaserFields([]); setAssessmentFiles([]); }}
                 style={{ width: "100%", background: "none", color: "#475569", border: "none", fontSize: "12px", cursor: "pointer", padding: "6px" }}>
