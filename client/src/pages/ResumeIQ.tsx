@@ -1591,7 +1591,7 @@ export default function ResumeIQ() {
                 <span style={{ fontSize: "18px" }}>✓</span>
                 <div>
                   <p style={{ color: "#93c5fd", fontSize: "13px", fontWeight: 600, margin: 0 }}>You're signed in as {user.email}</p>
-                  <p style={{ color: "#60a5fa", fontSize: "12px", margin: "2px 0 0 0" }}>Your first transformation is free — upload your resume below.</p>
+                  <p style={{ color: "#60a5fa", fontSize: "12px", margin: "2px 0 0 0" }}>{(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Unlimited transformations — included in your plan." : (planType === "starter" || (user as any)?.plan === "starter") ? "Up to 3 transformations included in your plan." : "Your first transformation is free — upload your resume below."}</p>
                 </div>
               </div>
             )}
@@ -2679,7 +2679,7 @@ export default function ResumeIQ() {
                   </div>
                   <button onClick={() => setPersonalityStep(true)}
                     style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
-                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Add Working With Me — Included in Your Plan →" : "Add Working With Me — $7.99 →"}
+                    Add Working With Me — $7.99 →
                   </button>
                 </div>
               ) : (
@@ -2889,10 +2889,10 @@ export default function ResumeIQ() {
             )}
             {isFree && user && (
               <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px" }}>
-                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>🎉 Your first transformation is free — saved to your account forever.</p>
+                <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>{(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "✦ Unlimited transformations included in your plan." : (planType === "starter" || (user as any)?.plan === "starter") ? "✦ Up to 3 transformations included in your plan." : "🎉 Your first transformation is free — saved to your account forever."}</p>
                 {workingWithMeTeaser && (
                   <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0 }}>
-                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? null : <><strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.</>}
+                    ⚠️ <strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.
                   </p>
                 )}
               </div>
