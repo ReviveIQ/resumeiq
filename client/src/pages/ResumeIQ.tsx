@@ -749,6 +749,7 @@ export default function ResumeIQ() {
               method: "POST",
               headers: { "Content-Type": "application/json", ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}) },
               body: JSON.stringify({ assessments: readyAssessments, parsedResumeData: data }),
+              signal: AbortSignal.timeout(50000),
             });
             if (wwmRes.ok) {
               const wwmResult = await wwmRes.json();
@@ -758,7 +759,10 @@ export default function ResumeIQ() {
                 setIncludePersonality(true);
               }
             }
-          } catch { /* non-blocking */ }
+          } catch (e) {
+            console.warn("[ResumeIQ] WWM generation timed out or failed — continuing without it", e);
+            /* non-blocking — flow continues to enrichment regardless */
+          }
         }
       }
     } catch (err: any) { setError(err.message || "Failed to analyze"); setView("upload"); }
