@@ -17,15 +17,12 @@
     .bg-glow-1{width:600px;height:600px;background:#1a56db;top:-200px;left:-200px}
     .bg-glow-2{width:500px;height:500px;background:#7c3aed;bottom:0;right:-200px}
     .container{max-width:1100px;margin:0 auto;padding:0 24px}
-    .nav-inner.container{position:relative;z-index:101}
-    nav{position:fixed;top:0;left:0;right:0;z-index:100;border-bottom:1px solid var(--border);background:rgba(8,15,30,0.97);padding:16px 0}
-    .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .nav-inner .logo{flex-shrink:0}
+    nav{position:fixed;top:0;left:0;right:0;z-index:1000;border-bottom:1px solid var(--border);background:rgba(8,15,30,0.97)}
+    .nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
     .nav-links{flex:1;display:flex;align-items:center;justify-content:center;gap:4px}
-    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#ffffff}
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#ffffff;flex-shrink:0}
     .logo-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .logo-text{font-family:'Montserrat',sans-serif;font-weight:800;font-size:20px;color:#ffffff}
-    .logo{isolation:isolate}
     .logo-by{font-size:12px;color:#94a3b8;margin-left:4px}
     .nav-link{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;padding:7px 12px;border-radius:7px;transition:all .2s}
     .nav-link:hover{color:var(--white);background:rgba(255,255,255,0.06)}
@@ -113,7 +110,7 @@
 <div class="bg-glow bg-glow-2"></div>
 
 <nav>
-  <div class="container nav-inner">
+  <div class="nav-inner">
     <a href="/" class="logo">
       <div class="logo-icon">
         <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" width="28" height="28">
