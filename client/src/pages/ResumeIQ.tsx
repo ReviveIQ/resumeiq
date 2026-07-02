@@ -1006,31 +1006,14 @@ export default function ResumeIQ() {
   };
 
   const handlePersonalityUnlock = async () => {
-    // Paid plan users (monthly/agency/starter) get WWM included — skip Stripe entirely
-    const hasPaidPlan = planType === "monthly" || planType === "agency" || planType === "starter" ||
-      (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter" ||
-      (user as any)?.personalityUnlocked;
-
-    if (hasPaidPlan) {
-      // Save WWM directly to the user account and close the modal
+    // Determine checkout type based on whether resume is already paid
+    const resumeAlreadyPaid = isFree || (sessionId && await (async () => {
       try {
-        if (token && workingWithMeTeaser) {
-          await fetch("/api/resumeiq/personality-save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify({ workingWithMe: workingWithMeTeaser }),
-          }).catch(() => {}); // non-blocking
-        }
-      } catch { /* non-blocking */ }
-      setPersonalityStep(false);
-      setIncludePersonality(true);
-      // Trigger download with WWM included
-      const dataWithWWM = { ...parsedData, workingWithMe: workingWithMeTeaser };
-      await handleDownloadWithData(dataWithWWM);
-      return;
-    }
+        const s = await fetch(`/api/resumeiq/session/${sessionId}`);
+        return false; // session exists = not yet generated/paid via personality flow
+      } catch { return false; }
+    })());
 
-    // Free/unpaid users — go through Stripe
     const type = (!isFree) ? "bundle" : "personality";
     const res = await fetch("/api/resumeiq/personality-checkout", {
       method: "POST",
@@ -3604,7 +3587,7 @@ export default function ResumeIQ() {
 
               <button onClick={handlePersonalityUnlock}
                 style={{ width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginBottom: "10px" }}>
-                {!isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
+                {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.personalityUnlocked) ? "✦ Add to My Resume — Included in Plan →" : !isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
               </button>
               <button onClick={() => { setWorkingWithMeTeaser(null); setTeaserFields([]); setAssessmentFiles([]); }}
                 style={{ width: "100%", background: "none", color: "#475569", border: "none", fontSize: "12px", cursor: "pointer", padding: "6px" }}>
