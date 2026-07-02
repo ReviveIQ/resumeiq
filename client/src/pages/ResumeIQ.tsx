@@ -299,7 +299,7 @@ export default function ResumeIQ() {
   const [parsedData, setParsedData] = useState<any>(null);
   const [sessionId, setSessionId] = useState("");
   const [isFree, setIsFree] = useState(false);
-  const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">(() => { const p = localStorage.getItem("riq_plan"); return (p === "monthly" || p === "agency" || p === "starter") ? p as any : "free"; });
+  const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">("free");
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "monthly">("monthly");
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
@@ -544,7 +544,7 @@ export default function ResumeIQ() {
     if (token) {
       fetch("/api/resumeiq/auth/me", { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
-        .then(u => { if (u) { setUser(u); const p = u?.plan || "free"; setPlanType(p as any); localStorage.setItem("riq_plan", p); } else { setToken(""); localStorage.removeItem("riq_token"); localStorage.removeItem("riq_plan"); } })
+        .then(u => { if (u) { setUser(u); if (u?.plan === "monthly" || u?.plan === "agency" || u?.plan === "starter") setPlanType(u.plan); } else { setToken(""); localStorage.removeItem("riq_token"); } })
         .catch(() => {});
     }
   }, [token]);
@@ -1255,7 +1255,7 @@ export default function ResumeIQ() {
     URL.revokeObjectURL(url);
   };
 
-  const logout = () => { setToken(""); setUser(null); setPlanType("free"); localStorage.removeItem("riq_token"); localStorage.removeItem("riq_plan"); setView("upload"); };
+  const logout = () => { setToken(""); setUser(null); localStorage.removeItem("riq_token"); setView("upload"); };
   const reset = () => { setView("upload"); setFile(null); setParsedData(null); setSessionId(""); setError(""); setIsFree(false); setEmailCaptured(false); setEmail(""); setShowPaidGuestModal(false); setGuestPassword(""); setGuestPasswordConfirm(""); setGuestAccountError(""); setAssessmentFiles([]); setPersonalityStep(false); setWorkingWithMeTeaser(null); setTeaserFields([]); setResumeScore(null); setPreTransformScore(null); };
 
   return (
@@ -1351,6 +1351,21 @@ export default function ResumeIQ() {
                   <User size={13} color="#60a5fa" />
                   <span style={{ color: "white", fontSize: "12px" }}>{user.name || user.email}</span>
                 </div>
+                {(() => {
+                  const plan = planType || (user as any)?.plan || "free";
+                  const badges: Record<string, { label: string; bg: string; color: string; border: string }> = {
+                    monthly: { label: "✦ Pro", bg: "linear-gradient(135deg, rgba(0,200,150,0.2), rgba(37,99,235,0.2))", color: "#4ade80", border: "1px solid rgba(74,222,128,0.35)" },
+                    agency:  { label: "✦ Agency", bg: "linear-gradient(135deg, rgba(139,92,246,0.2), rgba(79,70,229,0.2))", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.35)" },
+                    starter: { label: "Starter", bg: "rgba(37,99,235,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" },
+                    free:    { label: "Free", bg: "rgba(255,255,255,0.06)", color: "#64748b", border: "1px solid rgba(255,255,255,0.1)" },
+                  };
+                  const b = badges[plan] || badges.free;
+                  return (
+                    <div style={{ background: b.bg, border: b.border, borderRadius: "999px", padding: "4px 10px", display: "flex", alignItems: "center" }}>
+                      <span style={{ color: b.color, fontSize: "11px", fontWeight: 700, letterSpacing: "0.04em" }}>{b.label}</span>
+                    </div>
+                  );
+                })()}
                 <button onClick={logout} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}><LogOut size={15} /></button>
               </>
             ) : (
@@ -2870,10 +2885,10 @@ export default function ResumeIQ() {
                           });
                           const loginData = await loginRes.json();
                           if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                          setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
+                          setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
                         } else { setGuestAccountError(data.error || "Could not create account."); return; }
                       } else {
-                        setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
+                        setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
                       }
                       setEmailCaptured(true); captureMarketingEmail(email, 'upload_gate');
                       
@@ -3193,10 +3208,10 @@ export default function ResumeIQ() {
                             });
                             const loginData = await loginRes.json();
                             if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                            setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
+                            setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
                           } else { setGuestAccountError(data.error || "Could not create account."); return; }
                         } else {
-                          setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
+                          setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
                         }
                         setEmailCaptured(true);
                         captureMarketingEmail(email, "done_screen");
@@ -3637,10 +3652,10 @@ export default function ResumeIQ() {
                         });
                         const loginData = await loginRes.json();
                         if (!loginRes.ok) { setGuestAccountError("That email is already registered — check your password."); return; }
-                        setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); localStorage.setItem("riq_plan", loginData.user?.plan || "free"); setPlanType((loginData.user?.plan || "free") as any); setUser(loginData.user);
+                        setToken(loginData.token); localStorage.setItem("riq_token", loginData.token); setUser(loginData.user);
                       } else { setGuestAccountError(data.error || "Could not create account."); return; }
                     } else {
-                      setToken(data.token); localStorage.setItem("riq_token", data.token); localStorage.setItem("riq_plan", data.user?.plan || "free"); setPlanType((data.user?.plan || "free") as any); setUser(data.user);
+                      setToken(data.token); localStorage.setItem("riq_token", data.token); setUser(data.user);
                     }
                     setShowPaidGuestModal(false);
                     await proceedToCheckout();
