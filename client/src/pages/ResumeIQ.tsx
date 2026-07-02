@@ -3415,12 +3415,7 @@ export default function ResumeIQ() {
 
 
         {/* ── PERSONALITY STEP: Upload assessments ── */}
-        {personalityStep && !workingWithMeTeaser && (() => {
-          // Monthly/agency users have WWM included — auto-set includePersonality
-          const hasWWMPlan = planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter";
-          if (hasWWMPlan && !includePersonality) setIncludePersonality(true);
-          return true;
-        })() && (
+        {personalityStep && !workingWithMeTeaser && (
           <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
             <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "580px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
