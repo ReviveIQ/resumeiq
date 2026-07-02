@@ -2174,7 +2174,7 @@ export default function ResumeIQ() {
                         }}
                         style={{ width: "100%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "pointer", marginBottom: "10px", boxShadow: "0 4px 20px rgba(124,58,237,0.3)" }}
                       >
-                        {workingWithMeTeaser ? "View My Working With Me Section →" : (planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Add Working With Me — Included in Your Plan →" : "Add \"Working With Me\" — $7.99 →"}
+                        {workingWithMeTeaser ? "View My Working With Me Section →" : "Add \"Working With Me\" — $7.99 →"}
                       </button>
                       <button
                         onClick={() => setView("preview")}
@@ -2679,7 +2679,7 @@ export default function ResumeIQ() {
                   </div>
                   <button onClick={() => setPersonalityStep(true)}
                     style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
-                    Add Working With Me — $7.99 →
+                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Add Working With Me — Included in Your Plan →" : "Add Working With Me — $7.99 →"}
                   </button>
                 </div>
               ) : (
@@ -2892,7 +2892,7 @@ export default function ResumeIQ() {
                 <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>🎉 Your first transformation is free — saved to your account forever.</p>
                 {workingWithMeTeaser && (
                   <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0 }}>
-                    ⚠️ <strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.
+                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? null : <><strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.</>}
                   </p>
                 )}
               </div>
