@@ -3534,9 +3534,10 @@ export default function ResumeIQ() {
               {/* All 5 fields — teaser ones visible, others blurred */}
               <div style={{ display: "grid", gap: "10px", marginBottom: "20px" }}>
                 {Object.entries(FIELD_LABELS).map(([key, label]) => {
-                  // Product decision: Communication Style + What Brings Out My Best always visible
+                  // Paid plan users see all fields — free users see teaser only
+                  const hasPaidPlan = planType === "monthly" || planType === "agency" || planType === "starter" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || (user as any)?.plan === "starter" || (user as any)?.personalityUnlocked;
                   const ALWAYS_VISIBLE = ["communicationStyle", "motivation"];
-                  const isVisible = ALWAYS_VISIBLE.includes(key);
+                  const isVisible = hasPaidPlan || ALWAYS_VISIBLE.includes(key);
                   return (
                     <div key={key} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "14px", border: `1px solid ${isVisible ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`, position: "relative" }}>
                       <p style={{ color: "#60a5fa", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "5px" }}>{label}</p>
@@ -3562,13 +3563,13 @@ export default function ResumeIQ() {
               <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                   <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>
-                    {!isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
+                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "Working With Me — Included in Your Plan" : !isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
                   </span>
                   <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>
-                    {!isFree ? "$19.99" : "$7.99"}
+                    {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "✓ Free" : !isFree ? "$19.99" : "$7.99"}
                   </span>
                 </div>
-                {!isFree && (
+                {!isFree && !(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
