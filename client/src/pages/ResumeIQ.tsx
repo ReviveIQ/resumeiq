@@ -724,13 +724,11 @@ export default function ResumeIQ() {
         setView("scoring");
         setScoreLoading(true);
 
-        // Timeout fallback — if scoring takes >12s, show preview anyway
+        // Timeout fallback — if scoring takes >15s, show preview anyway
         const scoreTimeout = setTimeout(() => {
           setScoreLoading(false);
-          if (!resumeScore) {
-            setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
-          }
-        }, 12000);
+          setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+        }, 15000);
 
         fetch("/api/resumeiq/score", {
           method: "POST",
@@ -810,13 +808,12 @@ export default function ResumeIQ() {
     if (hasIndustrySuggestions) {
       setView("skill_suggestions");
     } else {
-      setResumeScore(null);
       setView("scoring");
       setScoreLoading(true);
       const scoreTimeout = setTimeout(() => {
         setScoreLoading(false);
-        setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
-      }, 15000);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
@@ -905,19 +902,19 @@ export default function ResumeIQ() {
       } else {
         setView("scoring");
       }
-      setResumeScore(null);
       setScoreLoading(true);
       const scoreTimeoutNext = setTimeout(() => {
         setScoreLoading(false);
-        setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
-      }, 15000);
+        if (!resumeScore) setResumeScore({ overall: 5, dimensions: {}, topIssues: [] });
+      }, 12000);
       fetch("/api/resumeiq/score", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: JSON.stringify({ parsedData: updated }),
       }).then(r => r.ok ? r.json() : null)
-        .then(scores => { clearTimeout(scoreTimeoutNext); setResumeScore(scores || { overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); })
-        .catch(() => { clearTimeout(scoreTimeoutNext); setResumeScore({ overall: 5, dimensions: {}, topIssues: [] }); setScoreLoading(false); });
+        .then(scores => { clearTimeout(scoreTimeoutNext); if (scores) setResumeScore(scores); })
+        .catch(() => { clearTimeout(scoreTimeoutNext); })
+        .finally(() => setScoreLoading(false));
     }
   };
 
