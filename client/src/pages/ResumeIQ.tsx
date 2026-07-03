@@ -3553,7 +3553,9 @@ export default function ResumeIQ() {
                 {Object.entries(FIELD_LABELS).map(([key, label]) => {
                   // Product decision: Communication Style + What Brings Out My Best always visible
                   const ALWAYS_VISIBLE = ["communicationStyle", "motivation"];
-                  const isVisible = ALWAYS_VISIBLE.includes(key);
+                  const effectivePlan = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+                  const hasPaidPlan = effectivePlan === "monthly" || effectivePlan === "agency" || effectivePlan === "starter" || (user as any)?.personalityUnlocked == 1;
+                  const isVisible = hasPaidPlan || ALWAYS_VISIBLE.includes(key);
                   return (
                     <div key={key} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "14px", border: `1px solid ${isVisible ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.06)"}`, position: "relative" }}>
                       <p style={{ color: "#60a5fa", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "5px" }}>{label}</p>
@@ -3576,35 +3578,42 @@ export default function ResumeIQ() {
               </div>
 
               {/* Pricing */}
-              <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>
-                    {!isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}
-                  </span>
-                  <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>
-                    {!isFree ? "$19.99" : "$7.99"}
-                  </span>
-                </div>
-                {!isFree && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$14.99</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ color: "#64748b", fontSize: "12px" }}>Working With Me unlock</span>
-                      <span style={{ color: "#94a3b8", fontSize: "12px" }}>$7.99</span>
-                    </div>
+              {(() => {
+                const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+                const isPaid = ep === "monthly" || ep === "agency" || ep === "starter" || (user as any)?.personalityUnlocked == 1;
+                return isPaid ? (
+                  <div style={{ background: "rgba(0,200,150,0.08)", border: "1px solid rgba(0,200,150,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600 }}>Working With Me — Included in Your Plan</span>
+                    <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>✓ Free</span>
                   </div>
-                )}
-                <p style={{ color: "#64748b", fontSize: "11px", marginTop: "8px", marginBottom: 0 }}>
-                  🎁 Once unlocked, Working With Me is auto-added to all your future resumes — free forever.
-                </p>
-              </div>
+                ) : (
+                  <div style={{ background: "rgba(37,99,235,0.1)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                      <span style={{ color: "white", fontSize: "13px", fontWeight: 600 }}>{!isFree ? "Resume + Working With Me" : "Add Working With Me to your free resume"}</span>
+                      <span style={{ color: "#4ade80", fontSize: "16px", fontWeight: 700 }}>{!isFree ? "$19.99" : "$7.99"}</span>
+                    </div>
+                    {!isFree && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#64748b", fontSize: "12px" }}>Resume transformation</span>
+                          <span style={{ color: "#94a3b8", fontSize: "12px" }}>$14.99</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#64748b", fontSize: "12px" }}>Working With Me unlock</span>
+                          <span style={{ color: "#94a3b8", fontSize: "12px" }}>$7.99</span>
+                        </div>
+                      </div>
+                    )}
+                    <p style={{ color: "#64748b", fontSize: "11px", marginTop: "8px", marginBottom: 0 }}>
+                      🎁 Once unlocked, Working With Me is auto-added to all your future resumes — free forever.
+                    </p>
+                  </div>
+                );
+              })()}
 
               <button onClick={handlePersonalityUnlock}
                 style={{ width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginBottom: "10px" }}>
-                {(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || ((user as any)?.personalityUnlocked === 1 || (user as any)?.personalityUnlocked === true)) ? "✦ Add to My Resume — Included in Plan →" : !isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
+                {((() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return ep === "monthly" || ep === "agency" || ep === "starter" || (user as any)?.personalityUnlocked == 1; })()) ? "✦ Add to My Resume — Included in Plan →" : !isFree ? "Pay $19.99 — Get Resume + Working With Me →" : "Pay $7.99 — Add Working With Me →"}
               </button>
               <button onClick={() => { setWorkingWithMeTeaser(null); setTeaserFields([]); setAssessmentFiles([]); }}
                 style={{ width: "100%", background: "none", color: "#475569", border: "none", fontSize: "12px", cursor: "pointer", padding: "6px" }}>
