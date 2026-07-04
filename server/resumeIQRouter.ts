@@ -102,14 +102,6 @@ async function uploadToR2(fileBase64: string, key: string, contentType: string):
 // ── DB-BACKED SESSION STORE ──────────────────────────────────────────────
 // Sessions stored in TiDB so they survive server restarts and scale across instances
 
-async function markSessionPaid(sessionId: string) {
-  if (!conn) { const s = memoryStore.get(sessionId); if (s) s.paid = true; return; }
-  const conn2 = await getDb();
-  if (!conn2) return;
-  try { await conn2.execute(`UPDATE riq_sessions SET paid = 1 WHERE sessionId = ?`, [sessionId]); }
-  finally { await conn2.end(); }
-}
-
 async function createSession(sessionId: string, parsedData: any, paid: boolean, freeUsed: boolean) {
   const { getDb } = await import("./authService");
   const conn = await getDb();
@@ -343,6 +335,7 @@ WHAT YOU DO:
 
 BULLET TRANSFORMATION RULES:
 - Every bullet MUST start with a past-tense action verb (Led, Built, Grew, Reduced, Closed, Launched, Improved, Standardized, Supervised — NOT "Responsible for", "Helped with", "Assisted in", "Participated in", "Developed a deep understanding of")
+- SKILLS IN BULLETS: Each role's bullets must naturally include relevant skill keywords (tools, methodologies, platforms, technologies) that appear in the skills section. If a bullet describes using Salesforce, MEDDPICC, or any named tool/methodology, the skill name must appear explicitly in the bullet text — not just implied. This ensures ATS parsers find skills in the experience section, not only in the skills table.
 - TENSE CONSISTENCY: All bullets within a single role must use the same tense. Completed past roles → all past tense. Current/ongoing role → past tense for completed achievements (the normal case), present tense ONLY if describing a literally ongoing recurring duty — and if so, ALL bullets in that role must match, never mix past and present tense within the same role.
 - If the resume contains a number for this bullet — use it EXACTLY. Never round, inflate, or change it.
 - If the resume does NOT contain a number — do NOT invent one. Elevate language and framing instead.
@@ -746,6 +739,22 @@ Return the updated experience array as JSON. Keep all fields (title, company, bu
   return parsedData;
 }
 
+function formatResumeDate(d: string): string {
+  if (!d || d.trim() === "") return "";
+  const clean = d.trim();
+  if (/^(present|current|now)$/i.test(clean)) return "Present";
+  // MM/YYYY → Month YYYY
+  const mmyyyy = clean.match(/^(\d{1,2})\/(\d{4})$/);
+  if (mmyyyy) {
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const m = parseInt(mmyyyy[1], 10);
+    if (m >= 1 && m <= 12) return `${months[m - 1]} ${mmyyyy[2]}`;
+  }
+  // YYYY only
+  if (/^\d{4}$/.test(clean)) return clean;
+  return clean;
+}
+
 async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> {
   if (scoreFlags) {
     const flags = Object.entries(scoreFlags)
@@ -825,7 +834,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
   for (const exp of (parsedData.experience || [])) {
     expSection.push(...roleHeader(
       exp.title || "", exp.company || "", exp.location || "",
-      `${exp.startDate || ""}${exp.endDate ? " – " + exp.endDate : ""}`
+      `${formatResumeDate(exp.startDate || "")}${exp.endDate ? " – " + formatResumeDate(exp.endDate) : ""}`
     ));
     if (exp.description) {
       expSection.push(new Paragraph({
@@ -966,7 +975,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
         spacer(120),
 
         // ── SUMMARY ────────────────────────────────────────────────────────
-        sectionHeader("Professional Summary"),
+        sectionHeader("Summary"),
         new Paragraph({
           spacing: { before: 100, after: 80 },
           children: [new TextRun({ text: parsedData.summary || "", font: "Calibri", size: 20, color: "1E293B" })]
@@ -974,18 +983,18 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
 
         // ── CAREER HIGHLIGHTS ──────────────────────────────────────────────
         ...(parsedData.topMetrics?.length ? [
-          sectionHeader("Career Highlights"),
+          sectionHeader("Highlights"),
           ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m)),
           spacer(60),
         ] : []),
 
         // ── EXPERIENCE ─────────────────────────────────────────────────────
-        sectionHeader("Professional Experience"),
+        sectionHeader("Experience"),
         ...expSection,
 
         // ── SKILLS ─────────────────────────────────────────────────────────
         ...(skillRows.length ? [
-          sectionHeader("Core Competencies"),
+          sectionHeader("Skills"),
           new Table({
             width: { size: W, type: WidthType.DXA },
             columnWidths: [2200, 7160],
@@ -2269,25 +2278,7 @@ Return improved summary and first bullet JSON only.`
 
       const session = await getSession(sessionId);
       if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
-
-      // Allow paid plan users to download without a paid session (they bypassed Stripe legitimately)
-      if (!session.paid) {
-        const genTokenUser = getTokenUser(req);
-        if (genTokenUser) {
-          const genDbUser = await getUserById(genTokenUser.userId);
-          const genPlan = genDbUser?.plan || "free";
-          const genExpiry = genDbUser?.planExpiresAt ? new Date(genDbUser.planExpiresAt) : null;
-          const genActive = !genExpiry || genExpiry > new Date();
-          const genAllowed = (genPlan === "monthly" || genPlan === "agency" || genPlan === "starter") && genActive;
-          if (!genAllowed && !genDbUser?.personalityUnlocked) {
-            res.status(402).json({ error: "Payment required" }); return;
-          }
-          // Mark session as paid so future downloads work too
-          await markSessionPaid(sessionId).catch(() => {});
-        } else {
-          res.status(402).json({ error: "Payment required" }); return;
-        }
-      }
+      if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
 
       // Use client-side edited data if provided (preserves preview edits + workingWithMe),
       // falling back to original session data
