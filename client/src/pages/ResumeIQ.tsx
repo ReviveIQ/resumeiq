@@ -1008,14 +1008,21 @@ export default function ResumeIQ() {
   };
 
   const handlePersonalityUnlock = async () => {
-    // Determine checkout type based on whether resume is already paid
-    const resumeAlreadyPaid = isFree || (sessionId && await (async () => {
-      try {
-        const s = await fetch(`/api/resumeiq/session/${sessionId}`);
-        return false; // session exists = not yet generated/paid via personality flow
-      } catch { return false; }
-    })());
+    // Check if user has a paid plan — if so, skip Stripe entirely
+    const effectivePlan = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+    const hasPaidPlan = effectivePlan === "monthly" || effectivePlan === "agency" || effectivePlan === "starter" || (user as any)?.personalityUnlocked == 1;
 
+    if (hasPaidPlan) {
+      // Paid plan — add WWM to resume and download directly, no Stripe
+      setPersonalityStep(false);
+      setIncludePersonality(true);
+      const dataWithWWM = { ...parsedData, workingWithMe: workingWithMeTeaser };
+      setParsedData(dataWithWWM);
+      await handleDownloadWithData(dataWithWWM);
+      return;
+    }
+
+    // Free user — go through Stripe
     const type = (!isFree) ? "bundle" : "personality";
     const res = await fetch("/api/resumeiq/personality-checkout", {
       method: "POST",
