@@ -816,7 +816,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
       tabStops: [{ type: TabStopType.RIGHT, position: W }],
       children: [
         new TextRun({ text: title, font: "Calibri", size: 21, bold: true, color: NAVY }),
-        new TextRun({ text: "\t", font: "Calibri", size: 19 }),
+        new TextRun({ text: "\t" }),
         new TextRun({ text: dates, font: "Calibri", size: 19, italics: true, color: GRAY }),
       ]
     }),
@@ -968,7 +968,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
             top: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
           },
           children: [new TextRun({
-            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin, parsedData.website]
+            text: [parsedData.location, parsedData.phone, parsedData.email, (parsedData.linkedin || "").replace(/^https?:\/\//, "") || undefined, (parsedData.website || "").replace(/^https?:\/\//, "") || undefined]
               .filter(Boolean).join("   |   "),
             font: "Calibri", size: 18, color: GRAY,
           })]
