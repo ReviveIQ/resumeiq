@@ -1013,18 +1013,12 @@ export default function ResumeIQ() {
     const hasPaidPlan = effectivePlan === "monthly" || effectivePlan === "agency" || effectivePlan === "starter" || (user as any)?.personalityUnlocked == 1;
 
     if (hasPaidPlan) {
-      // Paid plan — add WWM to resume and download directly, no Stripe
+      // Paid plan — close modal immediately, then download
       setPersonalityStep(false);
       setIncludePersonality(true);
       const dataWithWWM = { ...parsedData, workingWithMe: workingWithMeTeaser };
       setParsedData(dataWithWWM);
-      try {
-        await handleDownloadWithData(dataWithWWM);
-      } finally {
-        // Always close modal and advance view regardless of download outcome
-        setPersonalityStep(false);
-        setView("done");
-      }
+      await handleDownloadWithData(dataWithWWM);
       return;
     }
 
