@@ -2278,11 +2278,32 @@ Return improved summary and first bullet JSON only.`
 
       const session = await getSession(sessionId);
       if (!session) { res.status(404).json({ error: "Session expired. Please start over." }); return; }
-      if (!session.paid) { res.status(402).json({ error: "Payment required" }); return; }
+
+      // Allow paid plan users through even if session.paid is false (they bypassed Stripe legitimately)
+      if (!session.paid) {
+        const gateTokenUser = getTokenUser(req);
+        if (gateTokenUser) {
+          const gateDbUser = await getUserById(gateTokenUser.userId);
+          const gatePlan = gateDbUser?.plan || "free";
+          const gateExpiry = gateDbUser?.planExpiresAt ? new Date(gateDbUser.planExpiresAt) : null;
+          const gateActive = !gateExpiry || gateExpiry > new Date();
+          const gateAllowed = (gatePlan === "monthly" || gatePlan === "agency" || gatePlan === "starter") && gateActive;
+          if (!gateAllowed && !gateDbUser?.personalityUnlocked) {
+            res.status(402).json({ error: "Payment required" }); return;
+          }
+        } else {
+          res.status(402).json({ error: "Payment required" }); return;
+        }
+      }
 
       // Use client-side edited data if provided (preserves preview edits + workingWithMe),
       // falling back to original session data
+      // IMPORTANT: spread clientData LAST so workingWithMe from client is not overwritten
       let data = sanitizeData({ ...session.parsedData, ...(clientData || {}) });
+      // Preserve workingWithMe from client even if sanitizeData strips it
+      if (clientData?.workingWithMe && !data.workingWithMe) {
+        data.workingWithMe = clientData.workingWithMe;
+      }
 
       // Auto-append stored workingWithMe for users who have personality unlocked
       const tokenUser = getTokenUser(req);
