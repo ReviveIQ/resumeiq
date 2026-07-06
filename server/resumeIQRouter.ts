@@ -191,7 +191,7 @@ BULLET RULES:
 - Every bullet must answer: what you did + scope + outcome
 - No soft-attribute bullets whatsoever
 
-SUMMARY: Professional identity + tenure + domain. Never fabricate a target role title. Never include specific national ranking percentages (e.g. "top 0.3%") in the summary — rankings belong in bullets only.
+SUMMARY: Professional identity + tenure + domain. First-person impersonal voice — start with role directly, never use third person or candidate's name. Never fabricate a target role title. Never include national ranking percentages in summary.
 
 EDUCATION: If degree field contains concatenated school/location/year info, parse into separate fields.
 Example: "BS Biology South Dakota State University Brookings South Dakota" →
@@ -205,7 +205,7 @@ MISSING DATES: List any role with empty startDate in missingDates array.
 
 Return ONLY valid JSON starting with {`;
 
-  const schema = `{"name":"string","email":"string","phone":"string","location":"string","title":"string","industry":"food_beverage","summary":"2-3 sentence professional identity pitch — no fabricated target role","missingDates":["Role Title at Company for any role missing dates"],"experience":[{"title":"string","company":"string","location":"string","startDate":"MM/YYYY or empty","endDate":"MM/YYYY or Present or empty","description":"string","bullets":["Improved bullet — strong verb + scope + outcome"],"achievements":[]}],"skills":{"categories":[{"name":"Cheese Manufacturing","skills":["existing"]},{"name":"Industry Standard","skills":["HACCP","GMP","etc"]}]},"education":[{"degree":"B.S. Biology","school":"South Dakota State University","location":"Brookings, SD","year":""}],"certifications":[],"yearsOfExperience":20,"languages":[],"topMetrics":["best 3 achievements"]}`;
+  const schema = `{"name":"string","email":"string","phone":"string","location":"string","title":"string","industry":"food_beverage","summary":"2-3 sentence professional identity pitch — no fabricated target role","missingDates":["Role Title at Company for any role missing dates"],"dateGaps":["Gap of ~N months between Company A and Company B — please confirm dates"],"experience":[{"title":"string","company":"string","location":"string","startDate":"MM/YYYY or empty","endDate":"MM/YYYY or Present or empty","description":"string","bullets":["Improved bullet — strong verb + scope + outcome"],"achievements":[]}],"skills":{"categories":[{"name":"Cheese Manufacturing","skills":["existing"]},{"name":"Industry Standard","skills":["HACCP","GMP","etc"]}]},"education":[{"degree":"B.S. Biology","school":"South Dakota State University","location":"Brookings, SD","year":""}],"certifications":[],"yearsOfExperience":20,"languages":[],"topMetrics":["best 3 achievements"]}`;
 
   const res = await fetch(OPENAI_API, {
     method: "POST",
@@ -371,11 +371,14 @@ EMAIL VALIDATION:
 - If the email looks correct OR uses a custom domain, set "emailTypoWarning" to null
 
 THE SUMMARY RULES:
+- VOICE: Always write in first-person impersonal — start with the role/identity directly (e.g. "Enterprise Account Executive with 18 years..."). Never use third person ("he", "she", "they", or the candidate's name). Never open with "I".
 - Open with who this person IS professionally — their identity, not their last title
 - Lead with their most impressive credential, tenure, or achievement
 - Name their strongest metric if one exists in the resume
 - 2-3 sentences maximum, every word earns its place
 - NEVER fabricate a target role or company
+- NEVER invent experience roles to fill date gaps — use the dateGaps array to flag them instead
+- The output experience array must contain EXACTLY the same number of roles as the source resume
 - CLOSING LINE RULE — the final sentence must do ONE of these three things, in priority order:
   1. If targetRole is provided: connect their background to that specific role
   2. If a clear career theme or specialization is evident: name it specifically (e.g. "specializing in distributed systems and AI-enabled platform delivery at enterprise scale")
@@ -416,6 +419,12 @@ MISSING DATES RULE:
 - If ANY role is missing a startDate or endDate, add that role's title and company to a "missingDates" array in the response
 - Example: "missingDates": ["Process Improvement Supervisor at Valley Queen Cheese"]
 - This triggers the interview flow to ask for those dates specifically
+
+DATE GAP RULE:
+- After parsing all roles, sort them by date and check for gaps of 6+ months between consecutive roles
+- For each suspicious gap add an entry to a "dateGaps" array: "Gap of ~N months between [Company A] end [MM/YYYY] and [Company B] start [MM/YYYY] — please confirm dates"
+- NEVER invent a role to fill a gap — only flag it in dateGaps so the candidate can correct their dates
+- A gap may be a typo, a real career break, or intentional work the candidate chose not to include
 
 BULLET CURATION RULE — CRITICAL:
 - For each role, READ ALL content including sub-sections, sub-headers, and nested bullet groups before selecting bullets
@@ -493,7 +502,7 @@ CRITICAL EXTRACTION RULES:
   "title": "their most recent actual job title",
   "industry": "one of: manufacturing, food_beverage, sales, technology, healthcare, finance, marketing, operations, engineering, education, nonprofit, government, consulting, other",
   "summary": "2-3 sentence pitch. Opens with professional identity. Includes strongest credential or achievement. Closes with a specific, non-generic statement — never use 'brings X years of expertise', 'proven track record', 'valuable asset', or 'positions them well'. Close with something specific only this candidate could claim.",
-  "missingDates": ["Role Title at Company Name for any role where startDate or endDate could not be found"],
+  "missingDates": ["Role Title at Company Name for any role where startDate or endDate could not be found"],"dateGaps": ["Gap of ~N months between Company A (end MM/YYYY) and Company B (start MM/YYYY)"],
   "experience": [
     {
       "title": "their actual job title",
