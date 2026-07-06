@@ -1576,8 +1576,7 @@ export function registerResumeIQRoutes(app: Express) {
               text = textChunks.join(" ").replace(/\s+/g, " ").trim().slice(0, 8000);
               // Fallback: if extraction got nothing meaningful, use raw printable chars
               if (text.length < 100) {
-                text = raw.replace(/[^ -~
-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+                text = raw.replace(/[\x00-\x08\x0b\x0e-\x1f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
               }
               console.log(`[ResumeIQ] PDF extracted ${text.length} chars from ${assessment.fileName}`);
             } catch (e) { console.warn("PDF parse failed:", e); text = ""; }
