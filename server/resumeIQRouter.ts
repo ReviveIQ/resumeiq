@@ -1516,6 +1516,22 @@ export function registerResumeIQRoutes(app: Express) {
     res.json(resumes);
   });
 
+  // ── RESUME DATA — returns parsedData for re-editing ─────────────────────
+  app.get("/api/resumeiq/resume/:id/data", async (req: Request, res: Response) => {
+    try {
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const resume = await getResumeById(parseInt(req.params.id), tokenUser.userId);
+      if (!resume) { res.status(404).json({ error: "Resume not found" }); return; }
+      const parsedData = typeof resume.parsedData === "string"
+        ? JSON.parse(resume.parsedData)
+        : resume.parsedData;
+      res.json({ parsedData, candidateName: resume.candidateName, originalFileName: resume.originalFileName });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/resumeiq/resume/:id/download", async (req: Request, res: Response) => {
     try {
       const tokenUser = getTokenUser(req);
