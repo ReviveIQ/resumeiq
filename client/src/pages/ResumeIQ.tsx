@@ -2936,12 +2936,10 @@ export default function ResumeIQ() {
                 )}
               </div>
             )}
-            {!isFree && (
+            {!isFree && !((() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return ep === "monthly" || ep === "agency" || ep === "starter"; })()) && (
               <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "10px", textAlign: "center" }}>
                 <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600 }}>
-                  {((user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || planType === "monthly" || planType === "agency") 
-                    ? "Select any add-ons below to include with your download."
-                    : "You've used your free transformation. Choose a plan below — one-time purchase, no subscription required."}
+                  You've used your free transformation. Choose a plan below — one-time purchase, no subscription required.
                 </p>
               </div>
             )}
