@@ -3425,6 +3425,10 @@ export default function ResumeIQ() {
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <button onClick={() => handleReEdit(r.id)}
+                        style={{ background: "rgba(99,102,241,0.15)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)", borderRadius: "7px", padding: "8px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                        ✏️ Re-edit
+                      </button>
                       <button onClick={() => handleRedownload(r.id)}
                         style={{ background: "#2563eb", color: "white", border: "none", borderRadius: "7px", padding: "8px 16px", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
                         <Download size={13} /> Download
