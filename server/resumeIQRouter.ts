@@ -1516,7 +1516,10 @@ export function registerResumeIQRoutes(app: Express) {
 
 
   // ── PERSONALITY ASSESSMENT ───────────────────────────────────────────────
-  app.post("/api/resumeiq/personality", async (req: Request, res: Response) => {
+  // Personality endpoint needs larger body limit — 7 PDF base64 payloads can be 20-30MB
+  app.post("/api/resumeiq/personality",
+    require("express").json({ limit: "50mb" }),
+    async (req: Request, res: Response) => {
     try {
       const { assessments, parsedResumeData } = req.body;
       if (!assessments || !assessments.length) { res.status(400).json({ error: "No assessment data provided" }); return; }
@@ -1542,9 +1545,41 @@ export function registerResumeIQRoutes(app: Express) {
             } catch (e) { console.warn("DOCX parse failed:", e); }
           } else if (assessment.fileName?.toLowerCase().endsWith(".pdf")) {
             try {
-              const pdfParse = await import("pdf-parse");
-              const parsed = await (pdfParse.default || pdfParse)(buffer);
-              text = parsed.text?.replace(/\s+/g, " ").trim().slice(0, 8000) || "";
+              // Extract readable text directly from PDF binary — avoids pdf-parse worker crashes
+              // PDFs store text in streams between BT/ET markers; extract and decode
+              const raw = buffer.toString("latin1");
+              const textChunks: string[] = [];
+              // Method 1: Extract text from BT/ET blocks (standard PDF text)
+              const btEtRegex = /BT[\s\S]*?ET/g;
+              let match;
+              while ((match = btEtRegex.exec(raw)) !== null) {
+                const block = match[0];
+                // Extract strings in parentheses (Tj/TJ operators)
+                const strRegex = /\(([^)]*)\)/g;
+                let sm;
+                while ((sm = strRegex.exec(block)) !== null) {
+                  const s = sm[1].replace(/\\n/g, " ").replace(/\\r/g, " ").replace(/\\/g, "");
+                  if (s.trim().length > 1) textChunks.push(s);
+                }
+              }
+              // Method 2: Extract hex strings <XXXX>
+              const hexRegex = /<([0-9a-fA-F]{4,})>/g;
+              while ((match = hexRegex.exec(raw)) !== null) {
+                const hex = match[1];
+                let decoded = "";
+                for (let i = 0; i < hex.length - 1; i += 2) {
+                  const code = parseInt(hex.slice(i, i + 2), 16);
+                  if (code >= 32 && code < 127) decoded += String.fromCharCode(code);
+                }
+                if (decoded.trim().length > 2) textChunks.push(decoded);
+              }
+              text = textChunks.join(" ").replace(/\s+/g, " ").trim().slice(0, 8000);
+              // Fallback: if extraction got nothing meaningful, use raw printable chars
+              if (text.length < 100) {
+                text = raw.replace(/[^ -~
+]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+              }
+              console.log(`[ResumeIQ] PDF extracted ${text.length} chars from ${assessment.fileName}`);
             } catch (e) { console.warn("PDF parse failed:", e); text = ""; }
           } else {
             text = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
