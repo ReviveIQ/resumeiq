@@ -1018,7 +1018,13 @@ export default function ResumeIQ() {
       setIncludePersonality(true);
       const dataWithWWM = { ...parsedData, workingWithMe: workingWithMeTeaser };
       setParsedData(dataWithWWM);
-      await handleDownloadWithData(dataWithWWM);
+      try {
+        await handleDownloadWithData(dataWithWWM);
+      } finally {
+        // Always close modal and advance view regardless of download outcome
+        setPersonalityStep(false);
+        setView("done");
+      }
       return;
     }
 
@@ -3439,7 +3445,7 @@ export default function ResumeIQ() {
 
 
         {/* ── PERSONALITY STEP: Upload assessments ── */}
-        {personalityStep && !workingWithMeTeaser && (
+        {personalityStep && (
           <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
             <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "580px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
               <div style={{ textAlign: "center", marginBottom: "20px" }}>
