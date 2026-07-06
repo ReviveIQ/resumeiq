@@ -1517,9 +1517,7 @@ export function registerResumeIQRoutes(app: Express) {
 
   // ── PERSONALITY ASSESSMENT ───────────────────────────────────────────────
   // Personality endpoint needs larger body limit — 7 PDF base64 payloads can be 20-30MB
-  app.post("/api/resumeiq/personality",
-    require("express").json({ limit: "50mb" }),
-    async (req: Request, res: Response) => {
+  app.post("/api/resumeiq/personality", async (req: Request, res: Response) => {
     try {
       const { assessments, parsedResumeData } = req.body;
       if (!assessments || !assessments.length) { res.status(400).json({ error: "No assessment data provided" }); return; }
