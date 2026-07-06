@@ -1409,10 +1409,10 @@ export function registerResumeIQRoutes(app: Express) {
       res.json({
         session: {
           sessionId: session.sessionId,
-          name: session.parsedData?.name || null,
-          title: session.parsedData?.title || null,
-          preScore: session.parsedData?.preScore || null,
-          paid: session.paid,
+          name: session?.parsedData?.name || null,
+          title: session?.parsedData?.title || null,
+          preScore: session?.parsedData?.preScore || null,
+          paid: session?.paid,
           createdAt: session.createdAt,
         }
       });
@@ -2068,7 +2068,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
   app.get("/api/resumeiq/session/:sessionId", async (req: Request, res: Response) => {
     const session = await getSession(req.params.sessionId);
     if (!session) { res.status(404).json({ error: "Session not found" }); return; }
-    res.json(session.parsedData);
+    res.json(session?.parsedData);
   });
 
   // ── CHECKOUT ─────────────────────────────────────────────────────
@@ -2077,7 +2077,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
       const { sessionId } = req.body;
       const session = await getSession(sessionId);
       if (!session) { console.error(`[ResumeIQ] Checkout failed — session not found: ${sessionId || "no sessionId"}`); res.status(404).json({ error: "Session not found or expired" }); return; }
-      if (session.paid) { res.json({ alreadyPaid: true }); return; }
+      if (session?.paid) { res.json({ alreadyPaid: true }); return; }
 
       // Stamp checkout time and contact info for abandoned checkout recovery
       const tokenUser = getTokenUser(req);
@@ -2091,13 +2091,13 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           ).catch(() => {});
           await conn.end();
         }
-      } else if (session.parsedData?.email) {
+      } else if (session?.parsedData?.email) {
         // Guest — use email from parsedData
         const conn = await getDb();
         if (conn) {
           await conn.execute(
             `UPDATE riq_sessions SET checkoutAt = NOW(), contactEmail = ?, contactName = ? WHERE sessionId = ?`,
-            [session.parsedData.email, session.parsedData.name || null, sessionId]
+            [session?.parsedData.email, session?.parsedData.name || null, sessionId]
           ).catch(() => {});
           await conn.end();
         }
@@ -2345,7 +2345,7 @@ Return improved summary and first bullet JSON only.`
           res.status(404).json({ error: "Session expired. Please start over." }); return;
         }
         console.log("[ResumeIQ] Session expired but user has paid plan — proceeding with clientData");
-      } else if (!session.paid && !gateAllowed) {
+      } else if (!session?.paid && !gateAllowed) {
         res.status(402).json({ error: "Payment required" }); return;
       }
 
@@ -2377,7 +2377,7 @@ Return improved summary and first bullet JSON only.`
       }
 
       // Mark free IP usage now (at actual download time, not transform time)
-      if (session.freeUsed) {
+      if (session?.freeUsed) {
         const ip = getClientIp(req);
         freeUsedByIp.set(ip, (freeUsedByIp.get(ip) || 0) + 1);
       }
@@ -2402,7 +2402,7 @@ Return improved summary and first bullet JSON only.`
             data.name || "Resume",
             data,
             docxBase64,
-            session.paid,
+            session?.paid,
             undefined,
             preScore || undefined,
             undefined,
