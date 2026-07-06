@@ -2981,11 +2981,11 @@ export default function ResumeIQ() {
             {/* What's included card */}
             <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
               <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "20px" }}>
-                Choose your plan
+                {((() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return ep === "monthly" || ep === "agency" || ep === "starter"; })()) ? "Your download is ready" : "Choose your plan"}
               </p>
 
-              {/* Plan selector — only shown for paid users */}
-              {!isFree && (
+              {/* Plan selector — only shown for users who need to purchase */}
+              {!isFree && !((() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return ep === "monthly" || ep === "agency" || ep === "starter"; })()) && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px", paddingBottom: "20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                   {/* Starter */}
                   <div onClick={() => setSelectedPlan("starter")}
@@ -3034,7 +3034,7 @@ export default function ResumeIQ() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ color: "white", fontWeight: 600, fontSize: "15px" }}>Working With Me Section</span>
-                    <span style={{ color: includePersonality ? "#60a5fa" : "#64748b", fontWeight: 700, fontSize: "15px" }}>+ $7.99</span>
+                    <span style={{ color: includePersonality ? "#60a5fa" : "#64748b", fontWeight: 700, fontSize: "15px" }}>{((() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return ep === "monthly" || ep === "agency" || ep === "starter"; })()) ? "✓ Included" : "+ $7.99"}</span>
                   </div>
                   <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px", lineHeight: 1.5 }}>
                     Every resume in the pile shows work history. This shows <em>how you work</em> — your communication style, decision-making, and how you perform under pressure. Synthesized from your DISC, MBTI, PI, or TKI results into professional language. Hiring managers don't expect it. That's why they remember it. Unlocked permanently on your account.
