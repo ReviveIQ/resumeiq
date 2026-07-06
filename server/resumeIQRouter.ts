@@ -405,6 +405,7 @@ SKILLS EXTRACTION RULES:
 - Always include a "Technical Skills", "Leadership", and "Industry Standard" category at minimum
 - Return at least 8-12 total skills for any professional with 5+ years of experience
 - DEDUPLICATION RULE: If the source resume lists skills in multiple overlapping formats (e.g. a flat comma-separated keyword string AND a separate categorized table covering mostly the same terms), CONSOLIDATE into ONE clean categorized list. Never output the same skill twice across categories, and never preserve a redundant flat list alongside a categorized one.
+- CROSS-CATEGORY DEDUP: After building all skill categories, do a final pass — if any skill appears in more than one category, keep it only in the MOST SPECIFIC category and remove it from all others. "Salesforce" should appear once, not in both "CRM Tools" and "Industry Standard". The "Industry Standard" category should only contain skills NOT already listed in other categories.
 
 INDUSTRY DETECTION:
 - Detect the candidate's industry from job titles, company names, and descriptions
@@ -1105,6 +1106,22 @@ function sanitizeData(data: any): any {
     bullets: Array.isArray(exp.bullets) ? exp.bullets.filter(Boolean) : [],
     achievements: Array.isArray(exp.achievements) ? exp.achievements.filter(Boolean) : [],
   }));
+
+  // Server-side skill dedup — remove any skill that appears in more than one category
+  // Keep the first occurrence (most specific category wins)
+  if (data.skills?.categories?.length > 1) {
+    const seen = new Set<string>();
+    data.skills.categories = data.skills.categories.map((cat: any) => ({
+      ...cat,
+      skills: (cat.skills || []).filter((s: string) => {
+        const key = s.toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }),
+    })).filter((cat: any) => cat.skills.length > 0); // remove empty categories
+  }
+
   return data;
 }
 
