@@ -816,7 +816,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
       tabStops: [{ type: TabStopType.RIGHT, position: W }],
       children: [
         new TextRun({ text: title, font: "Calibri", size: 21, bold: true, color: NAVY }),
-        new TextRun({ text: "\t" }),
+        new TextRun({ text: "\t", font: "Calibri", size: 19 }),
         new TextRun({ text: dates, font: "Calibri", size: 19, italics: true, color: GRAY }),
       ]
     }),
@@ -835,7 +835,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
   for (const exp of (parsedData.experience || [])) {
     expSection.push(...roleHeader(
       exp.title || "", exp.company || "", exp.location || "",
-      `${formatResumeDate(exp.startDate || "")}${exp.endDate ? " – " + formatResumeDate(exp.endDate) : ""}`.trim()
+      `${formatResumeDate(exp.startDate || "")}${exp.endDate ? " – " + formatResumeDate(exp.endDate) : ""}`
     ));
     if (exp.description) {
       expSection.push(new Paragraph({
@@ -1042,7 +1042,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
               children: [
                 new TextRun({ text: role.title || "", font: "Calibri", size: 20, bold: true, color: NAVY }),
                 new TextRun({ text: `  |  ${role.organization || ""}`, font: "Calibri", size: 18, color: ACCENT }),
-                ...(role.startDate || role.endDate ? [new TextRun({ text: `${formatResumeDate(role.startDate || "")}${role.endDate ? " – " + formatResumeDate(role.endDate) : ""}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
+                ...(role.startDate || role.endDate ? [new TextRun({ text: `   ${role.startDate || ""}${role.startDate && role.endDate ? " – " : ""}${role.endDate || ""}`, font: "Calibri", size: 18, italics: true, color: GRAY })] : []),
               ]
             }),
             ...(role.bullets || []).map((b: string) => bul(b)),
