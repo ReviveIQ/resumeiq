@@ -71,6 +71,7 @@ const INTERVIEW_QUESTIONS: { field: string; question: string; placeholder: strin
   { field: "education",          question: "Where did you go to school and what did you study?",              placeholder: "B.S. Marketing — Florida Atlantic University", required: false },
   { field: "experience",         question: "We couldn't find any work experience. Add your most recent role — company name, title, and 1–2 things you accomplished.",  placeholder: "Senior AE at Acme Corp — Closed $2M in new business, managed 30-account portfolio", required: true, multiline: true },
   { field: "experience_dates",   question: "We noticed some roles are missing dates. Add start and end years for your positions so employers can see your timeline.",    placeholder: "e.g. Current role: Jan 2022 – Present, Previous: Mar 2019 – Dec 2021", required: false, multiline: true },
+  { field: "date_gaps",          question: "We noticed a gap in your timeline. Is this a date typo, a career break, or work you'd like to include?", placeholder: "e.g. Double Play Media ended Jan 2015 not Jan 2014, or I took time off for family", required: false, multiline: true },
   { field: "experience_bullets", question: "Your experience section looks thin. For your most recent 2 roles, what were your biggest accomplishments or responsibilities?", placeholder: "e.g. Led a team of 8 reps, exceeded quota 3 years running, grew territory 40%", required: false, multiline: true },
 ];
 
@@ -94,6 +95,7 @@ function getMissingFields(data: any): string[] {
     const hasMissingDates = (data.missingDates && data.missingDates.length > 0) ||
       exp.filter((e: any) => !e.startDate || e.startDate === "MM/YYYY" || e.startDate === "").length >= Math.ceil(exp.length / 2);
     if (hasMissingDates) missing.push("experience_dates");
+    if (data.dateGaps && data.dateGaps.length > 0) missing.push("date_gaps");
 
     // Check if most roles have no bullets
     const noBullets = exp.filter((e: any) => !e.bullets || e.bullets.length === 0).length;
@@ -2628,7 +2630,7 @@ export default function ResumeIQ() {
               })()}
 
               {/* ── DEFAULT — simple text/textarea ── */}
-              {!["skills","title","education","experience_bullets","experience","experience_dates","summary"].includes(currentInterviewQ.field) && (
+              {!["skills","title","education","experience_bullets","experience","experience_dates","date_gaps","summary"].includes(currentInterviewQ.field) && (
                 currentInterviewQ.multiline ? (
                   <textarea rows={4} value={interviewAnswer} onChange={e => setInterviewAnswer(e.target.value)}
                     placeholder={currentInterviewQ.placeholder}
