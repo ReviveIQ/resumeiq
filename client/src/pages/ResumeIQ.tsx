@@ -1097,6 +1097,14 @@ export default function ResumeIQ() {
       localStorage.setItem("resumeiq_pending_wwm", JSON.stringify(workingWithMeTeaser));
     }
 
+    // Paid plan users bypass Stripe entirely
+    const epCheckout = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+    const isPaidCheckout = epCheckout === "monthly" || epCheckout === "agency" || epCheckout === "starter";
+    if (isPaidCheckout) {
+      await handleDownloadWithData(parsedData);
+      return;
+    }
+
     // Determine checkout type based on selections
     let checkoutType: string;
     if (includeCareerLaunch) {
@@ -1179,7 +1187,14 @@ export default function ResumeIQ() {
   };
 
   const handlePayAndDownload = async () => {
-    // Go to concierge checkout view — user chooses options before paying
+    // Paid plan users skip checkout entirely — download directly
+    const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+    const isPaid = ep === "monthly" || ep === "agency" || ep === "starter";
+    if (isPaid) {
+      await handleDownloadWithData(parsedData);
+      return;
+    }
+    // Free users go to concierge checkout view
     setView("checkout");
   };
 
