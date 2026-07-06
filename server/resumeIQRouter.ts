@@ -191,7 +191,7 @@ BULLET RULES:
 - Every bullet must answer: what you did + scope + outcome
 - No soft-attribute bullets whatsoever
 
-SUMMARY: Professional identity + tenure + domain. Never fabricate a target role title.
+SUMMARY: Professional identity + tenure + domain. Never fabricate a target role title. Never include specific national ranking percentages (e.g. "top 0.3%") in the summary — rankings belong in bullets only.
 
 EDUCATION: If degree field contains concatenated school/location/year info, parse into separate fields.
 Example: "BS Biology South Dakota State University Brookings South Dakota" →
@@ -968,7 +968,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
             top: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
           },
           children: [new TextRun({
-            text: [parsedData.location, parsedData.phone, parsedData.email, (parsedData.linkedin || "").replace(/^https?:\/\//, "") || undefined, (parsedData.website || "").replace(/^https?:\/\//, "") || undefined]
+            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin, parsedData.website]
               .filter(Boolean).join("   |   "),
             font: "Calibri", size: 18, color: GRAY,
           })]
