@@ -990,7 +990,9 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
             top: { style: BorderStyle.SINGLE, size: 16, color: NAVY, space: 8 },
           },
           children: [new TextRun({
-            text: [parsedData.location, parsedData.phone, parsedData.email, parsedData.linkedin, parsedData.website]
+            text: [parsedData.location, parsedData.phone, parsedData.email,
+              (parsedData.linkedin || "").replace(/^https?:\/\/(www\.)?/, "") || undefined,
+              (parsedData.website || "").replace(/^https?:\/\/(www\.)?/, "") || undefined]
               .filter(Boolean).join("   |   "),
             font: "Calibri", size: 18, color: GRAY,
           })]
@@ -1004,12 +1006,7 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
           children: [new TextRun({ text: parsedData.summary || "", font: "Calibri", size: 20, color: "1E293B" })]
         }),
 
-        // ── CAREER HIGHLIGHTS ──────────────────────────────────────────────
-        ...(parsedData.topMetrics?.length ? [
-          sectionHeader("Highlights"),
-          ...parsedData.topMetrics.slice(0, 3).map((m: string) => bul(m)),
-          spacer(60),
-        ] : []),
+        // Career Highlights intentionally omitted — bullets are in Experience
 
         // ── EXPERIENCE ─────────────────────────────────────────────────────
         sectionHeader("Experience"),
