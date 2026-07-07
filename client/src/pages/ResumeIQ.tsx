@@ -1257,6 +1257,28 @@ export default function ResumeIQ() {
     finally { setAuthLoading(false); }
   };
 
+  const handleReEdit = async (resumeId: number) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/resumeiq/resume/${resumeId}/data`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) { setError("Could not load resume data."); return; }
+      const { parsedData: saved } = await res.json();
+      if (!saved) { setError("Resume data not found."); return; }
+      setParsedData(saved);
+      setSessionId("reedit-" + resumeId);
+      setIsFree(false);
+      setResumeScore(null);
+      setWorkingWithMeTeaser(saved.workingWithMe || null);
+      setIncludePersonality(!!saved.workingWithMe);
+      setView("preview");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setError("Failed to load resume for editing.");
+    }
+  };
+
   const handleDeleteResume = async (resumeId: number, candidateName: string) => {
     if (!window.confirm(`Delete "${candidateName || "this resume"}"? This cannot be undone.`)) return;
     try {
