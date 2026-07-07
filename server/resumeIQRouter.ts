@@ -900,7 +900,20 @@ async function generateDocx(parsedData: any, scoreFlags?: any): Promise<Buffer> 
   // ── WORKING WITH ME (personality section) ────────────────────────────────
   const personalitySection: any[] = [];
   if (parsedData.workingWithMe) {
-    personalitySection.push(sectionHeader("Working With Me"));
+    // Hard page break — Working With Me always starts on its own page
+    personalitySection.push(new Paragraph({
+      children: [new TextRun({ break: 1 })],
+    }));
+    // Page 2 mini-header
+    personalitySection.push(new Paragraph({
+      spacing: { before: 0, after: 20 },
+      children: [new TextRun({ text: (parsedData.name || "").toUpperCase(), font: "Calibri", size: 28, bold: true, color: NAVY })]
+    }));
+    personalitySection.push(new Paragraph({
+      spacing: { before: 0, after: 60 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACCENT } },
+      children: [new TextRun({ text: "Working With Me", font: "Calibri", size: 22, italics: true, color: ACCENT })]
+    }));
     const wm = parsedData.workingWithMe;
     const fields = [
       ["Communication Style", wm.communicationStyle],
