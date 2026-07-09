@@ -15,6 +15,26 @@ import {
 
 const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
+// Retry fetch with exponential backoff on OpenAI 429
+async function openAIFetch(body: object, apiKey: string, retries = 3): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(OPENAI_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 429 && i < retries - 1) {
+      const wait = (i + 1) * 2000;
+      console.warn(`[ResumeIQ] OpenAI 429 — retrying in ${wait}ms (attempt ${i + 2}/${retries})`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
+    return res.json();
+  }
+  throw new Error("OpenAI rate limit exceeded after retries");
+}
+
 // ── Email verification ────────────────────────────────────────────────────────
 async function sendVerificationEmail(email: string, name: string, token: string): Promise<void> {
   const key = process.env.RESEND_API_KEY;
@@ -612,21 +632,15 @@ Return ONLY the JSON object. Start with { and end with }.`;
         "{NARRATIVE_CONTEXT}",
         narrative || "Not enough information to extract narrative — treat each role independently."
       ).replace("{TARGET_ROLE_CONTEXT}", targetRoleText);
-      const res = await fetch(OPENAI_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          messages: [
-            { role: "system", content: promptWithNarrative },
-            { role: "user", content: `Parse this resume:\n\n${pdfText}\n\nReturn JSON:\n${jsonSchema}` },
-          ],
-          max_tokens: 4000,
-          temperature: 0.2,
-        }),
-      });
-      if (!res.ok) throw new Error(`OpenAI error: ${res.status}`);
-      const data = await res.json() as any;
+      const data = await openAIFetch({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: promptWithNarrative },
+          { role: "user", content: `Parse this resume:\n\n${pdfText}\n\nReturn JSON:\n${jsonSchema}` },
+        ],
+        max_tokens: 4000,
+        temperature: 0.2,
+      }, apiKey) as any;
       return JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
     }
 
