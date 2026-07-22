@@ -221,7 +221,23 @@ export async function createUser(email: string, password: string, name: string) 
       "INSERT INTO riq_users (email, passwordHash, name) VALUES (?, ?, ?)",
       [email, hash, name]
     ) as any;
-    return { id: result.insertId, email, name };
+    const userId = result.insertId;
+    const EARLY_ADOPTER_LIMIT = 25;
+    let plan = "free";
+    try {
+      const [countRows] = await conn.execute(
+        "SELECT COUNT(*) as total FROM riq_users WHERE id <= ?", [userId]
+      ) as any;
+      const userNumber = Number(countRows[0]?.total || 0);
+      if (userNumber <= EARLY_ADOPTER_LIMIT) {
+        await conn.execute(
+          "UPDATE riq_users SET plan = 'monthly', planExpiresAt = NULL WHERE id = ?", [userId]
+        );
+        plan = "monthly";
+        console.log(`[ResumeIQ] 🎉 Early adopter #${userNumber} of ${EARLY_ADOPTER_LIMIT} — ${email} upgraded to monthly permanently`);
+      }
+    } catch (e) { console.warn("[ResumeIQ] Early adopter check failed:", e); }
+    return { id: userId, email, name, plan };
   } finally {
     await conn.end();
   }
