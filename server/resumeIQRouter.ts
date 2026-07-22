@@ -2061,8 +2061,24 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
         return;
       }
 
-      const { fileBase64, fileName, targetRole, guestId } = req.body;
+      const { fileBase64, fileName, targetRole, guestId, guestEmail } = req.body;
       if (!fileBase64) { res.status(400).json({ error: "No file provided" }); return; }
+
+      // Pre-transform email capture — save before OpenAI call so failed transforms still have a contact
+      if (guestEmail && !getTokenUser(req)) {
+        try {
+          const captureConn = await getDb();
+          if (captureConn) {
+            try {
+              await captureConn.execute(
+                `INSERT IGNORE INTO riq_email_captures (email, source, createdAt) VALUES (?, 'pre_transform', NOW())`,
+                [guestEmail.toLowerCase().trim()]
+              );
+              console.log(`[ResumeIQ] Pre-transform email captured: ${guestEmail}`);
+            } finally { await captureConn.end(); }
+          }
+        } catch (e) { console.warn("[ResumeIQ] Pre-transform capture failed:", e); }
+      }
 
       const parsed = await parseResume(fileBase64, fileName || "resume.pdf", targetRole);
       const sessionId = crypto.randomBytes(16).toString("hex");
