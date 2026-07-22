@@ -1477,7 +1477,7 @@ export function registerResumeIQRoutes(app: Express) {
       if (guestIdToMerge) {
         mergeGuestSessionsToUser(guestIdToMerge, user.id).catch(() => {});
       }
-      res.json({ token, user: { id: user.id, email: user.email, name: user.name, emailVerified: false } });
+      res.json({ token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan || "free", emailVerified: false } });
     } catch (error: any) {
       if (error.message?.includes("Duplicate")) res.status(400).json({ error: "Email already registered" });
       else res.status(500).json({ error: error.message });
