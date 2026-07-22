@@ -1608,7 +1608,8 @@ export default function ResumeIQ() {
                   </button>
                 </div>
 
-                {error && <p style={{ color: "#f87171", fontSize: "12px", textAlign: "center", margin: 0 }}>{error}</p>}
+                {notification && <p style={{ color: "#4ade80", fontSize: "13px", textAlign: "center", marginTop: "8px" }}>{notification}</p>}
+        {error && <p style={{ color: "#f87171", fontSize: "12px", textAlign: "center", margin: 0 }}>{error}</p>}
 
                 <button onClick={() => handleAuth(view as "login" | "register")} disabled={authLoading}
                   style={{ width: "100%", padding: "11px 16px", background: authLoading ? "#1e3a5f" : "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: 600, cursor: authLoading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: authLoading ? "none" : "0 4px 20px rgba(37,99,235,0.35)", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
