@@ -662,7 +662,7 @@ export default function ResumeIQ() {
       });
       const res = await fetch("/api/resumeiq/transform", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined }),
+        body: JSON.stringify({ fileBase64: base64, fileName: file.name, targetRole: targetRole.trim() || undefined, guestEmail: guestEmail || undefined }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -1836,6 +1836,15 @@ export default function ResumeIQ() {
             )}
 
             {file && (
+              {!user && (
+                <input
+                  type="email"
+                  placeholder="Enter your email to save and re-download"
+                  value={guestEmail}
+                  onChange={e => setGuestEmail(e.target.value)}
+                  style={{ marginTop: "12px", marginBottom: "8px", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", padding: "12px 16px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
+                />
+              )}
               <button onClick={handleAnalyze} style={{ marginTop: "16px", width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "11px", padding: "14px", fontSize: "16px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
                 <Sparkles size={18} /> {uploadAssessments.some(u => u.fileName || u.textInput) ? "Analyze Resume + Personality →" : "Analyze My Resume →"}
               </button>
