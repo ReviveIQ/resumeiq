@@ -310,6 +310,7 @@ export default function ResumeIQ() {
   const [guestAccountError, setGuestAccountError] = useState("");
   const [showPaidGuestModal, setShowPaidGuestModal] = useState(false);
   const [error, setError] = useState("");
+  const [notification, setNotification] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [testimonialRating, setTestimonialRating] = useState(0);
   const [testimonialQuote, setTestimonialQuote] = useState("");
