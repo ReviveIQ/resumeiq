@@ -304,6 +304,7 @@ export default function ResumeIQ() {
   const [planType, setPlanType] = useState<"free"|"starter"|"monthly"|"agency">("free");
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "monthly">("monthly");
   const [email, setEmail] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
   const [guestPassword, setGuestPassword] = useState("");
   const [guestPasswordConfirm, setGuestPasswordConfirm] = useState("");
