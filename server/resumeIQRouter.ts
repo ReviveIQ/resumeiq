@@ -1549,7 +1549,7 @@ export function registerResumeIQRoutes(app: Express) {
       if (!conn) { res.json({ claimed: 0, remaining: 25, total: 25 }); return; }
       try {
         const [rows] = await conn.execute(
-          "SELECT COUNT(*) as total FROM riq_users WHERE plan = 'monthly' AND id <= 25"
+          "SELECT COUNT(*) as total FROM riq_users WHERE plan = 'monthly' AND planExpiresAt IS NULL AND id != 930001"
         ) as any;
         const claimed = Number(rows[0]?.total || 0);
         res.json({ claimed, remaining: Math.max(0, 25 - claimed), total: 25 });
