@@ -1542,6 +1542,21 @@ export function registerResumeIQRoutes(app: Express) {
   });
 
   // ── HISTORY ──────────────────────────────────────────────────────
+  app.get("/api/resumeiq/early-adopter-count", async (_req: Request, res: Response) => {
+    try {
+      const { getDb } = await import("../authService.js");
+      const conn = await getDb();
+      if (!conn) { res.json({ claimed: 0, remaining: 25, total: 25 }); return; }
+      try {
+        const [rows] = await conn.execute(
+          "SELECT COUNT(*) as total FROM riq_users WHERE plan = 'monthly' AND id <= 25"
+        ) as any;
+        const claimed = Number(rows[0]?.total || 0);
+        res.json({ claimed, remaining: Math.max(0, 25 - claimed), total: 25 });
+      } finally { await conn.end(); }
+    } catch { res.json({ claimed: 0, remaining: 25, total: 25 }); }
+  });
+
   app.get("/api/resumeiq/history", async (req: Request, res: Response) => {
     const tokenUser = getTokenUser(req);
     if (!tokenUser) { res.status(401).json({ error: "Unauthorized" }); return; }
