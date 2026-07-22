@@ -1835,7 +1835,6 @@ export default function ResumeIQ() {
               </div>
             )}
 
-            {file && (
               {!user && (
                 <input
                   type="email"
@@ -1845,6 +1844,8 @@ export default function ResumeIQ() {
                   style={{ marginTop: "12px", marginBottom: "8px", width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", padding: "12px 16px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
                 />
               )}
+
+            {file && (
               <button onClick={handleAnalyze} style={{ marginTop: "16px", width: "100%", background: "#2563eb", color: "white", border: "none", borderRadius: "11px", padding: "14px", fontSize: "16px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
                 <Sparkles size={18} /> {uploadAssessments.some(u => u.fileName || u.textInput) ? "Analyze Resume + Personality →" : "Analyze My Resume →"}
               </button>
