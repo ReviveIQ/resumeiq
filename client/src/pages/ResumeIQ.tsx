@@ -2988,7 +2988,13 @@ export default function ResumeIQ() {
               {(isFree && (user || emailCaptured)) || !isFree ? (
                 <button onClick={isFree ? handleDownload : handlePayAndDownload} disabled={downloading}
                   style={{ flex: 2, background: isFree ? "#16a34a" : "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
-                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : isFree ? (((user as any)?.plan === "monthly" || (user as any)?.plan === "agency" || planType === "monthly" || planType === "agency") || ((user as any)?.plan === "starter" || planType === "starter") ? <><Download size={18} />Download Resume</> : <><Download size={18} />Download Free Resume</>) : <><CreditCard size={18} />Review & Complete</>}
+                  {downloading ? <><Loader2 size={18} style={spin} />Generating...</> : (() => {
+                    const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free";
+                    const isPaidPlan = ep === "monthly" || ep === "agency" || ep === "starter";
+                    if (isPaidPlan) return <><Download size={18} />Download Resume</>;
+                    if (isFree) return <><Download size={18} />Download Free Resume</>;
+                    return <><CreditCard size={18} />Review & Complete</>;
+                  })()}
                 </button>
               ) : null}
             </div>
