@@ -397,6 +397,8 @@ THE SUMMARY RULES:
 - Name their strongest metric if one exists in the resume
 - 2-3 sentences maximum, every word earns its place
 - NEVER fabricate a target role or company
+- CERTIFICATION ISSUERS: Each certification must be paired with the issuer listed immediately adjacent to it in the source. Do not shift issuers between certifications — read each cert-issuer pair independently and match them exactly.
+- CREDENTIALS: Preserve all official credentials, sworn translator authorizations, ministry-issued licenses, and registration numbers exactly as written — never omit them
 - NEVER invent experience roles to fill date gaps — use the dateGaps array to flag them instead
 - The output experience array must contain EXACTLY the same number of roles as the source resume
 - CLOSING LINE RULE — the final sentence must do ONE of these three things, in priority order:
