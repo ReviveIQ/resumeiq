@@ -2250,7 +2250,7 @@ export default function ResumeIQ() {
                         }}
                         style={{ width: "100%", background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: "10px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "pointer", marginBottom: "10px", boxShadow: "0 4px 20px rgba(124,58,237,0.3)" }}
                       >
-                        {workingWithMeTeaser ? "View My Working With Me Section →" : "Add \"Working With Me\" — $7.99 →"}
+                        {workingWithMeTeaser ? "View My Working With Me Section →" : (((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") ? "Add Working With Me — Included in Plan →" : "Add \"Working With Me\" — $7.99 →"}
                       </button>
                       <button
                         onClick={() => setView("preview")}
@@ -2749,13 +2749,15 @@ export default function ResumeIQ() {
                     We've translated your assessment results into professional behavioral language — how you communicate, make decisions, collaborate, and perform under pressure. This is the section hiring managers don't expect and can't forget.
                   </p>
                   <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px" }}>
+                    {!(((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") && (
                     <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0, fontWeight: 600 }}>
                       ⚠️ Not included in the free download — add it for $7.99 to include it in your resume.
                     </p>
+                    )}
                   </div>
                   <button onClick={() => setPersonalityStep(true)}
                     style={{ width: "100%", background: "linear-gradient(135deg, #4f46e5, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
-                    Add Working With Me — $7.99 →
+                    {(((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") ? "Add Working With Me — Included in Plan →" : "Add Working With Me — $7.99 →"}
                   </button>
                 </div>
               ) : (
@@ -2967,9 +2969,11 @@ export default function ResumeIQ() {
               <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px" }}>
                 <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>{(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "✦ Unlimited transformations included in your plan." : (planType === "starter" || (user as any)?.plan === "starter") ? "✦ Up to 3 transformations included in your plan." : "🎉 Your first transformation is free — saved to your account forever."}</p>
                 {workingWithMeTeaser && (
+                  {!(((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") && (
                   <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0 }}>
                     ⚠️ <strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.
                   </p>
+                  )}
                 )}
               </div>
             )}
