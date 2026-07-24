@@ -2071,7 +2071,7 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
           if (captureConn) {
             try {
               await captureConn.execute(
-                `INSERT IGNORE INTO riq_email_captures (email, source, createdAt) VALUES (?, 'pre_transform', NOW())`,
+                `INSERT IGNORE INTO riq_email_captures (email, createdAt) VALUES (?, NOW())`,
                 [guestEmail.toLowerCase().trim()]
               );
               console.log(`[ResumeIQ] Pre-transform email captured: ${guestEmail}`);
