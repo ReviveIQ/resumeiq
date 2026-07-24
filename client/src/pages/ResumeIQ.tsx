@@ -2968,12 +2968,10 @@ export default function ResumeIQ() {
             {isFree && user && (
               <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "10px", padding: "14px 16px", marginBottom: "10px" }}>
                 <p style={{ color: "#4ade80", fontSize: "13px", fontWeight: 600, marginBottom: workingWithMeTeaser ? "6px" : "0" }}>{(planType === "monthly" || planType === "agency" || (user as any)?.plan === "monthly" || (user as any)?.plan === "agency") ? "✦ Unlimited transformations included in your plan." : (planType === "starter" || (user as any)?.plan === "starter") ? "✦ Up to 3 transformations included in your plan." : "🎉 Your first transformation is free — saved to your account forever."}</p>
-                {workingWithMeTeaser && (
-                  {!(((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") && (
+                {workingWithMeTeaser && !(((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "monthly" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "agency" || ((user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free") === "starter") && (
                   <p style={{ color: "#fbbf24", fontSize: "12px", margin: 0 }}>
                     ⚠️ <strong>Working With Me is not included</strong> in the free download — add it for $7.99 below to include it in your resume.
                   </p>
-                  )}
                 )}
               </div>
             )}
