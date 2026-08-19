@@ -448,6 +448,13 @@ export default function ResumeIQ() {
   const [workingWithMeTeaser, setWorkingWithMeTeaser] = useState<any>(null);
   const [teaserFields, setTeaserFields] = useState<string[]>([]);
   const [assessmentFiles, setAssessmentFiles] = useState<{ id: string; label: string; fileName: string; fileBase64: string; textInput: string }[]>([]);
+  const [tailorStep, setTailorStep] = useState(false);
+  const [jobDescriptionInput, setJobDescriptionInput] = useState("");
+  const [tailorLoading, setTailorLoading] = useState(false);
+  const [tailorResult, setTailorResult] = useState<any>(null);
+  const [tailorError, setTailorError] = useState("");
+  const [tailorUpgradeRequired, setTailorUpgradeRequired] = useState(false);
+  const [tailorApplied, setTailorApplied] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState(() => localStorage.getItem("riq_token") || "");
 
@@ -1040,6 +1047,69 @@ export default function ResumeIQ() {
       localStorage.setItem("riq_pending_wwm", JSON.stringify(workingWithMeTeaser));
       window.location.href = data.url;
     }
+  };
+
+  // ── Tailor to a Job Description ─────────────────────────────────────────
+  const handleTailorGenerate = async () => {
+    if (jobDescriptionInput.trim().length < 20) {
+      setTailorError("Paste a bit more of the job description — at least a few sentences.");
+      return;
+    }
+    setTailorLoading(true);
+    setTailorError("");
+    setTailorUpgradeRequired(false);
+    try {
+      const res = await fetch("/api/resumeiq/tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ parsedData, jobDescription: jobDescriptionInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.upgradeRequired) setTailorUpgradeRequired(true);
+        setTailorError(data.error || "Tailoring failed — try again.");
+        return;
+      }
+      setTailorResult(data);
+      setTailorApplied(false);
+    } catch (err: any) {
+      setTailorError(err.message || "Tailoring failed — try again.");
+    } finally {
+      setTailorLoading(false);
+    }
+  };
+
+  const handleApplyTailoring = () => {
+    if (!tailorResult?.diff) return;
+    setParsedData((prev: any) => {
+      const next = { ...prev };
+      if (tailorResult.diff.summary) next.summary = tailorResult.diff.summary.after;
+      if (tailorResult.diff.experience?.length) {
+        const exp = [...(next.experience || [])];
+        tailorResult.diff.experience.forEach((e: any) => {
+          if (exp[e.index]) exp[e.index] = { ...exp[e.index], bullets: e.after };
+        });
+        next.experience = exp;
+      }
+      if (tailorResult.diff.skillsOrder?.length && next.skills?.categories) {
+        const order: string[] = tailorResult.diff.skillsOrder;
+        const cats = [...next.skills.categories].sort((a: any, b: any) => {
+          const ai = order.indexOf(a.name); const bi = order.indexOf(b.name);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+        next.skills = { ...next.skills, categories: cats };
+      }
+      return next;
+    });
+    setTailorApplied(true);
+    setTailorStep(false);
+  };
+
+  const handleResetTailoring = () => {
+    setTailorResult(null);
+    setTailorApplied(false);
+    setJobDescriptionInput("");
+    setTailorError("");
   };
 
   const handleDownload = async () => { await handleDownloadWithData(parsedData); };
@@ -2782,6 +2852,59 @@ export default function ResumeIQ() {
               )}
             </div>
 
+            {/* Tailor to a Job — upsell / result card */}
+            <div style={{ marginBottom: "20px", background: tailorResult ? "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(37,99,235,0.1))" : "linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.08))", border: `1px solid ${tailorResult ? "rgba(16,185,129,0.4)" : "rgba(99,102,241,0.3)"}`, borderRadius: "12px", padding: "18px 20px" }}>
+              {tailorResult ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: "10px", flexWrap: "wrap" as const }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "18px" }}>🎯</span>
+                      <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Tailored to your target job</span>
+                    </div>
+                    {tailorResult.matchScore != null && (
+                      <span style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", color: "#4ade80", fontSize: "12px", fontWeight: 700, borderRadius: "999px", padding: "4px 12px" }}>
+                        {tailorResult.matchScore}% match
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ color: "#94a3b8", fontSize: "13px", marginBottom: "12px", lineHeight: 1.6 }}>
+                    {tailorApplied
+                      ? "Your summary, bullets, and skill order have been updated to match this job — nothing was invented, only reprioritized."
+                      : "We found some rewrites that use only what's already true on your resume. Review them before applying."}
+                  </p>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button onClick={() => setTailorStep(true)}
+                      style={{ flex: 1, background: "linear-gradient(135deg, #059669, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "11px", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+                      {tailorApplied ? "View Details →" : "Review Tailored Changes →"}
+                    </button>
+                    <button onClick={handleResetTailoring}
+                      style={{ background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "11px 14px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                      Tailor to a different job
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "18px" }}>🎯</span>
+                      <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>Tailor this resume to a specific job</span>
+                    </div>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 6px", lineHeight: 1.6 }}>
+                      Paste a job description and we'll rephrase your summary and bullets to speak its language — <strong style={{ color: "#93c5fd" }}>using only what's already true on your resume.</strong> Nothing invented, nothing fabricated.
+                    </p>
+                    <p style={{ color: "#818cf8", fontSize: "12px", margin: 0 }}>
+                      {(() => { const ep = (user as any)?.plan || planType || localStorage.getItem("riq_plan") || "free"; return (ep === "monthly" || ep === "agency" || ep === "starter") ? "Included in your plan" : "Starter & Monthly plans"; })()}
+                    </p>
+                  </div>
+                  <button onClick={() => setTailorStep(true)}
+                    style={{ background: "linear-gradient(135deg, #059669, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "10px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    Tailor It →
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="riq-preview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
               <div>
                 <Section title="Personal Info">
@@ -3607,6 +3730,147 @@ export default function ResumeIQ() {
                     : <><span>✨</span> {assessmentFiles.length > 1 ? `Synthesize ${assessmentFiles.length} Assessments →` : "Synthesize →"}</>}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAILOR TO JOB STEP: paste JD, review diff ── */}
+        {tailorStep && (
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", boxSizing: "border-box" }}>
+            <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "28px", maxWidth: "640px", width: "100%", maxHeight: "88vh", overflowY: "auto" }}>
+
+              {!tailorResult ? (
+                <>
+                  <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                    <div style={{ fontSize: "36px", marginBottom: "8px" }}>🎯</div>
+                    <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Tailor to a Job Description</h2>
+                    <p style={{ color: "#94a3b8", fontSize: "13px", lineHeight: 1.6 }}>
+                      Paste the job description below. We'll rephrase your summary and bullets to speak its language — using only what's already true on your resume. Nothing invented.
+                    </p>
+                  </div>
+
+                  {tailorUpgradeRequired ? (
+                    <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: "10px", padding: "16px", marginBottom: "16px", textAlign: "center" as const }}>
+                      <p style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600, margin: "0 0 6px" }}>⚠️ Starter & Monthly feature</p>
+                      <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
+                        Tailoring to a job description is included with Starter and Monthly plans. Upgrade your account to unlock it.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        rows={8}
+                        value={jobDescriptionInput}
+                        onChange={(e: any) => setJobDescriptionInput(e.target.value)}
+                        placeholder="Paste the full job description here..."
+                        style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", color: "white", fontSize: "13px", padding: "12px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit", marginBottom: "12px" }}
+                      />
+                      {tailorError && <p style={{ color: "#f87171", fontSize: "12px", marginBottom: "10px" }}>{tailorError}</p>}
+                    </>
+                  )}
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+                    <button onClick={() => { setTailorStep(false); setTailorError(""); setTailorUpgradeRequired(false); }}
+                      style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                    {!tailorUpgradeRequired && (
+                      <button onClick={handleTailorGenerate}
+                        disabled={jobDescriptionInput.trim().length < 20 || tailorLoading}
+                        style={{ flex: 2, background: jobDescriptionInput.trim().length >= 20 ? "linear-gradient(135deg, #059669, #2563eb)" : "rgba(37,99,235,0.3)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}>
+                        {tailorLoading
+                          ? <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span> Tailoring...</>
+                          : <><span>🎯</span> Tailor My Resume →</>}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: "center", marginBottom: "18px" }}>
+                    <div style={{ fontSize: "32px", marginBottom: "8px" }}>🎯</div>
+                    <h2 style={{ color: "white", fontSize: "20px", fontWeight: "bold", marginBottom: "6px" }}>Review Tailored Changes</h2>
+                    {tailorResult.matchScore != null && (
+                      <span style={{ display: "inline-block", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", color: "#4ade80", fontSize: "13px", fontWeight: 700, borderRadius: "999px", padding: "5px 14px", marginTop: "6px" }}>
+                        {tailorResult.matchScore}% match before tailoring
+                      </span>
+                    )}
+                  </div>
+
+                  {(tailorResult.matchedKeywords?.length > 0 || tailorResult.missingKeywords?.length > 0) && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "18px" }}>
+                      {tailorResult.matchedKeywords?.length > 0 && (
+                        <div style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
+                          <p style={{ color: "#4ade80", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em", margin: "0 0 6px" }}>✓ Already covered</p>
+                          <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>{tailorResult.matchedKeywords.join(", ")}</p>
+                        </div>
+                      )}
+                      {tailorResult.missingKeywords?.length > 0 && (
+                        <div style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
+                          <p style={{ color: "#fbbf24", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em", margin: "0 0 6px" }}>Not on your resume</p>
+                          <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>{tailorResult.missingKeywords.join(", ")}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {tailorResult.diff?.summary && (
+                    <div style={{ marginBottom: "16px" }}>
+                      <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "8px" }}>Summary</p>
+                      <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", padding: "10px 12px", marginBottom: "6px" }}>
+                        <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, lineHeight: 1.6, textDecoration: "line-through" as const, opacity: 0.7 }}>{tailorResult.diff.summary.before}</p>
+                      </div>
+                      <div style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
+                        <p style={{ color: "white", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>{tailorResult.diff.summary.after}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {tailorResult.diff?.experience?.map((e: any) => (
+                    <div key={e.index} style={{ marginBottom: "16px" }}>
+                      <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "8px" }}>
+                        {e.title}{e.company ? ` · ${e.company}` : ""}
+                      </p>
+                      <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "8px", padding: "10px 12px", marginBottom: "6px" }}>
+                        {(e.before || []).map((b: string, i: number) => (
+                          <p key={i} style={{ color: "#94a3b8", fontSize: "12px", margin: i === 0 ? 0 : "6px 0 0", lineHeight: 1.6, textDecoration: "line-through" as const, opacity: 0.7 }}>• {b}</p>
+                        ))}
+                      </div>
+                      <div style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: "8px", padding: "10px 12px" }}>
+                        {(e.after || []).map((b: string, i: number) => (
+                          <p key={i} style={{ color: "white", fontSize: "12px", margin: i === 0 ? 0 : "6px 0 0", lineHeight: 1.6 }}>• {b}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {tailorResult.diff?.skillsOrder?.length > 0 && (
+                    <div style={{ marginBottom: "16px" }}>
+                      <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "8px" }}>Skills reprioritized</p>
+                      <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>{tailorResult.diff.skillsOrder.join(" → ")}</p>
+                    </div>
+                  )}
+
+                  {!tailorResult.diff?.summary && !(tailorResult.diff?.experience?.length > 0) && (
+                    <p style={{ color: "#94a3b8", fontSize: "13px", textAlign: "center" as const, padding: "16px" }}>
+                      Your resume already speaks this job's language well — no changes suggested.
+                    </p>
+                  )}
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+                    <button onClick={() => setTailorStep(false)}
+                      style={{ flex: 1, background: "rgba(255,255,255,0.06)", color: "#94a3b8", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                      Close
+                    </button>
+                    {(tailorResult.diff?.summary || tailorResult.diff?.experience?.length > 0) && (
+                      <button onClick={handleApplyTailoring}
+                        style={{ flex: 2, background: "linear-gradient(135deg, #059669, #2563eb)", color: "white", border: "none", borderRadius: "9px", padding: "12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+                        ✓ Apply Tailored Changes →
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
