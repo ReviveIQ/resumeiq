@@ -1770,6 +1770,126 @@ teaserFields: always use ["communicationStyle", "motivation"] — these are the 
     }
   });
 
+  // ── TAILOR TO JOB DESCRIPTION (Starter/Monthly/Agency) ────────────────
+  // Rephrases/reprioritizes an already-parsed resume against a pasted JD.
+  // Never invents employers, titles, dates, certs, or metrics — rephrase only.
+  app.post("/api/resumeiq/tailor", async (req: Request, res: Response) => {
+    try {
+      const { parsedData, jobDescription } = req.body;
+      if (!parsedData) { res.status(400).json({ error: "No resume data provided" }); return; }
+      if (!jobDescription || String(jobDescription).trim().length < 20) {
+        res.status(400).json({ error: "Please paste a job description (at least a few sentences)." });
+        return;
+      }
+
+      // Gate: Starter, Monthly, or Agency plans only — mirrors Working With Me access check
+      const tokenUser = getTokenUser(req);
+      if (!tokenUser) { res.status(401).json({ error: "Please log in to tailor your resume to a job." }); return; }
+      const dbUser = await getUserById(tokenUser.userId);
+      const plan = dbUser?.plan || "free";
+      const planExpiry = dbUser?.planExpiresAt ? new Date(dbUser.planExpiresAt) : null;
+      const planActive = !planExpiry || planExpiry > new Date();
+      const hasTailoringAccess = ((plan === "monthly" || plan === "agency") && planActive) || plan === "starter";
+      if (!hasTailoringAccess) {
+        res.status(402).json({
+          error: "Tailoring to a job description is a Starter/Monthly feature. Upgrade your account to unlock it.",
+          upgradeRequired: true,
+        });
+        return;
+      }
+
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: "OpenAI not configured" }); return; }
+
+      const jdTrimmed = String(jobDescription).slice(0, 6000);
+
+      const systemPrompt = `You are an expert resume strategist and ATS-optimization specialist. Your job is to rephrase and reprioritize an ALREADY-TRUE resume so it speaks directly to a specific job description — without inventing anything.
+
+CRITICAL RULES — VIOLATIONS WILL FAIL:
+- NEVER add a job, employer, title, date, certification, degree, or skill that is not already present in the source resume
+- NEVER invent or alter metrics, numbers, or outcomes
+- You MAY rephrase bullets to foreground relevant scope/impact that is already true
+- You MAY reorder skill categories/items to surface what's most relevant to the JD first
+- You MAY rewrite the professional summary to mirror the JD's language and priorities, using only facts already in the resume
+- If the resume genuinely lacks something the JD asks for, do NOT fabricate it — leave it out
+- Every rewritten bullet must remain factually equivalent to the original — same employer, same scope, same outcome, different emphasis/wording only
+
+Return ONLY valid JSON, no markdown, matching this exact schema:
+{
+  "matchScore": 0-100 integer estimating how well the ORIGINAL resume matches the JD before tailoring,
+  "matchedKeywords": ["JD keywords/skills already reflected in the resume"],
+  "missingKeywords": ["JD keywords/requirements the resume does not support — for the user's awareness only, never fabricated into the resume"],
+  "tailored": {
+    "summary": "rewritten summary, or null if unchanged",
+    "experience": [{"index": 0, "bullets": ["rewritten bullet 1", "rewritten bullet 2"]}],
+    "skillsOrder": ["skill or category names in new priority order, using only names already present"]
+  }
+}`;
+
+      const userPrompt = `JOB DESCRIPTION:
+${jdTrimmed}
+
+CURRENT RESUME (structured JSON — use only these facts, do not add to them):
+${JSON.stringify({
+        summary: parsedData.summary,
+        experience: (parsedData.experience || []).map((e: any, i: number) => ({
+          index: i, title: e.title, company: e.company, bullets: e.bullets,
+        })),
+        skills: parsedData.skills,
+        topMetrics: parsedData.topMetrics,
+      })}`;
+
+      console.log(`[ResumeIQ] Tailoring resume to JD (${jdTrimmed.length} chars) for user ${tokenUser.userId}`);
+
+      const response = await fetch(OPENAI_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          temperature: 0.2,
+          max_tokens: 2500,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+        signal: AbortSignal.timeout(45000),
+      });
+
+      if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+      const data = await response.json() as any;
+      const result = JSON.parse(stripJson(data.choices?.[0]?.message?.content || "{}"));
+
+      // Build a before/after diff the client can render and let the user accept/revert per field
+      const originalExperience = parsedData.experience || [];
+      const diff = {
+        summary: result.tailored?.summary && result.tailored.summary !== parsedData.summary
+          ? { before: parsedData.summary || "", after: result.tailored.summary }
+          : null,
+        experience: (result.tailored?.experience || [])
+          .filter((e: any) => originalExperience[e.index])
+          .map((e: any) => ({
+            index: e.index,
+            title: originalExperience[e.index].title,
+            company: originalExperience[e.index].company,
+            before: originalExperience[e.index].bullets || [],
+            after: e.bullets || [],
+          })),
+        skillsOrder: result.tailored?.skillsOrder || null,
+      };
+
+      res.json({
+        matchScore: typeof result.matchScore === "number" ? result.matchScore : null,
+        matchedKeywords: result.matchedKeywords || [],
+        missingKeywords: result.missingKeywords || [],
+        diff,
+      });
+    } catch (error: any) {
+      console.error("[ResumeIQ] Tailor error:", error.message);
+      res.status(500).json({ error: error.message || "Tailoring failed" });
+    }
+  });
+
   // ── MONTHLY CHECKOUT ─────────────────────────────────────────────────
   app.post("/api/resumeiq/monthly-checkout", async (req: Request, res: Response) => {
     try {
