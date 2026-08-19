@@ -35,6 +35,7 @@ ResumeIQ is an AI-powered resume transformation tool that takes any resume — m
 - Captures non-standard sections: Publications, Projects, Hobbies, Activities, Volunteer work
 - Email typo detection — flags known provider misspellings without flagging custom domains
 - Never fabricates metrics, companies, dates, or titles
+- Tailor to a Job Description (Starter/Monthly/Agency) — paste a JD, GPT-4o rephrases the summary and bullets and reprioritizes skills to match it, using only facts already on the resume; returns a match score, matched/missing keyword lists, and a before/after diff the user accepts before it's applied
 - Generates a polished Word document (Calibri, ATS-safe, single column)
 - Post-conversion email delivers the DOCX directly to the user's inbox
 - Abandoned checkout recovery — emails users 1 hour after initiating checkout with no payment
@@ -74,9 +75,10 @@ After downloading, users can click **"Start my job search — 7 days free →"**
 | Plan | Price | Included |
 |---|---|---|
 | Free | $0 | 1 transformation |
-| Starter | $14.99 one-time | 3 transformations |
+| Starter | $14.99 one-time | 3 transformations, Working With Me, Tailor to a Job |
 | Resume + Working With Me | $19.99 | Resume + WWM add-on |
 | Career Launch Bundle | $79.99 | Resume + WWM + MyCareerIQ 7-day trial |
+| Monthly | subscription | Unlimited transformations, Working With Me, Tailor to a Job |
 
 Stripe is **live** (real payments). Test card: `4242 4242 4242 4242` / `12/28` / `123` / `12345`
 
@@ -103,7 +105,7 @@ React · TypeScript · Vite · Tailwind · Node.js · Express · TiDB Cloud · G
 |---|---|
 | `client/public/landing.html` | Marketing landing page (served at `/`) |
 | `client/public/ats-checker.html` | Free ATS checker page (served at `/ats-checker`) |
-| `client/src/pages/ResumeIQ.tsx` | Full React SPA (~3,300 lines) |
+| `client/src/pages/ResumeIQ.tsx` | Full React SPA (~4,000 lines) |
 | `server/resumeIQRouter.ts` | All API routes, DOCX generation, scoring, SSO handoff, ATS check |
 | `server/authService.ts` | DB init, migrations, user/resume CRUD |
 | `server/emailService.ts` | Gmail SMTP (port 587 STARTTLS) transactional emails + DOCX attachment |
@@ -126,6 +128,7 @@ React · TypeScript · Vite · Tailwind · Node.js · Express · TiDB Cloud · G
 | GET | `/api/resumeiq/history` | JWT | Resume history |
 | GET | `/api/resumeiq/resume/:id/download` | JWT | Re-download saved resume |
 | POST | `/api/resumeiq/personality` | None | Generate Working With Me section |
+| POST | `/api/resumeiq/tailor` | JWT | Tailor resume to a pasted job description — Starter/Monthly/Agency only |
 
 ## Workflow rules
 
